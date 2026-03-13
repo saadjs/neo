@@ -164,6 +164,7 @@ async function buildSessionConfig(chatId: number) {
     model,
     systemMessage: { mode: "replace" as const, content: systemContext },
     tools: allTools,
+    skillDirectories: config.copilot.skillDirectories,
     onPermissionRequest: approveAll,
     workingDirectory: config.paths.root,
     infiniteSessions: {

@@ -2,7 +2,6 @@ import { z } from "zod";
 import { resolve, join } from "node:path";
 
 const PROJECT_ROOT = resolve(".");
-
 const envSchema = z.object({
   TELEGRAM_BOT_TOKEN: z.string().min(1, "TELEGRAM_BOT_TOKEN is required"),
   TELEGRAM_OWNER_ID: z.coerce
@@ -15,6 +14,7 @@ const envSchema = z.object({
   NEO_DATA_DIR: z.string().default(join(PROJECT_ROOT, "data")),
   NEO_LOG_DIR: z.string().default(join(PROJECT_ROOT, "logs")),
   NEO_LOG_LEVEL: z.enum(["error", "warn", "info", "debug", "trace"]).default("info"),
+  NEO_SKILL_DIRS: z.string().optional(),
   NEO_CONTEXT_COMPACTION_ENABLED: z.coerce.boolean().default(true),
   NEO_CONTEXT_COMPACTION_THRESHOLD: z.coerce.number().min(0).max(1).default(0.8),
   NEO_CONTEXT_BUFFER_EXHAUSTION_THRESHOLD: z.coerce.number().min(0).max(1).default(0.95),
@@ -31,6 +31,7 @@ function loadConfig() {
     console.error(`❌ Configuration error:\n${errors}`);
     process.exit(1);
   }
+
   return {
     telegram: {
       botToken: result.data.TELEGRAM_BOT_TOKEN,
@@ -44,6 +45,14 @@ function loadConfig() {
     },
     copilot: {
       model: result.data.COPILOT_MODEL,
+      skillDirectories: [
+        join(PROJECT_ROOT, "skills"),
+        ...(result.data.NEO_SKILL_DIRS
+          ? result.data.NEO_SKILL_DIRS.split(",")
+              .map((d) => d.trim())
+              .filter(Boolean)
+          : []),
+      ],
       contextCompaction: {
         enabled: result.data.NEO_CONTEXT_COMPACTION_ENABLED,
         threshold: result.data.NEO_CONTEXT_COMPACTION_THRESHOLD,

@@ -184,6 +184,11 @@ async function handleMessage(
         }
       }
 
+      if (event.type === "skill.invoked") {
+        const d = event.data as { name?: string; path?: string };
+        log.info({ chatId, skill: d.name, path: d.path }, "Skill invoked");
+      }
+
       if (event.type === "session.compaction_start") {
         log.info({ chatId, sessionId }, "Session compaction started");
       }
