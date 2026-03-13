@@ -6,6 +6,7 @@ import { closeConversationDb } from "./logging/conversations.js";
 import { ensureMemoryDir } from "./memory/index.js";
 import { startAgent, stopAgent } from "./agent.js";
 import { createBot } from "./bot.js";
+import { startScheduler, stopScheduler } from "./scheduler/index.js";
 
 async function main() {
   // Initialize logger first
@@ -34,6 +35,9 @@ async function main() {
   // Create and start Telegram bot
   const bot = createBot();
 
+  // Start reminder scheduler
+  startScheduler(bot.api);
+
   // Send "I'm back" message after restart
   if (restartInfo?.chatId) {
     try {
@@ -46,6 +50,7 @@ async function main() {
   // Graceful shutdown
   const shutdown = async (signal: string) => {
     log.info({ signal }, "Shutting down...");
+    stopScheduler();
     bot.stop();
     await stopAgent();
     closeConversationDb();

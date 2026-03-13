@@ -37,5 +37,9 @@ export async function buildSystemContext(): Promise<string> {
     parts.push(`\n---\n\n## Today's Memory\n\n${todayMemory}`);
   }
 
+  parts.push(
+    `\n---\n\n## Timezone\n\nThe user's timezone is America/New_York. Always convert times to this timezone when displaying to the user, and convert from this timezone to UTC when storing times (e.g. for reminders).`,
+  );
+
   return parts.join("\n");
 }
