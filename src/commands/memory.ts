@@ -1,5 +1,10 @@
 import type { Context } from "grammy";
-import { loadSoul, loadPreferences, readDailyMemory, searchMemory, listMemoryFiles } from "../memory/index.js";
+import {
+  loadPreferences,
+  readDailyMemory,
+  searchMemory,
+  listMemoryFiles,
+} from "../memory/index.js";
 
 export async function handleMemory(ctx: Context) {
   const text = ctx.message?.text ?? "";
@@ -23,7 +28,7 @@ export async function handleMemory(ctx: Context) {
 
   // Search
   const results = await searchMemory(arg);
-  await ctx.reply(results.slice(0, 4000), { parse_mode: "Markdown" }).catch(() =>
-    ctx.reply(results.slice(0, 4000))
-  );
+  await ctx
+    .reply(results.slice(0, 4000), { parse_mode: "Markdown" })
+    .catch(() => ctx.reply(results.slice(0, 4000)));
 }

@@ -1,7 +1,7 @@
 import { Bot, Context } from "grammy";
 import type { SessionEvent } from "@github/copilot-sdk";
 import { config } from "./config.js";
-import { getOrCreateSession, createNewSession } from "./agent.js";
+import { getOrCreateSession } from "./agent.js";
 import { getLogger } from "./logging/index.js";
 import { registerCommands } from "./commands/index.js";
 
@@ -86,12 +86,14 @@ async function handleMessage(ctx: Context, text: string) {
           lastEditTime = now;
           try {
             const displayText = truncateForTelegram(responseBuffer);
-            await ctx.api.editMessageText(chatId, sentMessageId, displayText, {
-              parse_mode: "Markdown",
-            }).catch(() =>
-              // Fallback without markdown if it fails
-              ctx.api.editMessageText(chatId, sentMessageId!, displayText)
-            );
+            await ctx.api
+              .editMessageText(chatId, sentMessageId, displayText, {
+                parse_mode: "Markdown",
+              })
+              .catch(() =>
+                // Fallback without markdown if it fails
+                ctx.api.editMessageText(chatId, sentMessageId!, displayText),
+              );
           } catch {
             // edit might fail if content hasn't changed
           }
@@ -118,11 +120,11 @@ async function handleMessage(ctx: Context, text: string) {
     if (sentMessageId && chunks.length === 1) {
       // Edit the existing message with final content
       try {
-        await ctx.api.editMessageText(chatId, sentMessageId, chunks[0], {
-          parse_mode: "Markdown",
-        }).catch(() =>
-          ctx.api.editMessageText(chatId, sentMessageId!, chunks[0])
-        );
+        await ctx.api
+          .editMessageText(chatId, sentMessageId, chunks[0], {
+            parse_mode: "Markdown",
+          })
+          .catch(() => ctx.api.editMessageText(chatId, sentMessageId!, chunks[0]));
       } catch {
         await sendChunk(ctx, chunks[0]);
       }

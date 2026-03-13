@@ -23,7 +23,9 @@ export const githubTool = defineTool("github", {
   parameters: z.object({
     command: z
       .string()
-      .describe('The full gh CLI command (without the leading "gh"), e.g. "repo list" or "issue create --title foo"'),
+      .describe(
+        'The full gh CLI command (without the leading "gh"), e.g. "repo list" or "issue create --title foo"',
+      ),
     repo: z
       .string()
       .optional()
@@ -44,9 +46,10 @@ export const githubTool = defineTool("github", {
       return output;
     } catch (error: unknown) {
       const err = error as Error & { stdout?: string; stderr?: string; code?: string };
-      const detail = err.code === "ETIMEDOUT"
-        ? "Command timed out after 30 seconds"
-        : formatOutput(err.stdout ?? "", err.stderr ?? err.message);
+      const detail =
+        err.code === "ETIMEDOUT"
+          ? "Command timed out after 30 seconds"
+          : formatOutput(err.stdout ?? "", err.stderr ?? err.message);
       timer.complete(`error: ${detail}`);
       return `Error running gh ${cmdArgs.join(" ")}:\n${detail}`;
     }

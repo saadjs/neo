@@ -5,12 +5,18 @@ const VALID_LEVELS: LogLevel[] = ["error", "warn", "info", "debug", "trace"];
 
 export async function handleLogLevel(ctx: Context) {
   const text = ctx.message?.text ?? "";
-  const level = text.replace(/^\/loglevel\s*/, "").trim().toLowerCase();
+  const level = text
+    .replace(/^\/loglevel\s*/, "")
+    .trim()
+    .toLowerCase();
 
   if (!level) {
-    await ctx.reply(`Current log level: \`${getLogLevel()}\`\nUsage: \`/loglevel <${VALID_LEVELS.join("|")}>\``, {
-      parse_mode: "Markdown",
-    });
+    await ctx.reply(
+      `Current log level: \`${getLogLevel()}\`\nUsage: \`/loglevel <${VALID_LEVELS.join("|")}>\``,
+      {
+        parse_mode: "Markdown",
+      },
+    );
     return;
   }
 

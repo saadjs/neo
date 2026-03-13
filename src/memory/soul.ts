@@ -1,6 +1,4 @@
-import { readFile, writeFile, appendFile, readdir, mkdir } from "node:fs/promises";
-import { join } from "node:path";
-import { existsSync } from "node:fs";
+import { readFile, writeFile } from "node:fs/promises";
 import { config } from "../config.js";
 
 export async function loadSoul(): Promise<string> {

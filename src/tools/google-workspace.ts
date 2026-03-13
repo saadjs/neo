@@ -28,9 +28,7 @@ export const googleWorkspaceTool = defineTool("google_workspace", {
   parameters: z.object({
     command: z
       .string()
-      .describe(
-        "The workspace CLI command to run, e.g. 'gmail send --to user@example.com'",
-      ),
+      .describe("The workspace CLI command to run, e.g. 'gmail send --to user@example.com'"),
     timeout: z
       .number()
       .positive()

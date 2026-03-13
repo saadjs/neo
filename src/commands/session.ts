@@ -20,9 +20,7 @@ export async function handleSessions(ctx: Context) {
     return;
   }
 
-  const lines = active.map(
-    (s) => `• Chat ${s.chatId} → \`${s.sessionId.slice(0, 8)}…\``
-  );
+  const lines = active.map((s) => `• Chat ${s.chatId} → \`${s.sessionId.slice(0, 8)}…\``);
   await ctx.reply(`**Active sessions:**\n${lines.join("\n")}`, {
     parse_mode: "Markdown",
   });

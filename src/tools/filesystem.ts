@@ -11,9 +11,7 @@ export const filesystemTool = defineTool("filesystem", {
     operation: z
       .enum(["read", "write", "append", "list", "exists", "mkdir"])
       .describe("The filesystem operation to perform"),
-    path: z
-      .string()
-      .describe("Absolute or relative file/directory path"),
+    path: z.string().describe("Absolute or relative file/directory path"),
     content: z
       .string()
       .optional()

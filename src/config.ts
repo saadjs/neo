@@ -9,14 +9,15 @@ const PROJECT_ROOT = join(__dirname, "..");
 
 const envSchema = z.object({
   TELEGRAM_BOT_TOKEN: z.string().min(1, "TELEGRAM_BOT_TOKEN is required"),
-  TELEGRAM_OWNER_ID: z.coerce.number().int().positive("TELEGRAM_OWNER_ID must be a positive integer"),
+  TELEGRAM_OWNER_ID: z.coerce
+    .number()
+    .int()
+    .positive("TELEGRAM_OWNER_ID must be a positive integer"),
   GITHUB_TOKEN: z.string().min(1, "GITHUB_TOKEN is required"),
   COPILOT_MODEL: z.string().default("gpt-4.1"),
   NEO_DATA_DIR: z.string().default(join(PROJECT_ROOT, "data")),
   NEO_LOG_DIR: z.string().default(join(PROJECT_ROOT, "logs")),
-  NEO_LOG_LEVEL: z
-    .enum(["error", "warn", "info", "debug", "trace"])
-    .default("info"),
+  NEO_LOG_LEVEL: z.enum(["error", "warn", "info", "debug", "trace"]).default("info"),
 });
 
 export type LogLevel = "error" | "warn" | "info" | "debug" | "trace";
@@ -24,7 +25,9 @@ export type LogLevel = "error" | "warn" | "info" | "debug" | "trace";
 function loadConfig() {
   const result = envSchema.safeParse(process.env);
   if (!result.success) {
-    const errors = result.error.issues.map((i) => `  - ${i.path.join(".")}: ${i.message}`).join("\n");
+    const errors = result.error.issues
+      .map((i) => `  - ${i.path.join(".")}: ${i.message}`)
+      .join("\n");
     console.error(`❌ Configuration error:\n${errors}`);
     process.exit(1);
   }

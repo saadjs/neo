@@ -15,15 +15,9 @@ function parseResults(html: string): SearchResult[] {
   for (let i = 1; i < resultBlocks.length; i++) {
     const block = resultBlocks[i];
 
-    const titleMatch = block.match(
-      /<a[^>]+class="result__a"[^>]*>([^<]*(?:<[^>]*>[^<]*)*)<\/a>/,
-    );
-    const urlMatch = block.match(
-      /<a[^>]+class="result__url"[^>]*href="([^"]*)"[^>]*>/,
-    );
-    const snippetMatch = block.match(
-      /<a[^>]+class="result__snippet"[^>]*>([\s\S]*?)<\/a>/,
-    );
+    const titleMatch = block.match(/<a[^>]+class="result__a"[^>]*>([^<]*(?:<[^>]*>[^<]*)*)<\/a>/);
+    const urlMatch = block.match(/<a[^>]+class="result__url"[^>]*href="([^"]*)"[^>]*>/);
+    const snippetMatch = block.match(/<a[^>]+class="result__snippet"[^>]*>([\s\S]*?)<\/a>/);
 
     const title = stripHtml(titleMatch?.[1] ?? "").trim();
     const rawUrl = urlMatch?.[1] ?? "";
@@ -39,7 +33,14 @@ function parseResults(html: string): SearchResult[] {
 }
 
 function stripHtml(html: string): string {
-  return html.replace(/<[^>]*>/g, "").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#x27;/g, "'").replace(/\s+/g, " ");
+  return html
+    .replace(/<[^>]*>/g, "")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#x27;/g, "'")
+    .replace(/\s+/g, " ");
 }
 
 function resolveUrl(raw: string): string {
@@ -54,10 +55,7 @@ function formatResults(results: SearchResult[], query: string): string {
     return `No results found for "${query}".`;
   }
 
-  const lines = results.map(
-    (r, i) =>
-      `${i + 1}. ${r.title}\n   ${r.url}\n   ${r.snippet}`,
-  );
+  const lines = results.map((r, i) => `${i + 1}. ${r.title}\n   ${r.url}\n   ${r.snippet}`);
 
   return `Search results for "${query}":\n\n${lines.join("\n\n")}`;
 }

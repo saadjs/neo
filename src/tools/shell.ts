@@ -4,8 +4,7 @@ import { z } from "zod";
 import { createAuditTimer } from "../logging/audit.js";
 
 export const shellTool = defineTool("run_shell", {
-  description:
-    "Run a shell command via /bin/bash and return its stdout, stderr, and exit code.",
+  description: "Run a shell command via /bin/bash and return its stdout, stderr, and exit code.",
   parameters: z.object({
     command: z.string().describe("The shell command to execute"),
     timeout: z
@@ -13,10 +12,7 @@ export const shellTool = defineTool("run_shell", {
       .optional()
       .default(30_000)
       .describe("Timeout in milliseconds (default 30 000)"),
-    cwd: z
-      .string()
-      .optional()
-      .describe("Working directory for the command"),
+    cwd: z.string().optional().describe("Working directory for the command"),
   }),
   handler: async (args, invocation) => {
     const audit = createAuditTimer(invocation.sessionId, "run_shell", {
@@ -41,10 +37,10 @@ export const shellTool = defineTool("run_shell", {
             return;
           }
 
-          const exitCode = error ? (error as NodeJS.ErrnoException & { code?: number }).code ?? 1 : 0;
-          resolve(
-            `stdout:\n${stdout}\nstderr:\n${stderr}\n[exit code: ${exitCode}]`,
-          );
+          const exitCode = error
+            ? ((error as NodeJS.ErrnoException & { code?: number }).code ?? 1)
+            : 0;
+          resolve(`stdout:\n${stdout}\nstderr:\n${stderr}\n[exit code: ${exitCode}]`);
         },
       );
 

@@ -1,11 +1,7 @@
 import { defineTool } from "@github/copilot-sdk";
 import { z } from "zod";
 import { loadSoul, saveSoul } from "../memory/soul.js";
-import {
-  loadPreferences,
-  savePreferences,
-  appendPreference,
-} from "../memory/preferences.js";
+import { loadPreferences, savePreferences, appendPreference } from "../memory/preferences.js";
 import {
   readDailyMemory,
   appendDailyMemory,
@@ -17,14 +13,8 @@ import { createAuditTimer } from "../logging/audit.js";
 const parameters = z.object({
   operation: z.enum(["read", "write", "append", "search", "list"]),
   target: z.enum(["soul", "preferences", "daily"]),
-  content: z
-    .string()
-    .optional()
-    .describe("Content to write or append (required for write/append)"),
-  query: z
-    .string()
-    .optional()
-    .describe("Search query (required for search operation)"),
+  content: z.string().optional().describe("Content to write or append (required for write/append)"),
+  query: z.string().optional().describe("Search query (required for search operation)"),
   date: z
     .string()
     .optional()
@@ -70,8 +60,7 @@ async function execute(args: z.infer<typeof parameters>): Promise<string> {
     }
 
     case "append": {
-      if (!content)
-        throw new Error("content is required for append operation");
+      if (!content) throw new Error("content is required for append operation");
       if (target === "soul")
         throw new Error("append is not supported for soul — use write instead");
       return appendTarget(target, content);
@@ -84,9 +73,7 @@ async function execute(args: z.infer<typeof parameters>): Promise<string> {
 
     case "list": {
       const files = await listMemoryFiles();
-      return files.length > 0
-        ? `Memory files:\n${files.join("\n")}`
-        : "No memory files found.";
+      return files.length > 0 ? `Memory files:\n${files.join("\n")}` : "No memory files found.";
     }
   }
 }
@@ -124,10 +111,7 @@ async function writeTarget(
   }
 }
 
-async function appendTarget(
-  target: "preferences" | "daily",
-  content: string,
-): Promise<string> {
+async function appendTarget(target: "preferences" | "daily", content: string): Promise<string> {
   switch (target) {
     case "preferences":
       await appendPreference(content);

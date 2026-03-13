@@ -38,12 +38,7 @@ export async function createLogger(level: LogLevel, logDir: string) {
     level,
     transport: { targets },
     redact: {
-      paths: [
-        "telegram.botToken",
-        "github.token",
-        "env.GITHUB_TOKEN",
-        "env.TELEGRAM_BOT_TOKEN",
-      ],
+      paths: ["telegram.botToken", "github.token", "env.GITHUB_TOKEN", "env.TELEGRAM_BOT_TOKEN"],
       censor: "[REDACTED]",
     },
   });

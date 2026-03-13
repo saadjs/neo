@@ -1,7 +1,7 @@
 import { readFile, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { config } from "./config.js";
-import { createLogger, getLogger } from "./logging/index.js";
+import { createLogger } from "./logging/index.js";
 import { ensureMemoryDir } from "./memory/index.js";
 import { startAgent, stopAgent } from "./agent.js";
 import { createBot } from "./bot.js";
