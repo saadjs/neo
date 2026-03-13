@@ -10,6 +10,7 @@ const envSchema = z.object({
     .int()
     .positive("TELEGRAM_OWNER_ID must be a positive integer"),
   GITHUB_TOKEN: z.string().min(1, "GITHUB_TOKEN is required"),
+  DEEPGRAM_API_KEY: z.string().optional(),
   COPILOT_MODEL: z.string().default("gpt-4.1"),
   NEO_DATA_DIR: z.string().default(join(PROJECT_ROOT, "data")),
   NEO_LOG_DIR: z.string().default(join(PROJECT_ROOT, "logs")),
@@ -37,6 +38,9 @@ function loadConfig() {
     },
     github: {
       token: result.data.GITHUB_TOKEN,
+    },
+    deepgram: {
+      apiKey: result.data.DEEPGRAM_API_KEY,
     },
     copilot: {
       model: result.data.COPILOT_MODEL,

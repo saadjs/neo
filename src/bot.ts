@@ -13,6 +13,7 @@ import {
 import { registerCommands } from "./commands/index.js";
 import { downloadTelegramFile } from "./telegram/files.js";
 import { appendCompactionMemory } from "./memory/index.js";
+import { isVoiceEnabled, transcribeFile } from "./voice/transcribe.js";
 
 const TELEGRAM_MSG_LIMIT = 4096;
 const TYPING_REFRESH_MS = 4000;
@@ -73,6 +74,30 @@ export function createBot(): Bot {
     } catch (err) {
       log.error({ err }, "Failed to download document");
       await ctx.reply("Failed to download the file. Please try again.");
+    }
+  });
+
+  // Handle voice messages
+  bot.on("message:voice", async (ctx) => {
+    if (!isVoiceEnabled()) {
+      await ctx.reply("Voice messages are not configured. Set DEEPGRAM_API_KEY to enable.");
+      return;
+    }
+
+    try {
+      const localPath = await downloadTelegramFile(ctx.api, ctx.message.voice.file_id, "voice.ogg");
+      const transcript = await transcribeFile(localPath);
+
+      if (!transcript.trim()) {
+        await ctx.reply("Couldn't make out what you said. Try again?");
+        return;
+      }
+
+      log.info({ chatId: ctx.chat!.id, transcript: transcript.slice(0, 100) }, "Voice transcribed");
+      await handleMessage(ctx, transcript);
+    } catch (err) {
+      log.error({ err }, "Failed to process voice message");
+      await ctx.reply("Failed to process the voice message. Please try again.");
     }
   });
 

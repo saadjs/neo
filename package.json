@@ -25,6 +25,7 @@
   },
   "private": true,
   "dependencies": {
+    "@deepgram/sdk": "^5.0.0",
     "@github/copilot-sdk": "^0.1.32",
     "grammy": "^1.41.1",
     "pino": "^10.3.1",
