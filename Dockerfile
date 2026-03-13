@@ -1,13 +1,13 @@
-# Build stage
+# Build stage — bundles all deps so production needs no node_modules
 FROM node:20-slim AS builder
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm ci --ignore-scripts
 
 COPY tsconfig.json ./
 COPY src/ src/
-RUN npm run build
+RUN npx esbuild src/index.ts --bundle --platform=node --target=node20 --format=esm --outfile=dist/index.js
 
 # Production stage
 FROM node:20-slim
@@ -18,9 +18,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     ca-certificates \
   && rm -rf /var/lib/apt/lists/*
-
-COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
 
 COPY --from=builder /app/dist/ dist/
 COPY data/ data/
