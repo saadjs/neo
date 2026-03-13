@@ -1,5 +1,5 @@
-# Build stage — bundles all deps so production needs no node_modules
-FROM node:20-slim AS builder
+# Build stage
+FROM node:22-slim AS builder
 WORKDIR /app
 
 COPY package.json package-lock.json ./
@@ -7,10 +7,10 @@ RUN npm ci --ignore-scripts
 
 COPY tsconfig.json ./
 COPY src/ src/
-RUN npx esbuild src/index.ts --bundle --platform=node --target=node20 --format=esm --outfile=dist/index.js
+RUN npm run build
 
 # Production stage
-FROM node:20-slim
+FROM node:22-slim
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -19,11 +19,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --ignore-scripts
+
 COPY --from=builder /app/dist/ dist/
 COPY data/ data/
+COPY deploy/esm-loader.mjs deploy/esm-resolve-hook.mjs deploy/
 
 VOLUME ["/app/data", "/app/logs"]
 
 ENV NODE_ENV=production
 
-CMD ["node", "dist/index.js"]
+CMD ["node", "--import", "./deploy/esm-loader.mjs", "dist/index.js"]

@@ -1,11 +1,7 @@
 import { z } from "zod";
-import { resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import { resolve, dirname, join } from "node:path";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const PROJECT_ROOT = join(__dirname, "..");
+const PROJECT_ROOT = resolve(".");
 
 const envSchema = z.object({
   TELEGRAM_BOT_TOKEN: z.string().min(1, "TELEGRAM_BOT_TOKEN is required"),
