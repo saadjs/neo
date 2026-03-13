@@ -26,14 +26,12 @@
   "private": true,
   "dependencies": {
     "@github/copilot-sdk": "^0.1.32",
-    "better-sqlite3": "^12.6.2",
     "grammy": "^1.41.1",
     "pino": "^10.3.1",
     "pino-roll": "^4.0.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^25.5.0",
     "esbuild": "^0.27.4",
     "husky": "^9.1.7",

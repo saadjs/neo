@@ -1,18 +1,18 @@
-import Database from "better-sqlite3";
+import { DatabaseSync } from "node:sqlite";
 import { join } from "node:path";
 import { config } from "../config.js";
 import { getLogger } from "./index.js";
 
-let db: Database.Database | null = null;
+let db: DatabaseSync | null = null;
 
-export function getConversationDb(): Database.Database {
+export function getConversationDb(): DatabaseSync {
   if (db) return db;
 
   const dbPath = join(config.paths.data, "conversations.db");
-  db = new Database(dbPath);
+  db = new DatabaseSync(dbPath);
 
-  db.pragma("journal_mode = WAL");
-  db.pragma("synchronous = normal");
+  db.exec("PRAGMA journal_mode = WAL");
+  db.exec("PRAGMA synchronous = normal");
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS sessions (
@@ -52,23 +52,10 @@ export function getConversationDb(): Database.Database {
   return db;
 }
 
-const stmtCache = new Map<string, Database.Statement>();
-
-function stmt(sql: string): Database.Statement {
-  let s = stmtCache.get(sql);
-  if (!s) {
-    s = getConversationDb().prepare(sql);
-    stmtCache.set(sql, s);
-  }
-  return s;
-}
-
 export function logSession(sessionId: string, chatId: number, model: string): void {
-  stmt("INSERT OR IGNORE INTO sessions (id, chat_id, model) VALUES (?, ?, ?)").run(
-    sessionId,
-    chatId,
-    model,
-  );
+  getConversationDb()
+    .prepare("INSERT OR IGNORE INTO sessions (id, chat_id, model) VALUES (?, ?, ?)")
+    .run(sessionId, chatId, model);
 }
 
 export function logMessage(
@@ -77,12 +64,9 @@ export function logMessage(
   content: string,
   eventId?: string,
 ): void {
-  stmt("INSERT INTO messages (session_id, role, content, event_id) VALUES (?, ?, ?, ?)").run(
-    sessionId,
-    role,
-    content,
-    eventId ?? null,
-  );
+  getConversationDb()
+    .prepare("INSERT INTO messages (session_id, role, content, event_id) VALUES (?, ?, ?, ?)")
+    .run(sessionId, role, content, eventId ?? null);
 }
 
 export function logToolCall(
@@ -91,9 +75,11 @@ export function logToolCall(
   toolName: string,
   args: unknown,
 ): void {
-  stmt(
-    "INSERT INTO tool_calls (session_id, tool_call_id, tool_name, arguments) VALUES (?, ?, ?, ?)",
-  ).run(sessionId, toolCallId, toolName, typeof args === "string" ? args : JSON.stringify(args));
+  getConversationDb()
+    .prepare(
+      "INSERT INTO tool_calls (session_id, tool_call_id, tool_name, arguments) VALUES (?, ?, ?, ?)",
+    )
+    .run(sessionId, toolCallId, toolName, typeof args === "string" ? args : JSON.stringify(args));
 }
 
 export function completeToolCall(
@@ -103,17 +89,15 @@ export function completeToolCall(
   durationMs?: number,
 ): void {
   const resultStr = typeof result === "string" ? result : JSON.stringify(result);
-  stmt("UPDATE tool_calls SET result = ?, success = ?, duration_ms = ? WHERE tool_call_id = ?").run(
-    resultStr,
-    success ? 1 : 0,
-    durationMs ?? null,
-    toolCallId,
-  );
+  getConversationDb()
+    .prepare(
+      "UPDATE tool_calls SET result = ?, success = ?, duration_ms = ? WHERE tool_call_id = ?",
+    )
+    .run(resultStr, success ? 1 : 0, durationMs ?? null, toolCallId);
 }
 
 export function closeConversationDb(): void {
   if (db) {
-    stmtCache.clear();
     db.close();
     db = null;
   }
