@@ -33,6 +33,15 @@ npm run build
 node dist/index.js
 ```
 
+### Deploy with Docker
+
+```bash
+cp .env.example .env
+# Edit .env with your tokens
+docker compose up -d
+docker compose logs -f  # view logs
+```
+
 ### Deploy with systemd
 
 ```bash

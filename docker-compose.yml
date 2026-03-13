@@ -1,0 +1,9 @@
+services:
+  neo:
+    build: .
+    container_name: neo
+    restart: always
+    env_file: .env
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs

@@ -1,0 +1,11 @@
+node_modules/
+dist/
+logs/
+.env
+.git/
+.husky/
+*.md
+!data/SOUL.md
+!data/PREFERENCES.md
+*.tgz
+github-copilot-sdk.md
