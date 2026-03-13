@@ -2,6 +2,7 @@ import { readFile, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { config } from "./config.js";
 import { createLogger } from "./logging/index.js";
+import { closeConversationDb } from "./logging/conversations.js";
 import { ensureMemoryDir } from "./memory/index.js";
 import { startAgent, stopAgent } from "./agent.js";
 import { createBot } from "./bot.js";
@@ -47,6 +48,7 @@ async function main() {
     log.info({ signal }, "Shutting down...");
     bot.stop();
     await stopAgent();
+    closeConversationDb();
     log.info("Goodbye.");
     process.exit(0);
   };

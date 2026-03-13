@@ -4,6 +4,7 @@ import { config } from "./config.js";
 import { allTools } from "./tools/index.js";
 import { buildSystemContext } from "./memory/index.js";
 import { getLogger } from "./logging/index.js";
+import { logSession } from "./logging/conversations.js";
 
 let client: CopilotClient | null = null;
 const sessions = new Map<number, CopilotSession>();
@@ -87,6 +88,11 @@ export async function createNewSession(opts: CreateSessionOptions): Promise<Copi
 
   sessions.set(opts.chatId, session);
   log.info({ chatId: opts.chatId, sessionId: session.sessionId }, "Session created");
+
+  try {
+    logSession(session.sessionId, opts.chatId, model);
+  } catch {}
+
   return session;
 }
 

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { resolve, dirname, join } from "node:path";
+import { resolve, join } from "node:path";
 
 const PROJECT_ROOT = resolve(".");
 

@@ -3,6 +3,7 @@ import type { SessionEvent } from "@github/copilot-sdk";
 import { config } from "./config.js";
 import { getOrCreateSession } from "./agent.js";
 import { getLogger } from "./logging/index.js";
+import { logMessage, logToolCall, completeToolCall } from "./logging/conversations.js";
 import { registerCommands } from "./commands/index.js";
 
 const TELEGRAM_MSG_LIMIT = 4096;
@@ -62,6 +63,8 @@ async function handleMessage(ctx: Context, text: string) {
     let responseBuffer = "";
     let sentMessageId: number | null = null;
     let lastEditTime = 0;
+    let sessionId = "";
+    const toolStartTimes = new Map<string, number>();
     const EDIT_THROTTLE_MS = 1500;
 
     const onEvent = async (event: SessionEvent) => {
@@ -76,6 +79,28 @@ async function handleMessage(ctx: Context, text: string) {
         const reasoning = (event.data as { content?: string }).content;
         if (reasoning && !sentMessageId) {
           log.debug({ chatId, reasoning: reasoning.slice(0, 100) }, "Agent reasoning");
+        }
+      }
+
+      // Log tool executions
+      if (event.type === "tool.execution_start") {
+        const d = event.data as { toolCallId?: string; toolName?: string; arguments?: unknown };
+        if (d.toolCallId && d.toolName) {
+          toolStartTimes.set(d.toolCallId, Date.now());
+          try {
+            logToolCall(sessionId, d.toolCallId, d.toolName, d.arguments);
+          } catch {}
+        }
+      }
+
+      if (event.type === "tool.execution_complete") {
+        const d = event.data as { toolCallId?: string; success?: boolean; result?: unknown };
+        if (d.toolCallId) {
+          const startTime = toolStartTimes.get(d.toolCallId);
+          const duration = startTime ? Date.now() - startTime : undefined;
+          try {
+            completeToolCall(d.toolCallId, d.result, d.success ?? true, duration);
+          } catch {}
         }
       }
 
@@ -102,12 +127,24 @@ async function handleMessage(ctx: Context, text: string) {
     };
 
     const session = await getOrCreateSession({ chatId, onEvent });
+    sessionId = session.sessionId;
+
+    // Log user message
+    try {
+      logMessage(sessionId, "user", text);
+    } catch {}
+
     const result = await session.sendAndWait({ prompt: text });
 
     clearInterval(typingInterval);
 
     // Send final response
     const finalContent = (result?.data as { content?: string })?.content ?? responseBuffer;
+
+    // Log assistant response
+    try {
+      logMessage(sessionId, "assistant", finalContent || "(no response)", result?.id);
+    } catch {}
 
     if (!finalContent || finalContent.trim() === "") {
       await ctx.reply("_(no response)_", { parse_mode: "Markdown" });
