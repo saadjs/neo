@@ -131,3 +131,10 @@ export function listActiveSessions(): { chatId: number; sessionId: string }[] {
 export function getClient(): CopilotClient | null {
   return client;
 }
+
+export function getChatIdForSession(sessionId: string): number | undefined {
+  for (const [chatId, session] of sessions) {
+    if (session.sessionId === sessionId) return chatId;
+  }
+  return undefined;
+}
