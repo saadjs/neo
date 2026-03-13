@@ -44,6 +44,7 @@ function loadConfig() {
       logs: resolve(result.data.NEO_LOG_DIR),
       soul: join(resolve(result.data.NEO_DATA_DIR), "SOUL.md"),
       preferences: join(resolve(result.data.NEO_DATA_DIR), "PREFERENCES.md"),
+      human: join(resolve(result.data.NEO_DATA_DIR), "HUMAN.md"),
       memoryDir: join(resolve(result.data.NEO_DATA_DIR), "memory"),
     },
     logging: {

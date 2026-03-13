@@ -2,6 +2,7 @@ import { defineTool } from "@github/copilot-sdk";
 import { z } from "zod";
 import { loadSoul, saveSoul } from "../memory/soul.js";
 import { loadPreferences, savePreferences, appendPreference } from "../memory/preferences.js";
+import { loadHuman, saveHuman, appendHuman } from "../memory/human.js";
 import {
   readDailyMemory,
   appendDailyMemory,
@@ -12,7 +13,7 @@ import { createAuditTimer } from "../logging/audit.js";
 
 const parameters = z.object({
   operation: z.enum(["read", "write", "append", "search", "list"]),
-  target: z.enum(["soul", "preferences", "daily"]),
+  target: z.enum(["soul", "preferences", "human", "daily"]),
   content: z.string().optional().describe("Content to write or append (required for write/append)"),
   query: z.string().optional().describe("Search query (required for search operation)"),
   date: z
@@ -23,7 +24,7 @@ const parameters = z.object({
 
 export const memoryTool = defineTool("memory", {
   description:
-    "Read, write, append, search, or list Neo's memory files (soul, preferences, daily).",
+    "Read, write, append, search, or list Neo's memory files (soul, preferences, human, daily). Use 'human' target to store and recall facts about the user.",
   parameters,
   handler: async (args, invocation) => {
     const timer = createAuditTimer(invocation.sessionId, "memory", {
@@ -79,7 +80,7 @@ async function execute(args: z.infer<typeof parameters>): Promise<string> {
 }
 
 async function readTarget(
-  target: "soul" | "preferences" | "daily",
+  target: "soul" | "preferences" | "human" | "daily",
   date?: string,
 ): Promise<string> {
   switch (target) {
@@ -87,6 +88,8 @@ async function readTarget(
       return loadSoul();
     case "preferences":
       return loadPreferences();
+    case "human":
+      return loadHuman();
     case "daily": {
       const memory = await readDailyMemory(date);
       return memory || "No memory found for this date.";
@@ -95,7 +98,7 @@ async function readTarget(
 }
 
 async function writeTarget(
-  target: "soul" | "preferences" | "daily",
+  target: "soul" | "preferences" | "human" | "daily",
   content: string,
 ): Promise<string> {
   switch (target) {
@@ -105,17 +108,26 @@ async function writeTarget(
     case "preferences":
       await savePreferences(content);
       return "Preferences updated.";
+    case "human":
+      await saveHuman(content);
+      return "Human profile updated.";
     case "daily":
       await appendDailyMemory(content);
       return "Daily memory written.";
   }
 }
 
-async function appendTarget(target: "preferences" | "daily", content: string): Promise<string> {
+async function appendTarget(
+  target: "preferences" | "human" | "daily",
+  content: string,
+): Promise<string> {
   switch (target) {
     case "preferences":
       await appendPreference(content);
       return "Preference appended.";
+    case "human":
+      await appendHuman(content);
+      return "Human fact remembered.";
     case "daily":
       await appendDailyMemory(content);
       return "Daily memory appended.";
