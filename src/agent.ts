@@ -1,10 +1,9 @@
 import { CopilotClient, CopilotSession, approveAll } from "@github/copilot-sdk";
-import type { SessionEvent } from "@github/copilot-sdk";
 import { config } from "./config.js";
 import { allTools } from "./tools/index.js";
 import { buildSystemContext } from "./memory/index.js";
 import { getLogger } from "./logging/index.js";
-import { logSession } from "./logging/conversations.js";
+import { getActiveSessionId, logSession, setActiveSession } from "./logging/conversations.js";
 
 let client: CopilotClient | null = null;
 const sessions = new Map<number, CopilotSession>();
@@ -44,12 +43,34 @@ export async function stopAgent(): Promise<void> {
 
 export interface CreateSessionOptions {
   chatId: number;
-  onEvent?: (event: SessionEvent) => void;
 }
 
 export async function getOrCreateSession(opts: CreateSessionOptions): Promise<CopilotSession> {
   const existing = sessions.get(opts.chatId);
   if (existing) return existing;
+
+  const previousSessionId = getActiveSessionId(opts.chatId);
+  if (previousSessionId && client) {
+    try {
+      const resumed = await client.resumeSession(
+        previousSessionId,
+        await buildSessionConfig(opts.chatId),
+      );
+      sessions.set(opts.chatId, resumed);
+      setActiveSession(opts.chatId, resumed.sessionId);
+      getLogger().info(
+        { chatId: opts.chatId, sessionId: resumed.sessionId },
+        "Resumed Copilot session",
+      );
+      return resumed;
+    } catch (err) {
+      getLogger().warn(
+        { chatId: opts.chatId, sessionId: previousSessionId, err },
+        "Failed to resume session, creating a new one",
+      );
+    }
+  }
+
   return createNewSession(opts);
 }
 
@@ -68,29 +89,20 @@ export async function createNewSession(opts: CreateSessionOptions): Promise<Copi
     sessions.delete(opts.chatId);
   }
 
-  const systemContext = await buildSystemContext();
   const model = sessionModels.get(opts.chatId) ?? config.copilot.model;
 
   log.info({ chatId: opts.chatId, model }, "Creating new Copilot session");
 
-  const session = await client.createSession({
-    clientName: "neo",
-    model,
-    systemMessage: { mode: "replace", content: systemContext },
-    tools: allTools,
-    onPermissionRequest: approveAll,
-    workingDirectory: config.paths.root,
-  });
-
-  if (opts.onEvent) {
-    session.on(opts.onEvent);
-  }
+  const session = await client.createSession(await buildSessionConfig(opts.chatId));
 
   sessions.set(opts.chatId, session);
   log.info({ chatId: opts.chatId, sessionId: session.sessionId }, "Session created");
 
   try {
     logSession(session.sessionId, opts.chatId, model);
+  } catch {}
+  try {
+    setActiveSession(opts.chatId, session.sessionId);
   } catch {}
 
   return session;
@@ -137,4 +149,27 @@ export function getChatIdForSession(sessionId: string): number | undefined {
     if (session.sessionId === sessionId) return chatId;
   }
   return undefined;
+}
+
+export function getModelForChat(chatId: number): string {
+  return sessionModels.get(chatId) ?? config.copilot.model;
+}
+
+async function buildSessionConfig(chatId: number) {
+  const systemContext = await buildSystemContext();
+  const model = sessionModels.get(chatId) ?? config.copilot.model;
+
+  return {
+    clientName: "neo",
+    model,
+    systemMessage: { mode: "replace" as const, content: systemContext },
+    tools: allTools,
+    onPermissionRequest: approveAll,
+    workingDirectory: config.paths.root,
+    infiniteSessions: {
+      enabled: config.copilot.contextCompaction.enabled,
+      backgroundCompactionThreshold: config.copilot.contextCompaction.threshold,
+      bufferExhaustionThreshold: config.copilot.contextCompaction.bufferExhaustionThreshold,
+    },
+  };
 }

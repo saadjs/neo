@@ -43,6 +43,13 @@ export function getConversationDb(): DatabaseSync {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS chat_session_state (
+      chat_id INTEGER PRIMARY KEY,
+      current_session_id TEXT NOT NULL,
+      last_compaction_event_id TEXT,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
     CREATE INDEX IF NOT EXISTS idx_messages_session ON messages(session_id);
     CREATE INDEX IF NOT EXISTS idx_tool_calls_session ON tool_calls(session_id);
     CREATE INDEX IF NOT EXISTS idx_sessions_chat ON sessions(chat_id);
@@ -56,6 +63,42 @@ export function logSession(sessionId: string, chatId: number, model: string): vo
   getConversationDb()
     .prepare("INSERT OR IGNORE INTO sessions (id, chat_id, model) VALUES (?, ?, ?)")
     .run(sessionId, chatId, model);
+}
+
+export function setActiveSession(chatId: number, sessionId: string): void {
+  getConversationDb()
+    .prepare(
+      `INSERT INTO chat_session_state (chat_id, current_session_id, updated_at)
+       VALUES (?, ?, datetime('now'))
+       ON CONFLICT(chat_id) DO UPDATE SET
+         current_session_id = excluded.current_session_id,
+         updated_at = datetime('now')`,
+    )
+    .run(chatId, sessionId);
+}
+
+export function getActiveSessionId(chatId: number): string | undefined {
+  const row = getConversationDb()
+    .prepare("SELECT current_session_id FROM chat_session_state WHERE chat_id = ?")
+    .get(chatId) as { current_session_id?: string } | undefined;
+  return row?.current_session_id;
+}
+
+export function getLastCompactionEventId(chatId: number): string | undefined {
+  const row = getConversationDb()
+    .prepare("SELECT last_compaction_event_id FROM chat_session_state WHERE chat_id = ?")
+    .get(chatId) as { last_compaction_event_id?: string | null } | undefined;
+  return row?.last_compaction_event_id ?? undefined;
+}
+
+export function setLastCompactionEventId(chatId: number, eventId: string): void {
+  getConversationDb()
+    .prepare(
+      `UPDATE chat_session_state
+       SET last_compaction_event_id = ?, updated_at = datetime('now')
+       WHERE chat_id = ?`,
+    )
+    .run(eventId, chatId);
 }
 
 export function logMessage(

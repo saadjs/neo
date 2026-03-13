@@ -14,6 +14,9 @@ const envSchema = z.object({
   NEO_DATA_DIR: z.string().default(join(PROJECT_ROOT, "data")),
   NEO_LOG_DIR: z.string().default(join(PROJECT_ROOT, "logs")),
   NEO_LOG_LEVEL: z.enum(["error", "warn", "info", "debug", "trace"]).default("info"),
+  NEO_CONTEXT_COMPACTION_ENABLED: z.coerce.boolean().default(true),
+  NEO_CONTEXT_COMPACTION_THRESHOLD: z.coerce.number().min(0).max(1).default(0.8),
+  NEO_CONTEXT_BUFFER_EXHAUSTION_THRESHOLD: z.coerce.number().min(0).max(1).default(0.95),
 });
 
 export type LogLevel = "error" | "warn" | "info" | "debug" | "trace";
@@ -37,6 +40,11 @@ function loadConfig() {
     },
     copilot: {
       model: result.data.COPILOT_MODEL,
+      contextCompaction: {
+        enabled: result.data.NEO_CONTEXT_COMPACTION_ENABLED,
+        threshold: result.data.NEO_CONTEXT_COMPACTION_THRESHOLD,
+        bufferExhaustionThreshold: result.data.NEO_CONTEXT_BUFFER_EXHAUSTION_THRESHOLD,
+      },
     },
     paths: {
       root: PROJECT_ROOT,

@@ -1,11 +1,18 @@
 import { Bot, Context } from "grammy";
 import type { SessionEvent, MessageOptions } from "@github/copilot-sdk";
 import { config } from "./config.js";
-import { getOrCreateSession } from "./agent.js";
+import { getModelForChat, getOrCreateSession } from "./agent.js";
 import { getLogger } from "./logging/index.js";
-import { logMessage, logToolCall, completeToolCall } from "./logging/conversations.js";
+import {
+  logMessage,
+  logToolCall,
+  completeToolCall,
+  getLastCompactionEventId,
+  setLastCompactionEventId,
+} from "./logging/conversations.js";
 import { registerCommands } from "./commands/index.js";
 import { downloadTelegramFile } from "./telegram/files.js";
+import { appendCompactionMemory } from "./memory/index.js";
 
 const TELEGRAM_MSG_LIMIT = 4096;
 const TYPING_REFRESH_MS = 4000;
@@ -102,6 +109,7 @@ async function handleMessage(
   const typingInterval = setInterval(() => {
     void sendTyping();
   }, TYPING_REFRESH_MS);
+  let unsubscribe = () => {};
 
   try {
     let responseBuffer = "";
@@ -110,6 +118,9 @@ async function handleMessage(
     let draftActive = false;
     let sessionId = "";
     const toolStartTimes = new Map<string, number>();
+
+    const session = await getOrCreateSession({ chatId });
+    sessionId = session.sessionId;
 
     const onEvent = async (event: SessionEvent) => {
       if (event.type === "assistant.message") {
@@ -148,6 +159,41 @@ async function handleMessage(
         }
       }
 
+      if (event.type === "session.compaction_start") {
+        log.info({ chatId, sessionId }, "Session compaction started");
+      }
+
+      if (event.type === "session.compaction_complete") {
+        const data = event.data;
+        if (!data.success || !data.summaryContent?.trim()) {
+          log.warn({ chatId, sessionId, data }, "Session compaction finished without summary");
+          return;
+        }
+
+        if (getLastCompactionEventId(chatId) === event.id) {
+          return;
+        }
+
+        try {
+          await appendCompactionMemory({
+            timestamp: event.timestamp,
+            chatId,
+            sessionId,
+            model: getModelForChat(chatId),
+            preCompactionTokens: data.preCompactionTokens,
+            postCompactionTokens: data.postCompactionTokens,
+            messagesRemoved: data.messagesRemoved,
+            checkpointNumber: data.checkpointNumber,
+            checkpointPath: data.checkpointPath,
+            summaryContent: data.summaryContent,
+          });
+          setLastCompactionEventId(chatId, event.id);
+          await ctx.reply("Context summary saved to today's memory.");
+        } catch (err) {
+          log.error({ err, chatId, sessionId, eventId: event.id }, "Failed to persist compaction");
+        }
+      }
+
       // Stream intermediate updates through Telegram drafts.
       if (event.type === "assistant.message" && responseBuffer.length > 0) {
         const now = Date.now();
@@ -168,8 +214,7 @@ async function handleMessage(
       }
     };
 
-    const session = await getOrCreateSession({ chatId, onEvent });
-    sessionId = session.sessionId;
+    unsubscribe = session.on(onEvent);
 
     // Log user message
     try {
@@ -205,6 +250,8 @@ async function handleMessage(
     clearInterval(typingInterval);
     log.error({ err, chatId }, "Error handling message");
     await ctx.reply("⚠️ Something went wrong. Try /new to start a fresh session.");
+  } finally {
+    unsubscribe();
   }
 }
 

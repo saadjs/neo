@@ -19,6 +19,21 @@ export async function ensureMemoryDir() {
   await mkdir(config.paths.memoryDir, { recursive: true });
 }
 
+async function ensureTodayMemoryFile(): Promise<string> {
+  await ensureMemoryDir();
+  const path = memoryFilePath();
+  if (!existsSync(path)) {
+    const header = `# Memory — ${new Date().toISOString().split("T")[0]}\n\n`;
+    await writeFile(path, header, "utf-8");
+  }
+  return path;
+}
+
+async function appendRawDailyMemory(content: string): Promise<void> {
+  const path = await ensureTodayMemoryFile();
+  await appendFile(path, content, "utf-8");
+}
+
 export async function readDailyMemory(date?: string): Promise<string> {
   const filename = date ? `MEMORY-${date}.md` : todayFileName();
   try {
@@ -29,13 +44,47 @@ export async function readDailyMemory(date?: string): Promise<string> {
 }
 
 export async function appendDailyMemory(content: string): Promise<void> {
-  await ensureMemoryDir();
-  const path = memoryFilePath();
-  if (!existsSync(path)) {
-    const header = `# Memory — ${new Date().toISOString().split("T")[0]}\n\n`;
-    await writeFile(path, header, "utf-8");
-  }
-  await appendFile(path, `- ${content}\n`, "utf-8");
+  await appendRawDailyMemory(`- ${content}\n`);
+}
+
+export interface CompactionMemoryEntry {
+  timestamp: string;
+  chatId: number;
+  sessionId: string;
+  model?: string;
+  preCompactionTokens?: number;
+  postCompactionTokens?: number;
+  messagesRemoved?: number;
+  checkpointNumber?: number;
+  checkpointPath?: string;
+  summaryContent: string;
+}
+
+export async function appendCompactionMemory(entry: CompactionMemoryEntry): Promise<void> {
+  const lines = [
+    "## Session Context Summary",
+    `- Timestamp: ${entry.timestamp}`,
+    `- Chat ID: ${entry.chatId}`,
+    `- Session ID: ${entry.sessionId}`,
+    entry.model ? `- Model: ${entry.model}` : undefined,
+    entry.preCompactionTokens !== undefined
+      ? `- Tokens Before: ${entry.preCompactionTokens}`
+      : undefined,
+    entry.postCompactionTokens !== undefined
+      ? `- Tokens After: ${entry.postCompactionTokens}`
+      : undefined,
+    entry.messagesRemoved !== undefined
+      ? `- Messages Removed: ${entry.messagesRemoved}`
+      : undefined,
+    entry.checkpointNumber !== undefined ? `- Checkpoint: ${entry.checkpointNumber}` : undefined,
+    entry.checkpointPath ? `- Checkpoint Path: ${entry.checkpointPath}` : undefined,
+    "",
+    "### Summary",
+    entry.summaryContent.trim(),
+    "",
+  ].filter(Boolean);
+
+  await appendRawDailyMemory(`${lines.join("\n")}\n`);
 }
 
 export async function listMemoryFiles(): Promise<string[]> {

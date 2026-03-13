@@ -83,6 +83,8 @@ GitHub operations are handled natively by the Copilot SDK agent runtime.
 - `data/PREFERENCES.md` — Learned user preferences
 - `data/memory/MEMORY-yyyy-mm-dd.md` — Daily memory logs
 
+Neo also auto-compacts long conversations before they fall out of context. When the Copilot session reaches the configured context threshold, the SDK creates a session summary in the background, Neo stores that summary in the current daily memory file, and the session can be resumed after a bot restart.
+
 ## Environment Variables
 
 See [`.env.example`](.env.example) for all options.

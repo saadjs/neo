@@ -4,6 +4,7 @@ export { loadHuman, saveHuman, appendHuman } from "./human.js";
 export {
   readDailyMemory,
   appendDailyMemory,
+  appendCompactionMemory,
   listMemoryFiles,
   searchMemory,
   ensureMemoryDir,
