@@ -66,15 +66,16 @@ sudo journalctl -u neo -f  # view logs
 
 ## Tools
 
-Neo has 7 tools available to the agent:
+Neo has 6 tools available to the agent:
 
 - **run_shell** — Execute shell commands
 - **web_search** — Search the web via DuckDuckGo
-- **github** — GitHub operations via `gh` CLI
 - **google_workspace** — Google Workspace CLI wrapper
 - **memory** — Read/write/search memory files
 - **filesystem** — Full filesystem access
 - **system** — System info, restart, log level
+
+GitHub operations are handled natively by the Copilot SDK agent runtime.
 
 ## Memory
 
