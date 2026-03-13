@@ -5,6 +5,7 @@ import { memoryTool } from "./memory-tool.js";
 import { filesystemTool } from "./filesystem.js";
 import { systemTool } from "./system.js";
 import { reminderTool } from "./reminder.js";
+import { conversationTool } from "./conversation.js";
 
 export const allTools = [
   shellTool,
@@ -14,4 +15,5 @@ export const allTools = [
   filesystemTool,
   systemTool,
   reminderTool,
+  conversationTool,
 ];

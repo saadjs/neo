@@ -55,6 +55,23 @@ export function getConversationDb(): DatabaseSync {
     CREATE INDEX IF NOT EXISTS idx_sessions_chat ON sessions(chat_id);
   `);
 
+  // FTS5 full-text search index on message content
+  db.exec(`
+    CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts
+      USING fts5(content, content_rowid='id', tokenize='unicode61');
+
+    CREATE TRIGGER IF NOT EXISTS messages_ai AFTER INSERT ON messages BEGIN
+      INSERT INTO messages_fts(rowid, content) VALUES (new.id, new.content);
+    END;
+  `);
+
+  // Backfill existing messages into FTS (idempotent)
+  db.exec(`
+    INSERT INTO messages_fts(rowid, content)
+      SELECT id, content FROM messages
+      WHERE id NOT IN (SELECT rowid FROM messages_fts);
+  `);
+
   getLogger().info({ dbPath }, "Conversation database initialized");
   return db;
 }
@@ -137,6 +154,49 @@ export function completeToolCall(
       "UPDATE tool_calls SET result = ?, success = ?, duration_ms = ? WHERE tool_call_id = ?",
     )
     .run(resultStr, success ? 1 : 0, durationMs ?? null, toolCallId);
+}
+
+export interface SearchResult {
+  id: number;
+  role: string;
+  content: string;
+  created_at: string;
+  session_id: string;
+  snippet: string;
+}
+
+export function searchMessages(query: string, limit = 20, offset = 0): SearchResult[] {
+  return getConversationDb()
+    .prepare(
+      `SELECT m.id, m.role, m.content, m.created_at, m.session_id,
+              snippet(messages_fts, 0, '>>>', '<<<', '...', 48) AS snippet
+       FROM messages_fts
+       JOIN messages m ON m.id = messages_fts.rowid
+       WHERE messages_fts MATCH ?
+       ORDER BY bm25(messages_fts)
+       LIMIT ? OFFSET ?`,
+    )
+    .all(query, limit, offset) as unknown as SearchResult[];
+}
+
+export interface HistoryMessage {
+  role: string;
+  content: string;
+  created_at: string;
+  session_id: string;
+}
+
+export function getRecentHistory(chatId: number, limit = 20): HistoryMessage[] {
+  return getConversationDb()
+    .prepare(
+      `SELECT m.role, m.content, m.created_at, m.session_id
+       FROM messages m
+       JOIN sessions s ON s.id = m.session_id
+       WHERE s.chat_id = ?
+       ORDER BY m.created_at DESC
+       LIMIT ?`,
+    )
+    .all(chatId, limit) as unknown as HistoryMessage[];
 }
 
 export function closeConversationDb(): void {
