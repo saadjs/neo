@@ -1,0 +1,16 @@
+[Unit]
+Description=Neo AI Agent
+After=network.target
+
+[Service]
+Type=simple
+User=neo
+WorkingDirectory=/opt/neo
+ExecStart=/usr/bin/node dist/index.js
+Restart=always
+RestartSec=5
+Environment=NODE_ENV=production
+EnvironmentFile=/opt/neo/.env
+
+[Install]
+WantedBy=multi-user.target
