@@ -3,4 +3,7 @@ dist/
 .env
 logs/
 data/memory/MEMORY-*.md
+data/conversations.db
+data/conversations.db-*
+data/downloads/
 *.tgz
