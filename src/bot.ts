@@ -17,7 +17,6 @@ import { isVoiceEnabled, transcribeFile } from "./voice/transcribe.js";
 
 const TELEGRAM_MSG_LIMIT = 4096;
 const TYPING_REFRESH_MS = 4000;
-const DRAFT_THROTTLE_MS = 1500;
 
 export function createBot(): Bot {
   const bot = new Bot(config.telegram.botToken);
@@ -115,7 +114,6 @@ async function handleMessage(
 ) {
   const log = getLogger();
   const chatId = ctx.chat!.id;
-  const draftId = ctx.update.update_id;
 
   // Send typing indicator
   await ctx.replyWithChatAction("typing");
@@ -138,9 +136,6 @@ async function handleMessage(
 
   try {
     let responseBuffer = "";
-    let lastDraftTime = 0;
-    let lastDraftText = "";
-    let draftActive = false;
     let sessionId = "";
     const toolStartTimes = new Map<string, number>();
 
@@ -157,12 +152,11 @@ async function handleMessage(
 
       if (event.type === "assistant.reasoning") {
         const reasoning = (event.data as { content?: string }).content;
-        if (reasoning && !draftActive) {
+        if (reasoning) {
           log.debug({ chatId, reasoning: reasoning.slice(0, 100) }, "Agent reasoning");
         }
       }
 
-      // Log tool executions
       if (event.type === "tool.execution_start") {
         const d = event.data as { toolCallId?: string; toolName?: string; arguments?: unknown };
         if (d.toolCallId && d.toolName) {
@@ -223,46 +217,23 @@ async function handleMessage(
           log.error({ err, chatId, sessionId, eventId: event.id }, "Failed to persist compaction");
         }
       }
-
-      // Stream intermediate updates through Telegram drafts.
-      if (event.type === "assistant.message" && responseBuffer.length > 0) {
-        const now = Date.now();
-        if (now - lastDraftTime < DRAFT_THROTTLE_MS) return;
-
-        const displayText = truncateForTelegram(responseBuffer);
-        if (!displayText.trim() || displayText === lastDraftText) return;
-
-        lastDraftTime = now;
-        try {
-          await ctx.api.sendMessageDraft(chatId, draftId, displayText);
-          draftActive = true;
-          typingActive = false;
-          lastDraftText = displayText;
-        } catch (err) {
-          log.debug({ err, chatId, draftId }, "Failed to send Telegram draft update");
-        }
-      }
     };
 
     unsubscribe = session.on(onEvent);
 
-    // Log user message
     try {
       logMessage(sessionId, "user", text);
     } catch {}
 
     const result = await session.sendAndWait({ prompt: text, attachments });
-
-    typingActive = false;
-    clearInterval(typingInterval);
-
-    // Send final response
     const finalContent = (result?.data as { content?: string })?.content ?? responseBuffer;
 
-    // Log assistant response
     try {
       logMessage(sessionId, "assistant", finalContent || "(no response)", result?.id);
     } catch {}
+
+    typingActive = false;
+    clearInterval(typingInterval);
 
     if (!finalContent || finalContent.trim() === "") {
       await ctx.reply("_(no response)_", { parse_mode: "Markdown" });
@@ -292,11 +263,6 @@ async function sendChunk(ctx: Context, text: string) {
     // Fallback without markdown parsing
     await ctx.reply(text);
   }
-}
-
-function truncateForTelegram(text: string): string {
-  if (text.length <= TELEGRAM_MSG_LIMIT) return text;
-  return text.slice(0, TELEGRAM_MSG_LIMIT - 3) + "...";
 }
 
 function splitMessage(text: string): string[] {
