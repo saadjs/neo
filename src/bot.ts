@@ -1,12 +1,15 @@
 import { Bot, Context } from "grammy";
-import type { SessionEvent } from "@github/copilot-sdk";
+import type { SessionEvent, MessageOptions } from "@github/copilot-sdk";
 import { config } from "./config.js";
 import { getOrCreateSession } from "./agent.js";
 import { getLogger } from "./logging/index.js";
 import { logMessage, logToolCall, completeToolCall } from "./logging/conversations.js";
 import { registerCommands } from "./commands/index.js";
+import { downloadTelegramFile } from "./telegram/files.js";
 
 const TELEGRAM_MSG_LIMIT = 4096;
+const TYPING_REFRESH_MS = 4000;
+const DRAFT_THROTTLE_MS = 1500;
 
 export function createBot(): Bot {
   const bot = new Bot(config.telegram.botToken);
@@ -30,10 +33,40 @@ export function createBot(): Bot {
     await handleMessage(ctx, text);
   });
 
+  // Handle photos sent to the bot
+  bot.on("message:photo", async (ctx) => {
+    const caption = ctx.message.caption ?? "What's in this image?";
+    const photos = ctx.message.photo;
+    // Telegram sends multiple sizes — pick the largest
+    const largest = photos[photos.length - 1];
+
+    try {
+      const localPath = await downloadTelegramFile(ctx.api, largest.file_id);
+      await handleMessage(ctx, caption, [{ type: "file", path: localPath }]);
+    } catch (err) {
+      log.error({ err }, "Failed to download photo");
+      await ctx.reply("Failed to download the photo. Please try again.");
+    }
+  });
+
   // Handle documents/files sent to the bot
   bot.on("message:document", async (ctx) => {
-    const caption = ctx.message.caption ?? "I sent you a file.";
-    await handleMessage(ctx, caption);
+    const doc = ctx.message.document;
+    const caption = ctx.message.caption ?? `I sent you a file: ${doc.file_name ?? "unknown"}`;
+
+    try {
+      const localPath = await downloadTelegramFile(
+        ctx.api,
+        doc.file_id,
+        doc.file_name ?? undefined,
+      );
+      await handleMessage(ctx, caption, [
+        { type: "file", path: localPath, displayName: doc.file_name ?? undefined },
+      ]);
+    } catch (err) {
+      log.error({ err }, "Failed to download document");
+      await ctx.reply("Failed to download the file. Please try again.");
+    }
   });
 
   bot.catch((err) => {
@@ -43,29 +76,40 @@ export function createBot(): Bot {
   return bot;
 }
 
-async function handleMessage(ctx: Context, text: string) {
+async function handleMessage(
+  ctx: Context,
+  text: string,
+  attachments?: MessageOptions["attachments"],
+) {
   const log = getLogger();
   const chatId = ctx.chat!.id;
+  const draftId = ctx.update.update_id;
 
   // Send typing indicator
   await ctx.replyWithChatAction("typing");
 
-  // Keep typing indicator alive during processing
-  const typingInterval = setInterval(async () => {
+  let typingActive = true;
+  const sendTyping = async () => {
+    if (!typingActive) return;
     try {
       await ctx.replyWithChatAction("typing");
     } catch {
       // ignore
     }
-  }, 4000);
+  };
+
+  // Keep typing indicator alive during processing.
+  const typingInterval = setInterval(() => {
+    void sendTyping();
+  }, TYPING_REFRESH_MS);
 
   try {
     let responseBuffer = "";
-    let sentMessageId: number | null = null;
-    let lastEditTime = 0;
+    let lastDraftTime = 0;
+    let lastDraftText = "";
+    let draftActive = false;
     let sessionId = "";
     const toolStartTimes = new Map<string, number>();
-    const EDIT_THROTTLE_MS = 1500;
 
     const onEvent = async (event: SessionEvent) => {
       if (event.type === "assistant.message") {
@@ -77,7 +121,7 @@ async function handleMessage(ctx: Context, text: string) {
 
       if (event.type === "assistant.reasoning") {
         const reasoning = (event.data as { content?: string }).content;
-        if (reasoning && !sentMessageId) {
+        if (reasoning && !draftActive) {
           log.debug({ chatId, reasoning: reasoning.slice(0, 100) }, "Agent reasoning");
         }
       }
@@ -104,24 +148,22 @@ async function handleMessage(ctx: Context, text: string) {
         }
       }
 
-      // Stream intermediate updates for long responses
+      // Stream intermediate updates through Telegram drafts.
       if (event.type === "assistant.message" && responseBuffer.length > 0) {
         const now = Date.now();
-        if (now - lastEditTime > EDIT_THROTTLE_MS && sentMessageId) {
-          lastEditTime = now;
-          try {
-            const displayText = truncateForTelegram(responseBuffer);
-            await ctx.api
-              .editMessageText(chatId, sentMessageId, displayText, {
-                parse_mode: "Markdown",
-              })
-              .catch(() =>
-                // Fallback without markdown if it fails
-                ctx.api.editMessageText(chatId, sentMessageId!, displayText),
-              );
-          } catch {
-            // edit might fail if content hasn't changed
-          }
+        if (now - lastDraftTime < DRAFT_THROTTLE_MS) return;
+
+        const displayText = truncateForTelegram(responseBuffer);
+        if (!displayText.trim() || displayText === lastDraftText) return;
+
+        lastDraftTime = now;
+        try {
+          await ctx.api.sendMessageDraft(chatId, draftId, displayText);
+          draftActive = true;
+          typingActive = false;
+          lastDraftText = displayText;
+        } catch (err) {
+          log.debug({ err, chatId, draftId }, "Failed to send Telegram draft update");
         }
       }
     };
@@ -134,8 +176,9 @@ async function handleMessage(ctx: Context, text: string) {
       logMessage(sessionId, "user", text);
     } catch {}
 
-    const result = await session.sendAndWait({ prompt: text });
+    const result = await session.sendAndWait({ prompt: text, attachments });
 
+    typingActive = false;
     clearInterval(typingInterval);
 
     // Send final response
@@ -154,23 +197,11 @@ async function handleMessage(ctx: Context, text: string) {
     // Split long messages
     const chunks = splitMessage(finalContent);
 
-    if (sentMessageId && chunks.length === 1) {
-      // Edit the existing message with final content
-      try {
-        await ctx.api
-          .editMessageText(chatId, sentMessageId, chunks[0], {
-            parse_mode: "Markdown",
-          })
-          .catch(() => ctx.api.editMessageText(chatId, sentMessageId!, chunks[0]));
-      } catch {
-        await sendChunk(ctx, chunks[0]);
-      }
-    } else {
-      for (const chunk of chunks) {
-        await sendChunk(ctx, chunk);
-      }
+    for (const chunk of chunks) {
+      await sendChunk(ctx, chunk);
     }
   } catch (err) {
+    typingActive = false;
     clearInterval(typingInterval);
     log.error({ err, chatId }, "Error handling message");
     await ctx.reply("⚠️ Something went wrong. Try /new to start a fresh session.");
