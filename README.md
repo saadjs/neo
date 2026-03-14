@@ -136,7 +136,9 @@ Notes:
 
 - The setup script bootstraps system Node at `/usr/bin/node` and currently targets `v24.14.0`.
 - Neo restarts by exiting and letting `systemd` restart the service via `Restart=always`.
-- Runtime state defaults to `/opt/neo/data` and `/opt/neo/logs` for system services, or `$HOME/neo/data` and `$HOME/neo/logs` for user services.
+- When run directly outside `systemd`, Neo defaults to `$HOME/.neo` for data and `$HOME/.neo/logs` for logs.
+- The system service template sets `NEO_DATA_DIR=/opt/neo/data` and `NEO_LOG_DIR=/opt/neo/logs`.
+- The user service template sets `NEO_DATA_DIR=$HOME/.neo` and `NEO_LOG_DIR=$HOME/.neo/logs`.
 - The deploy setup now syncs code from the checkout's Git `origin` and current branch instead of copying files with `rsync`.
 - User-service installs must run as the same login user that will own the `systemd --user` unit.
 - User services run with the same filesystem permissions as the installing login user, so they can access files in that user's home directory such as shell dotfiles when needed.
@@ -152,7 +154,7 @@ Notes:
 | `/new` | Start a fresh conversation |
 | `/model [name]` | Open model picker, or switch directly by name |
 | `/sessions` | List active sessions |
-| `/memory [query]` | View or search memory (supports `#tag` filter, `recent N`) |
+| `/memory [query]` | View or search memory (`/memory #tag`, `/memory recent N`, or full-text search) |
 | `/loglevel <level>` | Set log verbosity (error/warn/info/debug/trace) |
 | `/soul` | Show current persona |
 | `/status` | Show runtime status, default model, and current chat model |

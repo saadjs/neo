@@ -9,7 +9,7 @@ describe("getTelegramCommands", () => {
       { command: "new", description: "Start a fresh conversation" },
       { command: "model", description: "Switch the model for this chat only" },
       { command: "sessions", description: "List active sessions" },
-      { command: "memory", description: "View or search memory" },
+      { command: "memory", description: "View, search, or filter memory" },
       { command: "loglevel", description: "Set log verbosity" },
       { command: "soul", description: "Show current persona" },
       { command: "status", description: "Show runtime status" },
@@ -27,11 +27,14 @@ describe("buildHelpText", () => {
   it("renders help from the shared command definitions", () => {
     expect(buildHelpText()).toContain("/start — Show available commands");
     expect(buildHelpText()).toContain("/model [name] — Switch the model for this chat only");
-    expect(buildHelpText()).toContain("/memory [query] — View or search memory");
+    expect(buildHelpText()).toContain("/memory [query] — View, search, or filter memory");
     expect(buildHelpText()).toContain("/whichmodel — Show default and current chat model");
     expect(buildHelpText()).toContain("/usage — Show Copilot monthly usage");
     expect(buildHelpText()).toContain(
       "/model opens a clickable picker; /model <name> still switches directly",
+    );
+    expect(buildHelpText()).toContain(
+      "/memory supports full-text search, /memory recent N, and /memory #tag",
     );
   });
 });
