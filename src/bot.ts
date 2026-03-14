@@ -15,33 +15,13 @@ import { downloadTelegramFile } from "./telegram/files.js";
 import { splitMessage } from "./telegram/messages.js";
 import { appendCompactionMemory } from "./memory/index.js";
 import { isVoiceEnabled, transcribeFile } from "./voice/transcribe.js";
-const TYPING_REFRESH_MS = 3000;
-const PROGRESS_REFRESH_MS = 8000;
-const PROGRESS_EDIT_DEBOUNCE_MS = 1500;
-
-function formatProgressName(value?: string) {
-  return String(value || "work")
-    .replace(/[_-]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function buildProgressText(
-  phase: "thinking" | "reasoning" | "tool" | "done-tool" | "skill" | "compacting",
-  detail: string,
-  startedAt: number,
-) {
-  const elapsedSeconds = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
-  const elapsed = elapsedSeconds >= 8 ? ` (${elapsedSeconds}s)` : "";
-
-  if (phase === "tool" && detail) return `Working… using ${detail}${elapsed}`;
-  if (phase === "skill" && detail) return `Working… running ${detail}${elapsed}`;
-  if (phase === "compacting") return `Tidying context, then answering${elapsed}`;
-  if (phase === "reasoning") return `Thinking… still on it${elapsed}`;
-  if (phase === "done-tool" && detail) return `Still working… finished ${detail}${elapsed}`;
-
-  return `Thinking…${elapsed}`;
-}
+import {
+  TYPING_REFRESH_MS,
+  PROGRESS_REFRESH_MS,
+  PROGRESS_EDIT_DEBOUNCE_MS,
+  formatProgressName,
+  buildProgressText,
+} from "./telegram/progress.js";
 
 export function createBot(): Bot {
   const bot = new Bot(config.telegram.botToken);
