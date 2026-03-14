@@ -4,28 +4,39 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SERVICE_NAME="${1:-neo}"
+INSTALL_DIR="${2:-/opt/neo}"
+APP_USER="${3:-neo}"
 SERVICE_PATH="/etc/systemd/system/${SERVICE_NAME}.service"
 
 [[ $EUID -eq 0 ]] || {
-  echo "Run as root: sudo ./deploy/install-systemd.sh [service-name]" >&2
+  echo "Run as root: sudo ./deploy/install-systemd.sh [service-name] [install-dir] [app-user]" >&2
   exit 1
 }
 
-id -u neo >/dev/null 2>&1 || useradd --system --home /opt/neo --shell /usr/sbin/nologin neo
+id -u "$APP_USER" >/dev/null 2>&1 || \
+  useradd --system --home "$INSTALL_DIR" --shell /usr/sbin/nologin "$APP_USER"
 
-install -d -o neo -g neo /opt/neo
-install -d -o neo -g neo /opt/neo/data
-install -d -o neo -g neo /opt/neo/logs
+install -d -o "$APP_USER" -g "$APP_USER" "$INSTALL_DIR"
+install -d -o "$APP_USER" -g "$APP_USER" "$INSTALL_DIR/data"
+install -d -o "$APP_USER" -g "$APP_USER" "$INSTALL_DIR/logs"
 
 cp "$ROOT_DIR/deploy/neo.service" "$SERVICE_PATH"
-sed -i.bak "s/NEO_SYSTEMD_UNIT=neo/NEO_SYSTEMD_UNIT=${SERVICE_NAME}/" "$SERVICE_PATH"
+sed -i.bak \
+  -e "s|^User=.*|User=${APP_USER}|" \
+  -e "s|^Group=.*|Group=${APP_USER}|" \
+  -e "s|^WorkingDirectory=.*|WorkingDirectory=${INSTALL_DIR}|" \
+  -e "s|^Environment=NEO_DATA_DIR=.*|Environment=NEO_DATA_DIR=${INSTALL_DIR}/data|" \
+  -e "s|^Environment=NEO_LOG_DIR=.*|Environment=NEO_LOG_DIR=${INSTALL_DIR}/logs|" \
+  -e "s|^Environment=NEO_SYSTEMD_UNIT=.*|Environment=NEO_SYSTEMD_UNIT=${SERVICE_NAME}|" \
+  -e "s|^EnvironmentFile=.*|EnvironmentFile=${INSTALL_DIR}/.env|" \
+  "$SERVICE_PATH"
 
 systemctl daemon-reload
 systemctl enable "$SERVICE_NAME"
 
 echo "Installed $SERVICE_PATH"
 echo "Next steps:"
-echo "  1. rsync the repo to /opt/neo"
-echo "  2. cd /opt/neo && npm ci && npm run build"
-echo "  3. sudo -u neo ./deploy/preflight.sh"
+echo "  1. rsync the repo to ${INSTALL_DIR}"
+echo "  2. cd ${INSTALL_DIR} && npm ci && npm run build"
+echo "  3. sudo -u ${APP_USER} ./deploy/preflight.sh"
 echo "  4. systemctl start $SERVICE_NAME"
