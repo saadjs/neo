@@ -28,6 +28,18 @@ cp .env.example .env
 npm run dev
 ```
 
+### Telegram group chats
+
+If you want Neo to respond to regular messages in group chats without being tagged, disable the bot's privacy mode in [@BotFather](https://t.me/BotFather):
+
+```text
+/setprivacy
+→ select @your_bot
+→ Disable
+```
+
+If you changed this after the bot was already in the group, remove the bot from the group and add it back so Telegram refreshes permissions. Otherwise Neo may still ignore normal group messages because Telegram never delivers them.
+
 ### Build & Run (production)
 
 ```bash
@@ -199,6 +211,8 @@ See [`.env.example`](.env.example) for all options.
 | `NEO_SYSTEMD_UNIT` | No | Service unit name exposed to status/restart logic |
 | `NEO_SYSTEMCTL_SCOPE` | No | `system` or `user` for status checks |
 | `GOOGLE_WORKSPACE_CLI_PATH` | No | Path to the `gws` CLI used by the Google Workspace tool |
+
+`TELEGRAM_OWNER_ID` keeps direct messages owner-only. Group chat visibility is controlled by Telegram privacy mode, not by `.env`.
 
 Browser credentials format:
 
