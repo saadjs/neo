@@ -1,0 +1,25 @@
+import type { SessionEndHandler } from "./types.js";
+import { getLogger } from "../logging/index.js";
+import { cancelPendingUserInputForSession } from "../telegram/user-input.js";
+
+export function sessionEnd(chatId: number): SessionEndHandler {
+  return async (input, invocation) => {
+    const log = getLogger();
+
+    if (input.reason === "complete" && input.finalMessage) {
+      log.info({ chatId, summaryLength: input.finalMessage.length }, "hook:session-end complete");
+    }
+
+    if (input.reason === "error") {
+      log.warn({ chatId, error: input.error }, "hook:session-end error");
+    }
+
+    if (input.reason !== "complete") {
+      await cancelPendingUserInputForSession(
+        chatId,
+        invocation.sessionId,
+        "The pending question was cancelled because the session ended.",
+      );
+    }
+  };
+}
