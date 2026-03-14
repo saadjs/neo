@@ -6,6 +6,8 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 EXPECTED_NODE_VERSION="v24.14.0"
 NODE_BIN="/usr/bin/node"
 ENV_FILE="${1:-$ROOT_DIR/.env}"
+DEFAULT_DATA_DIR="${HOME}/.neo"
+DEFAULT_LOG_DIR="${DEFAULT_DATA_DIR}/logs"
 
 fail() {
   echo "FAIL: $1" >&2
@@ -34,6 +36,16 @@ require_dir() {
   pass "$label present"
 }
 
+[[ -f "$ENV_FILE" ]] && {
+  set -a
+  # shellcheck disable=SC1090
+  source "$ENV_FILE"
+  set +a
+}
+
+DATA_DIR="${NEO_DATA_DIR:-$DEFAULT_DATA_DIR}"
+LOG_DIR="${NEO_LOG_DIR:-$DEFAULT_LOG_DIR}"
+
 [[ -x "$NODE_BIN" ]] || fail "Expected system Node at $NODE_BIN"
 [[ "$("$NODE_BIN" -v)" == "$EXPECTED_NODE_VERSION" ]] || \
   fail "Expected Node $EXPECTED_NODE_VERSION at $NODE_BIN, found $("$NODE_BIN" -v)"
@@ -46,10 +58,10 @@ require_file "$ROOT_DIR/dist/index.js" "bundled app"
 require_file "$ROOT_DIR/deploy/neo.service" "systemd unit"
 require_file "$ROOT_DIR/deploy/neo-user.service" "systemd user unit"
 
-mkdir -p "$ROOT_DIR/data" "$ROOT_DIR/logs"
-[[ -w "$ROOT_DIR/data" ]] || fail "data directory is not writable"
-[[ -w "$ROOT_DIR/logs" ]] || fail "logs directory is not writable"
-pass "Writable data/log directories"
+mkdir -p "$DATA_DIR" "$LOG_DIR"
+[[ -w "$DATA_DIR" ]] || fail "data directory is not writable: $DATA_DIR"
+[[ -w "$LOG_DIR" ]] || fail "log directory is not writable: $LOG_DIR"
+pass "Writable runtime directories ($DATA_DIR, $LOG_DIR)"
 
 "$NODE_BIN" --input-type=module -e "import { chromium } from 'playwright'; const browser = await chromium.launch({ headless: true }); await browser.close();"
 pass "Playwright Chromium launches successfully"

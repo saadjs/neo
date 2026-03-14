@@ -6,7 +6,7 @@ Neo is a personal AI agent powered by the GitHub Copilot SDK (`@github/copilot-s
 
 ## Project Structure & Module Organization
 
-`src/` contains the application entrypoint and all runtime code. Key areas are `src/commands/` for Telegram command handlers, `src/tools/` for custom agent tools (browser, memory, system, reminder, job, conversation), `src/hooks/` for session lifecycle hooks, `src/memory/` for persistence and tagging, `src/scheduler/` for recurring jobs, `src/telegram/` for Telegram-specific utilities (progress, user input, message splitting), and `src/logging/` for audit and cost tracking. Tests live beside implementation files as `src/**/*.test.ts`. Runtime data is stored under `data/`; deployment assets live in `deploy/`; production output is bundled to `dist/`.
+`src/` contains the application entrypoint and all runtime code. Key areas are `src/commands/` for Telegram command handlers, `src/tools/` for custom agent tools (browser, memory, system, reminder, job, conversation), `src/hooks/` for session lifecycle hooks, `src/memory/` for persistence and tagging, `src/scheduler/` for recurring jobs, `src/telegram/` for Telegram-specific utilities (progress, user input, message splitting), and `src/logging/` for audit and cost tracking. Tests live beside implementation files as `src/**/*.test.ts`. Runtime data is stored under `NEO_DATA_DIR` (default: `~/.neo`); deployment assets live in `deploy/`; production output is bundled to `dist/`.
 
 ## Build, Test, and Development Commands
 

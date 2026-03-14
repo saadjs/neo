@@ -6,6 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Neo is a personal AI agent powered by the GitHub Copilot SDK (`@github/copilot-sdk`), accessible via Telegram. It wraps the Copilot CLI as a JSON-RPC server, creates sessions per Telegram chat, and extends the agent with custom tools, session hooks, memory, and scheduled jobs.
 
+## Project Structure & Module Organization
+
+`src/` contains the application entrypoint and all runtime code. Key areas are `src/commands/` for Telegram command handlers, `src/tools/` for custom agent tools (browser, memory, system, reminder, job, conversation), `src/hooks/` for session lifecycle hooks, `src/memory/` for persistence and tagging, `src/scheduler/` for recurring jobs, `src/telegram/` for Telegram-specific utilities (progress, user input, message splitting), and `src/logging/` for audit and cost tracking. Tests live beside implementation files as `src/**/*.test.ts`. Runtime data is stored under `NEO_DATA_DIR` (default: `~/.neo`); deployment assets live in `deploy/`; production output is bundled to `dist/`.
+
 ## Commands
 
 ```bash
