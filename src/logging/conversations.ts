@@ -72,6 +72,12 @@ export function getConversationDb(): DatabaseSync {
       WHERE id NOT IN (SELECT rowid FROM messages_fts);
   `);
 
+  try {
+    db.exec("ALTER TABLE sessions ADD COLUMN tags TEXT");
+  } catch {
+    // Column already exists — ignore
+  }
+
   getLogger().info({ dbPath }, "Conversation database initialized");
   return db;
 }
@@ -197,6 +203,41 @@ export function getRecentHistory(chatId: number, limit = 20): HistoryMessage[] {
        LIMIT ?`,
     )
     .all(chatId, limit) as unknown as HistoryMessage[];
+}
+
+export function setSessionTags(sessionId: string, tags: string[]): void {
+  getConversationDb()
+    .prepare("UPDATE sessions SET tags = ? WHERE id = ?")
+    .run(tags.join(","), sessionId);
+}
+
+export function getSessionTags(sessionId: string): string[] {
+  const row = getConversationDb()
+    .prepare("SELECT tags FROM sessions WHERE id = ?")
+    .get(sessionId) as { tags?: string | null } | undefined;
+  if (!row?.tags) return [];
+  return row.tags
+    .split(",")
+    .map((t) => t.trim())
+    .filter(Boolean);
+}
+
+export function searchSessionsByTag(
+  tag: string,
+  limit = 20,
+): Array<{ id: string; chat_id: number; model: string; tags: string; created_at: string }> {
+  return getConversationDb()
+    .prepare(
+      `SELECT id, chat_id, model, tags, created_at FROM sessions
+       WHERE tags LIKE ? ORDER BY created_at DESC LIMIT ?`,
+    )
+    .all(`%${tag}%`, limit) as unknown as Array<{
+    id: string;
+    chat_id: number;
+    model: string;
+    tags: string;
+    created_at: string;
+  }>;
 }
 
 export function closeConversationDb(): void {

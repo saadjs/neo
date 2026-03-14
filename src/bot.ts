@@ -9,11 +9,13 @@ import {
   completeToolCall,
   getLastCompactionEventId,
   setLastCompactionEventId,
+  setSessionTags,
 } from "./logging/conversations.js";
 import { registerCommands } from "./commands/index.js";
 import { downloadTelegramFile } from "./telegram/files.js";
 import { splitMessage } from "./telegram/messages.js";
 import { appendCompactionMemory } from "./memory/index.js";
+import { extractTags } from "./memory/tagging.js";
 import { isVoiceEnabled, transcribeFile } from "./voice/transcribe.js";
 import {
   TYPING_REFRESH_MS,
@@ -283,6 +285,9 @@ async function handleMessage(
             summaryContent: data.summaryContent,
           });
           setLastCompactionEventId(chatId, event.id);
+          const tags = extractTags(data.summaryContent);
+          setSessionTags(sessionId, tags);
+          log.info({ chatId, sessionId, tags }, "Session tagged from compaction summary");
           await ctx.reply("Context summary saved to today's memory.");
         } catch (err) {
           log.error({ err, chatId, sessionId, eventId: event.id }, "Failed to persist compaction");
