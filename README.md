@@ -10,6 +10,7 @@ Personal AI agent powered by the GitHub Copilot SDK, accessible via Telegram.
 - GitHub account with Copilot access
 - Telegram Bot Token (from [@BotFather](https://t.me/BotFather))
 - Your Telegram user ID (from [@userinfobot](https://t.me/userinfobot))
+- Playwright Chromium browser (`npx playwright install chromium`)
 
 ### Install
 
@@ -72,12 +73,16 @@ sudo journalctl -u neo -f  # view logs
 
 ## Tools
 
-Neo has 6 tools available to the agent:
+Neo combines Copilot runtime tools with these custom tools:
 
 - **run_shell** — Execute shell commands
+- **browser** — Automate websites with persistent Playwright sessions, screenshots, and stored credentials
 - **web_search** — Search the web via DuckDuckGo
 - **google_workspace** — Google Workspace CLI wrapper
 - **memory** — Read/write/search memory files
+- **reminder** — Create, list, and cancel scheduled reminders
+- **job** — Manage recurring AI jobs
+- **conversation** — Search prior chats and retrieve recent history
 - **filesystem** — Full filesystem access
 - **system** — Explain status, inspect settings, apply safe config changes, restart
 
@@ -94,6 +99,12 @@ Neo also auto-compacts long conversations before they fall out of context. When 
 ## Environment Variables
 
 See [`.env.example`](.env.example) for all options.
+
+Browser credentials are supplied through `NEO_BROWSER_CREDENTIALS_JSON`, for example:
+
+```json
+{"github":{"username":"neo@example.com","password":"super-secret"}}
+```
 
 ## Autonomy
 

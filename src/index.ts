@@ -5,6 +5,8 @@ import { ensureMemoryDir } from "./memory/index.js";
 import { startAgent, stopAgent } from "./agent.js";
 import { createBot } from "./bot.js";
 import { startScheduler, stopScheduler } from "./scheduler/index.js";
+import { closeAllBrowserSessions } from "./tools/browser-runtime.js";
+import { setTelegramApi } from "./telegram/runtime.js";
 import {
   consumeRestartMarker,
   formatSystemStatusSummary,
@@ -33,6 +35,7 @@ async function main() {
 
   // Create and start Telegram bot
   const bot = createBot();
+  setTelegramApi(bot.api);
 
   // Start reminder scheduler
   startScheduler(bot.api);
@@ -57,6 +60,7 @@ async function main() {
     log.info({ signal }, "Shutting down...");
     stopScheduler();
     bot.stop();
+    await closeAllBrowserSessions();
     await stopAgent();
     closeConversationDb();
     log.info("Goodbye.");

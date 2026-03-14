@@ -21,6 +21,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts
+RUN npx playwright install --with-deps chromium
 
 COPY --from=builder /app/dist/ dist/
 COPY data/ data/
