@@ -37,7 +37,7 @@ export function extractTags(summary: string): string[] {
     ],
     email: ["email", "gmail", "inbox", "send mail", "draft"],
     calendar: ["calendar", "meeting", "schedule", "event", "appointment"],
-    search: ["search", "google", "duckduckgo", "web search", "lookup", "find"],
+    search: ["search", "lookup", "find", "web search"],
     memory: ["memory", "remember", "preference", "soul", "identity"],
     system: ["restart", "config", "setting", "status", "systemctl", "deploy"],
     files: ["file", "directory", "folder", "read file", "write file", "download", "upload"],

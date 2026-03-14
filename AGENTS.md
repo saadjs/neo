@@ -1,7 +1,7 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-`src/` contains the application entrypoint and all runtime code. Key areas are `src/commands/` for Telegram command handlers, `src/tools/` for agent tools such as browser and web search, `src/memory/` for persistence and tagging, `src/scheduler/` for recurring jobs, and `src/logging/` for audit and cost tracking. Tests live beside implementation files as `src/**/*.test.ts`. Runtime data is stored under `data/`; deployment assets live in `deploy/`; production output is bundled to `dist/`.
+`src/` contains the application entrypoint and all runtime code. Key areas are `src/commands/` for Telegram command handlers, `src/tools/` for agent tools such as browser automation, `src/memory/` for persistence and tagging, `src/scheduler/` for recurring jobs, and `src/logging/` for audit and cost tracking. Tests live beside implementation files as `src/**/*.test.ts`. Runtime data is stored under `data/`; deployment assets live in `deploy/`; production output is bundled to `dist/`.
 
 ## Build, Test, and Development Commands
 Use Node `24.14.0` as declared in `package.json`.

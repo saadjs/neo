@@ -54,13 +54,4 @@ pass "Writable data/log directories"
 "$NODE_BIN" --input-type=module -e "import { chromium } from 'playwright'; const browser = await chromium.launch({ headless: true }); await browser.close();"
 pass "Playwright Chromium launches successfully"
 
-if [[ -n "${GOOGLE_WORKSPACE_CLI_PATH:-}" ]]; then
-  [[ -x "$GOOGLE_WORKSPACE_CLI_PATH" ]] || fail "GOOGLE_WORKSPACE_CLI_PATH is not executable: $GOOGLE_WORKSPACE_CLI_PATH"
-  pass "Google Workspace CLI path is executable"
-elif command -v gws >/dev/null 2>&1; then
-  pass "Google Workspace CLI found in PATH"
-else
-  warn "gws CLI not found; google_workspace tool will fail until it is installed"
-fi
-
 echo "Preflight checks passed."

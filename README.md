@@ -130,8 +130,6 @@ Notes:
 - User services run with the same filesystem permissions as the installing login user, so they can access files in that user's home directory such as shell dotfiles when needed.
 - `systemd` does not automatically source `.bashrc` or `.zshrc`; put required runtime settings in Neo's `.env` unless you explicitly load shell startup files yourself.
 - `sudo loginctl enable-linger "$USER"` keeps a user service running after logout.
-- If you use the `google_workspace` tool, install the `gws` CLI or set `GOOGLE_WORKSPACE_CLI_PATH`.
-
 ## Commands
 
 | Command | Description |
@@ -159,8 +157,6 @@ Notes:
 Neo registers these custom tools alongside the Copilot SDK's built-in capabilities (shell, filesystem, GitHub):
 
 - **browser** — Automate websites with persistent Playwright sessions, screenshots, and stored credentials
-- **web_search** — Search the web via DuckDuckGo
-- **google_workspace** — Google Workspace CLI wrapper (Gmail, Calendar, Drive, Sheets)
 - **memory** — Read/write/append/search memory files
 - **reminder** — Create, list, and cancel scheduled reminders (once, daily, weekly, monthly, weekdays)
 - **job** — Manage recurring AI jobs on cron schedules
@@ -198,8 +194,6 @@ See [`.env.example`](.env.example) for all options.
 | `NEO_LOG_DIR` | No | Override runtime log dir |
 | `NEO_SYSTEMD_UNIT` | No | Service unit name exposed to status/restart logic |
 | `NEO_SYSTEMCTL_SCOPE` | No | `system` or `user` for status checks |
-| `GOOGLE_WORKSPACE_CLI_PATH` | No | Path to the `gws` CLI used by the Google Workspace tool |
-
 Browser credentials format:
 
 ```json

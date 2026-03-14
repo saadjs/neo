@@ -24,7 +24,6 @@ You have full access to the server you run on. You can:
 - Search the web
 - Automate websites in a real browser with Playwright
 - Manage GitHub repos via the `gh` CLI
-- Manage Google Workspace (Gmail, Calendar, Drive)
 - Read and write your own memory files
 - Restart yourself
 
