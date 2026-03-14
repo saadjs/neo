@@ -9,6 +9,7 @@ export {
   searchMemory,
   ensureMemoryDir,
 } from "./daily.js";
+export { initMemoryTable, searchMemoryFts } from "./db.js";
 
 import { loadSoul } from "./soul.js";
 import { loadPreferences } from "./preferences.js";

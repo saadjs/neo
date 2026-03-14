@@ -2,13 +2,18 @@ import { readFile, writeFile, appendFile, readdir, mkdir } from "node:fs/promise
 import { join } from "node:path";
 import { existsSync } from "node:fs";
 import { config } from "../config.js";
+import { insertMemoryEntry, searchMemoryFts } from "./db.js";
 
-function todayFileName(): string {
+function todayDateString(): string {
   const d = new Date();
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
-  return `MEMORY-${yyyy}-${mm}-${dd}.md`;
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function todayFileName(): string {
+  return `MEMORY-${todayDateString()}.md`;
 }
 
 function memoryFilePath(filename?: string): string {
@@ -45,6 +50,7 @@ export async function readDailyMemory(date?: string): Promise<string> {
 
 export async function appendDailyMemory(content: string): Promise<void> {
   await appendRawDailyMemory(`- ${content}\n`);
+  insertMemoryEntry("daily", content, todayDateString());
 }
 
 export interface CompactionMemoryEntry {
@@ -84,7 +90,9 @@ export async function appendCompactionMemory(entry: CompactionMemoryEntry): Prom
     "",
   ].filter(Boolean);
 
-  await appendRawDailyMemory(`${lines.join("\n")}\n`);
+  const formatted = lines.join("\n");
+  await appendRawDailyMemory(`${formatted}\n`);
+  insertMemoryEntry("daily", formatted, todayDateString());
 }
 
 export async function listMemoryFiles(): Promise<string[]> {
@@ -98,16 +106,12 @@ export async function listMemoryFiles(): Promise<string[]> {
 }
 
 export async function searchMemory(query: string): Promise<string> {
-  const files = await listMemoryFiles();
-  const results: string[] = [];
-  const lowerQuery = query.toLowerCase();
-
-  for (const file of files.slice(-30)) {
-    const content = await readFile(memoryFilePath(file), "utf-8");
-    const lines = content.split("\n").filter((l) => l.toLowerCase().includes(lowerQuery));
-    if (lines.length > 0) {
-      results.push(`**${file}**:\n${lines.join("\n")}`);
-    }
-  }
-  return results.length > 0 ? results.join("\n\n") : "No matches found.";
+  const results = searchMemoryFts(query);
+  if (results.length === 0) return "No matches found.";
+  return results
+    .map((r) => {
+      const label = r.date ? `${r.source} (${r.date})` : r.source;
+      return `**${label}**: ${r.snippet}`;
+    })
+    .join("\n\n");
 }

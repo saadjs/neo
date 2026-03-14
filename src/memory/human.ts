@@ -1,5 +1,6 @@
 import { readFile, writeFile, appendFile } from "node:fs/promises";
 import { config } from "../config.js";
+import { insertMemoryEntry, replaceMemorySource } from "./db.js";
 
 export async function loadHuman(): Promise<string> {
   try {
@@ -11,10 +12,17 @@ export async function loadHuman(): Promise<string> {
 
 export async function saveHuman(content: string): Promise<void> {
   await writeFile(config.paths.human, content, "utf-8");
+  const bullets = content
+    .split("\n")
+    .filter((l) => l.startsWith("- "))
+    .map((l) => ({ content: l.slice(2).trim() }))
+    .filter((e) => e.content);
+  replaceMemorySource("human", bullets);
 }
 
 export async function appendHuman(entry: string): Promise<void> {
   const current = await loadHuman();
   if (current.includes(entry)) return;
   await appendFile(config.paths.human, `- ${entry}\n`, "utf-8");
+  insertMemoryEntry("human", entry);
 }
