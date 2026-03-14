@@ -1,6 +1,7 @@
 import type { Context } from "grammy";
 import { createNewSession, listActiveSessions, destroySession } from "../agent.js";
 import { getLogger } from "../logging/index.js";
+import { getChatModelContext } from "./model-context.js";
 
 export async function handleNewSession(ctx: Context) {
   const chatId = ctx.chat!.id;
@@ -10,7 +11,13 @@ export async function handleNewSession(ctx: Context) {
   await createNewSession({ chatId });
 
   log.info({ chatId }, "New session created via /new");
-  await ctx.reply("Fresh session. What's up?");
+
+  const context = getChatModelContext(chatId);
+  const message = context.overrideActive
+    ? `Fresh session. Default model is \`${context.defaultModel}\`, using \`${context.currentModel}\` for this chat.`
+    : `Fresh session. Default model is \`${context.defaultModel}\`, and this chat is using it.`;
+
+  await ctx.reply(message, { parse_mode: "Markdown" });
 }
 
 export async function handleSessions(ctx: Context) {

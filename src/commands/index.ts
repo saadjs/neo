@@ -8,6 +8,7 @@ import { handleSoul } from "./soul.js";
 import { handleRestart } from "./restart.js";
 import { handleSessions } from "./session.js";
 import { handleStatus } from "./status.js";
+import { handleWhichModel } from "./whichmodel.js";
 import { handleAudit } from "./audit.js";
 import { handleCost } from "./cost.js";
 import { handleChannel } from "./channel.js";
@@ -19,7 +20,10 @@ type CommandName = (typeof commandDefinitions)[number]["command"];
 
 type CommandRegistrar = {
   api: {
-    setMyCommands: (commands: ReturnType<typeof getTelegramCommands>) => Promise<true>;
+    setMyCommands: (
+      commands: ReturnType<typeof getTelegramCommands>,
+      options?: { scope?: { type: "default" | "all_private_chats" | "all_group_chats" } },
+    ) => Promise<true>;
   };
   command: (command: CommandName, handler: CommandHandler) => unknown;
 };
@@ -34,6 +38,7 @@ const commandHandlers = {
   loglevel: handleLogLevel,
   soul: handleSoul,
   status: handleStatus,
+  whichmodel: handleWhichModel,
   audit: handleAudit,
   cost: handleCost,
   usage: handleUsage,
@@ -42,7 +47,11 @@ const commandHandlers = {
 } satisfies Record<CommandName, CommandHandler>;
 
 export async function registerCommands(bot: CommandRegistrar) {
-  await bot.api.setMyCommands(getTelegramCommands());
+  const commands = getTelegramCommands();
+
+  await bot.api.setMyCommands(commands);
+  await bot.api.setMyCommands(commands, { scope: { type: "all_private_chats" } });
+  await bot.api.setMyCommands(commands, { scope: { type: "all_group_chats" } });
 
   for (const definition of commandDefinitions) {
     bot.command(definition.command, commandHandlers[definition.command]);

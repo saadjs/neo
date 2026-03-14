@@ -11,6 +11,7 @@ vi.mock("./log.js", () => ({ handleLogLevel: vi.fn() }));
 vi.mock("./soul.js", () => ({ handleSoul: vi.fn() }));
 vi.mock("./restart.js", () => ({ handleRestart: vi.fn() }));
 vi.mock("./status.js", () => ({ handleStatus: vi.fn() }));
+vi.mock("./whichmodel.js", () => ({ handleWhichModel: vi.fn() }));
 vi.mock("./usage.js", () => ({ handleUsage: vi.fn() }));
 vi.mock("./audit.js", () => ({ handleAudit: vi.fn() }));
 vi.mock("./cost.js", () => ({ handleCost: vi.fn() }));
@@ -29,7 +30,13 @@ describe("registerCommands", () => {
       command,
     });
 
-    expect(setMyCommands).toHaveBeenCalledWith(getTelegramCommands());
+    expect(setMyCommands).toHaveBeenNthCalledWith(1, getTelegramCommands());
+    expect(setMyCommands).toHaveBeenNthCalledWith(2, getTelegramCommands(), {
+      scope: { type: "all_private_chats" },
+    });
+    expect(setMyCommands).toHaveBeenNthCalledWith(3, getTelegramCommands(), {
+      scope: { type: "all_group_chats" },
+    });
     expect(command.mock.calls.map(([name]) => name)).toEqual(
       getTelegramCommands().map(({ command: commandName }) => commandName),
     );

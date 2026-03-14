@@ -45,6 +45,10 @@ export const commandDefinitions = [
     description: "Show runtime status",
   },
   {
+    command: "whichmodel",
+    description: "Show default and current chat model",
+  },
+  {
     command: "usage",
     description: "Show Copilot monthly usage",
   },
@@ -86,6 +90,7 @@ ${commandLines.join("\n")}
 Notes:
 - /start and /help both show this command list
 - /model opens a clickable picker; /model <name> still switches directly
+- /whichmodel shows default model vs this chat's active model
 - /new keeps this chat's model override if you set one with /model
 - Otherwise /new uses Neo's default model from config.json
 
