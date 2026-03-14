@@ -34,7 +34,7 @@ async function main() {
   log.info("Copilot agent ready");
 
   // Create and start Telegram bot
-  const bot = createBot();
+  const bot = await createBot();
   setTelegramApi(bot.api);
 
   // Start reminder scheduler

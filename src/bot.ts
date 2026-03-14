@@ -26,7 +26,7 @@ import {
   buildProgressText,
 } from "./telegram/progress.js";
 
-export function createBot(): Bot {
+export async function createBot(): Promise<Bot> {
   const bot = new Bot(config.telegram.botToken);
   const log = getLogger();
 
@@ -36,7 +36,7 @@ export function createBot(): Bot {
     await next();
   });
 
-  registerCommands(bot);
+  await registerCommands(bot);
 
   // Handle text messages
   bot.on("message:text", async (ctx) => {
