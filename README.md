@@ -48,6 +48,24 @@ docker compose logs -f  # view logs
 
 This path assumes a direct Ubuntu host install under `/opt/neo` and a `systemd` service running as the `neo` user.
 
+Recommended first-time setup:
+
+```bash
+./deploy/setup-ubuntu.sh
+```
+
+The script will prompt for the service name, install directory, and app user, then:
+
+- install the `systemd` unit
+- sync the repo into the install directory
+- optionally create and open `.env`
+- run `npm ci` and `npm run build`
+- install Playwright Ubuntu deps and Chromium
+- run preflight checks
+- optionally enable and start the service
+
+Manual equivalent:
+
 ```bash
 sudo ./deploy/install-systemd.sh
 
@@ -86,6 +104,7 @@ Notes:
 | `/status` | Show runtime status and restart state |
 | `/audit [week\|tool]` | Tool usage statistics |
 | `/cost [week\|month]` | Token usage and estimated costs |
+| `/channel [label\|topics] [value]` | Channel config (groups only) |
 | `/restart` | Restart Neo |
 | `/help` | Show all commands |
 
