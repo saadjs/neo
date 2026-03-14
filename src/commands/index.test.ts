@@ -11,6 +11,7 @@ vi.mock("./log.js", () => ({ handleLogLevel: vi.fn() }));
 vi.mock("./soul.js", () => ({ handleSoul: vi.fn() }));
 vi.mock("./restart.js", () => ({ handleRestart: vi.fn() }));
 vi.mock("./status.js", () => ({ handleStatus: vi.fn() }));
+vi.mock("./usage.js", () => ({ handleUsage: vi.fn() }));
 vi.mock("./audit.js", () => ({ handleAudit: vi.fn() }));
 vi.mock("./cost.js", () => ({ handleCost: vi.fn() }));
 vi.mock("./channel.js", () => ({ handleChannel: vi.fn() }));

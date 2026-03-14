@@ -110,6 +110,7 @@ Notes:
 | `/loglevel <level>` | Set log verbosity (error/warn/info/debug/trace) |
 | `/soul` | Show current persona |
 | `/status` | Show runtime status and restart state |
+| `/usage` | Show remaining monthly GitHub Copilot usage |
 | `/audit [week\|tool]` | Tool usage statistics |
 | `/cost [week\|month]` | Token usage and estimated costs |
 | `/channel [label\|topics] [value]` | Channel config (groups only) |

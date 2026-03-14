@@ -45,6 +45,10 @@ export const commandDefinitions = [
     description: "Show runtime status",
   },
   {
+    command: "usage",
+    description: "Show Copilot monthly usage",
+  },
+  {
     command: "audit",
     description: "Tool usage stats",
     usage: "[week|tool]",
