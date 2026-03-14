@@ -62,10 +62,12 @@ sudo journalctl -u neo -f  # view logs
 | `/new` | Start a fresh conversation |
 | `/model <name>` | Switch the model for the current chat only |
 | `/sessions` | List active sessions |
-| `/memory [query]` | View or search memory |
+| `/memory [query]` | View or search memory (supports `#tag` filter, `recent N`) |
 | `/loglevel <level>` | Set log verbosity (error/warn/info/debug/trace) |
 | `/soul` | Show current persona |
 | `/status` | Show runtime status and restart state |
+| `/audit [week\|tool]` | Tool usage statistics |
+| `/cost [week\|month]` | Token usage and estimated costs |
 | `/restart` | Restart Neo |
 | `/help` | Show all commands |
 
@@ -73,44 +75,60 @@ sudo journalctl -u neo -f  # view logs
 
 ## Tools
 
-Neo combines Copilot runtime tools with these custom tools:
+Neo registers these custom tools alongside the Copilot SDK's built-in capabilities (shell, filesystem, GitHub):
 
-- **run_shell** — Execute shell commands
 - **browser** — Automate websites with persistent Playwright sessions, screenshots, and stored credentials
 - **web_search** — Search the web via DuckDuckGo
-- **google_workspace** — Google Workspace CLI wrapper
-- **memory** — Read/write/search memory files
-- **reminder** — Create, list, and cancel scheduled reminders
-- **job** — Manage recurring AI jobs
+- **google_workspace** — Google Workspace CLI wrapper (Gmail, Calendar, Drive, Sheets)
+- **memory** — Read/write/append/search memory files
+- **reminder** — Create, list, and cancel scheduled reminders (once, daily, weekly, monthly, weekdays)
+- **job** — Manage recurring AI jobs on cron schedules
 - **conversation** — Search prior chats and retrieve recent history
-- **filesystem** — Full filesystem access
-- **system** — Explain status, inspect settings, apply safe config changes, restart
-
-GitHub operations are handled natively by the Copilot SDK agent runtime.
+- **system** — Inspect settings, apply safe config changes, restart
 
 ## Memory
 
 - `data/SOUL.md` — Neo's persona (editable by Neo)
 - `data/PREFERENCES.md` — Learned user preferences
+- `data/HUMAN.md` — Facts about the user
 - `data/memory/MEMORY-yyyy-mm-dd.md` — Daily memory logs
+- `data/memory/MEMORY-SUMMARY-yyyy-Wnn.md` — Weekly memory summaries
 
-Neo also auto-compacts long conversations before they fall out of context. When the Copilot session reaches the configured context threshold, the SDK creates a session summary in the background, Neo stores that summary in the current daily memory file, and the session can be resumed after a bot restart.
+Neo auto-compacts long conversations before they fall out of context. Session summaries are stored in the daily memory file and auto-tagged with topics. A weekly decay job (Sundays 3 AM UTC) compacts old daily entries into weekly summaries. All memory content is indexed for full-text search.
+
+## Voice Messages
+
+Send a voice message in Telegram and Neo will transcribe it via Deepgram and respond. Requires `DEEPGRAM_API_KEY` in `.env`.
 
 ## Environment Variables
 
 See [`.env.example`](.env.example) for all options.
 
-Browser credentials are supplied through `NEO_BROWSER_CREDENTIALS_JSON`, for example:
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `TELEGRAM_BOT_TOKEN` | Yes | From @BotFather |
+| `TELEGRAM_OWNER_ID` | Yes | Your Telegram user ID |
+| `GITHUB_TOKEN` | Yes | GitHub PAT with Copilot access |
+| `DEEPGRAM_API_KEY` | No | Enable voice transcription |
+| `NEO_BROWSER_HEADLESS` | No | Browser mode (default: `true`) |
+| `NEO_BROWSER_LAUNCH_ARGS` | No | Extra Chromium flags |
+| `NEO_BROWSER_CREDENTIALS_JSON` | No | Stored login credentials (JSON) |
+
+Browser credentials format:
 
 ```json
 {"github":{"username":"neo@example.com","password":"super-secret"}}
 ```
 
+## Observability
+
+- **Tool auditing** — every tool invocation is logged with timing and success/failure status
+- **Cost tracking** — token usage per model with estimated costs
+- **Anomaly detection** — 3+ consecutive tool failures trigger alerts in system context
+
 ## Autonomy
 
-Neo now maintains a managed runtime state snapshot in `data/runtime-state.json`, records config changes in `data/config-history.jsonl`, and records restart requests/results in `data/restart-history.jsonl`.
-
-Mutable application settings live in `data/config.json`. Secrets stay in `.env`.
+Mutable application settings live in `data/config.json`. Secrets stay in `.env`. Config changes and restart requests are recorded in `data/config-history.jsonl` and `data/restart-history.jsonl`.
 
 Safe autonomous config updates are limited to:
 
