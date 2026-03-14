@@ -7,10 +7,11 @@ import {
   renameSync,
   writeFileSync,
 } from "node:fs";
+import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 
 const PROJECT_ROOT = resolve(".");
-const DEFAULT_SKILL_DIR = join(PROJECT_ROOT, "skills");
+const DEFAULT_SKILL_DIRS = [join(PROJECT_ROOT, "skills"), join(homedir(), ".agents", "skills")];
 const LOG_LEVELS = ["error", "warn", "info", "debug", "trace"] as const;
 
 export type LogLevel = (typeof LOG_LEVELS)[number];
@@ -145,7 +146,9 @@ export function parseBrowserCredentials(
 }
 
 function defaultSkillDirectories() {
-  return existsSync(DEFAULT_SKILL_DIR) ? [DEFAULT_SKILL_DIR] : [];
+  return DEFAULT_SKILL_DIRS.filter(
+    (dir, index, dirs) => existsSync(dir) && dirs.indexOf(dir) === index,
+  );
 }
 
 export const managedConfigDefinitions: Record<

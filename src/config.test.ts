@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -21,6 +21,7 @@ const ENV_KEYS = [
   "NEO_BROWSER_LAUNCH_ARGS",
   "NEO_SYSTEMD_UNIT",
   "NEO_SYSTEMCTL_SCOPE",
+  "HOME",
 ] as const;
 
 let tempDirs: string[] = [];
@@ -66,16 +67,18 @@ describe("parseBrowserCredentials", () => {
     });
   });
 
-  it("defaults skill directories to an empty list when the local skills directory is absent", async () => {
+  it("defaults skill directories to an empty list when built-in skill directories are absent", async () => {
     const dataDir = mkdtempSync(join(tmpdir(), "neo-config-test-"));
     const logDir = mkdtempSync(join(tmpdir(), "neo-config-test-"));
-    tempDirs.push(dataDir, logDir);
+    const homeDir = mkdtempSync(join(tmpdir(), "neo-home-test-"));
+    tempDirs.push(dataDir, logDir, homeDir);
 
     for (const [key, value] of Object.entries(REQUIRED_ENV)) {
       vi.stubEnv(key, value);
     }
     vi.stubEnv("NEO_DATA_DIR", dataDir);
     vi.stubEnv("NEO_LOG_DIR", logDir);
+    vi.stubEnv("HOME", homeDir);
 
     const { config } = await import("./config.js");
 
@@ -85,6 +88,33 @@ describe("parseBrowserCredentials", () => {
       NEO_SKILL_DIRS: string[];
     };
     expect(persistedConfig.NEO_SKILL_DIRS).toEqual([]);
+  });
+
+  it("includes ~/.agents/skills as a default skill directory when present", async () => {
+    const dataDir = mkdtempSync(join(tmpdir(), "neo-config-test-"));
+    const logDir = mkdtempSync(join(tmpdir(), "neo-config-test-"));
+    const homeDir = mkdtempSync(join(tmpdir(), "neo-home-test-"));
+    const userSkillsDir = join(homeDir, ".agents", "skills");
+    tempDirs.push(dataDir, logDir, homeDir);
+
+    mkdirSync(userSkillsDir, { recursive: true });
+    writeFileSync(join(userSkillsDir, ".keep"), "", { encoding: "utf-8", flag: "w" });
+
+    for (const [key, value] of Object.entries(REQUIRED_ENV)) {
+      vi.stubEnv(key, value);
+    }
+    vi.stubEnv("NEO_DATA_DIR", dataDir);
+    vi.stubEnv("NEO_LOG_DIR", logDir);
+    vi.stubEnv("HOME", homeDir);
+
+    const { config } = await import("./config.js");
+
+    expect(config.copilot.skillDirectories).toEqual([userSkillsDir]);
+
+    const persistedConfig = JSON.parse(readFileSync(join(dataDir, "config.json"), "utf-8")) as {
+      NEO_SKILL_DIRS: string[];
+    };
+    expect(persistedConfig.NEO_SKILL_DIRS).toEqual([userSkillsDir]);
   });
 
   it("preserves configured skill directories from config.json", async () => {
