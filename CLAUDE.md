@@ -37,7 +37,7 @@ Telegram message → bot.ts (grammY middleware) → agent.ts (getOrCreateSession
 
 1. **bot.ts** — grammY bot. Owner-only middleware. Handles text, photos, documents, voice. Manages typing indicators and a live progress message (thinking → reasoning → tool → done). Listens to session events for tool execution, compaction, and reasoning.
 2. **agent.ts** — Manages `CopilotClient` lifecycle and a `Map<chatId, CopilotSession>`. Sessions are created or resumed per chat. Handles model overrides (per-chat and default), stale session cleanup, and turn tracking. Builds session config via `buildSessionConfig()`.
-3. **config.ts** — All configuration. Env vars for secrets, a managed config file (`data/config.json`) for runtime-tunable settings (model, log level, compaction thresholds, skill dirs). Managed config supports backups, validation, and safe restoration.
+3. **config.ts** — All configuration. Env vars for secrets, a managed config file under `NEO_DATA_DIR` (default: `~/.neo/config.json`) for runtime-tunable settings (model, log level, compaction thresholds, skill dirs). Managed config supports backups, validation, and safe restoration.
 
 ### Copilot SDK Integration (agent.ts → buildSessionConfig)
 
@@ -103,10 +103,10 @@ Hook types are re-derived from `SessionConfig["hooks"]` in `src/hooks/types.ts` 
 ### Memory System (src/memory/)
 
 System prompt is built by `buildSystemContext(chatId)` which assembles:
-- `data/SOUL.md` — Persona (editable by Neo)
-- `data/HUMAN.md` — Facts about the user
-- `data/PREFERENCES.md` — User preferences
-- `data/memory/MEMORY-yyyy-mm-dd.md` — Daily logs
+- `$NEO_DATA_DIR/SOUL.md` — Persona (editable by Neo)
+- `$NEO_DATA_DIR/HUMAN.md` — Facts about the user
+- `$NEO_DATA_DIR/PREFERENCES.md` — User preferences
+- `$NEO_DATA_DIR/memory/MEMORY-yyyy-mm-dd.md` — Daily logs
 - Weekly summaries from memory decay (`decay.ts`)
 - Channel-scoped overlays (soul, preferences, topics, memory)
 - Runtime context and anomalies

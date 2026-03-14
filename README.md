@@ -166,7 +166,7 @@ Notes:
 | `/restart` | Restart Neo |
 | `/help` | Show all commands |
 
-`/model` opens a clickable picker sourced from your Copilot account's available models (cached daily). `/model <name>` still sets a chat-specific model override directly. `/whichmodel` reports the default model and this chat's current active model. `/new` starts a fresh session but keeps that chat-specific override if one exists; otherwise it uses Neo's default model from `data/config.json`.
+`/model` opens a clickable picker sourced from your Copilot account's available models (cached daily). `/model <name>` still sets a chat-specific model override directly. `/whichmodel` reports the default model and this chat's current active model. `/new` starts a fresh session but keeps that chat-specific override if one exists; otherwise it uses Neo's default model from the managed runtime config in `NEO_DATA_DIR` (default: `$HOME/.neo/config.json`).
 
 ## Tools
 
@@ -181,11 +181,11 @@ Neo registers these custom tools alongside the Copilot SDK's built-in capabiliti
 
 ## Memory
 
-- `data/SOUL.md` — Neo's persona (editable by Neo)
-- `data/PREFERENCES.md` — Learned user preferences
-- `data/HUMAN.md` — Facts about the user
-- `data/memory/MEMORY-yyyy-mm-dd.md` — Daily memory logs
-- `data/memory/MEMORY-SUMMARY-yyyy-Wnn.md` — Weekly memory summaries
+- `$NEO_DATA_DIR/SOUL.md` — Neo's persona (editable by Neo)
+- `$NEO_DATA_DIR/PREFERENCES.md` — Learned user preferences
+- `$NEO_DATA_DIR/HUMAN.md` — Facts about the user
+- `$NEO_DATA_DIR/memory/MEMORY-yyyy-mm-dd.md` — Daily memory logs
+- `$NEO_DATA_DIR/memory/MEMORY-SUMMARY-yyyy-Wnn.md` — Weekly memory summaries
 
 Neo auto-compacts long conversations before they fall out of context. Session summaries are stored in the daily memory file and auto-tagged with topics. A weekly decay job (Sundays 3 AM UTC) compacts old daily entries into weekly summaries. All memory content is indexed for full-text search.
 
@@ -227,7 +227,7 @@ Browser credentials format:
 
 ## Autonomy
 
-Mutable application settings live in `data/config.json`. Secrets stay in `.env`. Config changes and restart requests are recorded in `data/config-history.jsonl` and `data/restart-history.jsonl`.
+Mutable application settings live in `$NEO_DATA_DIR/config.json` (default: `$HOME/.neo/config.json`). Secrets stay in `.env`. Config changes and restart requests are recorded in `$NEO_DATA_DIR/config-history.jsonl` and `$NEO_DATA_DIR/restart-history.jsonl`.
 
 Safe autonomous config updates are limited to:
 

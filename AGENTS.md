@@ -33,7 +33,7 @@ Telegram message → `bot.ts` (grammY middleware) → `agent.ts` (getOrCreateSes
 
 - **bot.ts** — grammY bot with owner-only middleware. Handles text, photos, documents, voice. Manages typing indicators and live progress messages. Listens to session events for tool execution, compaction, and reasoning.
 - **agent.ts** — Manages `CopilotClient` lifecycle and a `Map<chatId, CopilotSession>`. Sessions are created or resumed per chat. Builds session config with `systemMessage: { mode: "replace" }` (full prompt from memory files), `onPermissionRequest: approveAll`, custom tools, hooks, infinite sessions, and skill directories.
-- **config.ts** — Env vars for secrets, managed config file (`data/config.json`) for runtime-tunable settings (model, log level, compaction thresholds, skill dirs).
+- **config.ts** — Env vars for secrets, managed config file under `NEO_DATA_DIR` (default: `~/.neo/config.json`) for runtime-tunable settings (model, log level, compaction thresholds, skill dirs).
 
 ### Copilot CLI Built-in Tools
 
