@@ -1,0 +1,252 @@
+import { getLogger } from "../logging/index.js";
+import { getTelegramApi } from "./runtime.js";
+
+interface UserInputRequest {
+  question: string;
+  choices?: string[];
+  allowFreeform?: boolean;
+}
+
+interface UserInputResponse {
+  answer: string;
+  wasFreeform: boolean;
+}
+
+export class PendingUserInputCancelledError extends Error {
+  constructor(message = "User input request cancelled.") {
+    super(message);
+    this.name = "PendingUserInputCancelledError";
+  }
+}
+
+export interface PendingUserInput {
+  chatId: number;
+  sessionId: string;
+  question: string;
+  choices?: string[];
+  allowFreeform: boolean;
+  createdAt: number;
+  promptMessageId?: number;
+}
+
+type PendingUserInputState = PendingUserInput & {
+  resolve: (value: UserInputResponse) => void;
+  reject: (reason: Error) => void;
+};
+
+type PendingUserInputListener = (pending?: PendingUserInput) => void;
+
+const pendingInputs = new Map<number, PendingUserInputState>();
+const listeners = new Map<number, Set<PendingUserInputListener>>();
+
+function toPublicPending(state: PendingUserInputState): PendingUserInput {
+  return {
+    chatId: state.chatId,
+    sessionId: state.sessionId,
+    question: state.question,
+    choices: state.choices,
+    allowFreeform: state.allowFreeform,
+    createdAt: state.createdAt,
+    promptMessageId: state.promptMessageId,
+  };
+}
+
+function emit(chatId: number) {
+  const handlers = listeners.get(chatId);
+  if (!handlers || handlers.size === 0) return;
+
+  const pending = getPendingUserInput(chatId);
+  for (const handler of handlers) {
+    handler(pending);
+  }
+}
+
+function buildQuestionMessage(request: UserInputRequest): string {
+  const lines = ["Need your input to continue:", "", request.question.trim()];
+  if (request.choices?.length) {
+    lines.push("", "Choices:");
+    for (const choice of request.choices) {
+      lines.push(`- ${choice}`);
+    }
+  }
+
+  if (request.allowFreeform === false && request.choices?.length) {
+    lines.push("", "Reply with one of the choices above.");
+  } else {
+    lines.push("", "Reply with your answer in your next text message.");
+  }
+
+  return lines.join("\n");
+}
+
+function normalizeAnswer(answer: string): string {
+  return answer.trim();
+}
+
+function choiceMatches(choice: string, answer: string): boolean {
+  return choice.trim().toLowerCase() === answer.trim().toLowerCase();
+}
+
+export function getPendingUserInput(chatId: number): PendingUserInput | undefined {
+  const pending = pendingInputs.get(chatId);
+  return pending ? toPublicPending(pending) : undefined;
+}
+
+export function watchPendingUserInput(
+  chatId: number,
+  handler: PendingUserInputListener,
+): () => void {
+  const handlers = listeners.get(chatId) ?? new Set<PendingUserInputListener>();
+  handlers.add(handler);
+  listeners.set(chatId, handlers);
+
+  return () => {
+    const nextHandlers = listeners.get(chatId);
+    if (!nextHandlers) return;
+    nextHandlers.delete(handler);
+    if (nextHandlers.size === 0) {
+      listeners.delete(chatId);
+    }
+  };
+}
+
+export async function requestUserInput(
+  chatId: number,
+  sessionId: string,
+  request: UserInputRequest,
+): Promise<UserInputResponse> {
+  const pending = pendingInputs.get(chatId);
+  if (pending) {
+    return {
+      answer:
+        "User input is already pending in this chat. Do not ask another question until that answer arrives.",
+      wasFreeform: true,
+    };
+  }
+
+  const api = getTelegramApi();
+  if (!api) {
+    throw new Error("Telegram API not initialized for ask_user.");
+  }
+
+  return new Promise<UserInputResponse>((resolve, reject) => {
+    const state: PendingUserInputState = {
+      chatId,
+      sessionId,
+      question: request.question,
+      choices: request.choices,
+      allowFreeform: request.allowFreeform !== false,
+      createdAt: Date.now(),
+      promptMessageId: undefined,
+      resolve: (value) => {
+        pendingInputs.delete(chatId);
+        emit(chatId);
+        resolve(value);
+      },
+      reject: (reason) => {
+        pendingInputs.delete(chatId);
+        emit(chatId);
+        reject(reason);
+      },
+    };
+
+    pendingInputs.set(chatId, state);
+    emit(chatId);
+
+    void api
+      .sendMessage(chatId, buildQuestionMessage(request))
+      .then((message) => {
+        const activeState = pendingInputs.get(chatId);
+        if (activeState !== state) return;
+
+        activeState.promptMessageId = message.message_id;
+        emit(chatId);
+        getLogger().info(
+          { chatId, sessionId, messageId: message.message_id },
+          "Sent ask_user prompt",
+        );
+      })
+      .catch((error: unknown) => {
+        const activeState = pendingInputs.get(chatId);
+        if (activeState !== state) return;
+        activeState.reject(
+          error instanceof Error
+            ? error
+            : new Error(`Failed to send ask_user prompt: ${String(error)}`),
+        );
+      });
+  });
+}
+
+export function resolvePendingUserInput(
+  chatId: number,
+  answer: string,
+): UserInputResponse | undefined {
+  const pending = pendingInputs.get(chatId);
+  if (!pending) return undefined;
+
+  const normalizedAnswer = normalizeAnswer(answer);
+  const matchedChoice = pending.choices?.find((choice) => choiceMatches(choice, normalizedAnswer));
+  if (!pending.allowFreeform && pending.choices?.length && !matchedChoice) {
+    return undefined;
+  }
+
+  const wasFreeform = !matchedChoice;
+
+  pending.resolve({
+    answer: matchedChoice ?? normalizedAnswer,
+    wasFreeform,
+  });
+
+  return {
+    answer: matchedChoice ?? normalizedAnswer,
+    wasFreeform,
+  };
+}
+
+export async function cancelPendingUserInput(
+  chatId: number,
+  reason: string,
+  opts?: { notifyUser?: boolean },
+): Promise<boolean> {
+  const pending = pendingInputs.get(chatId);
+  if (!pending) return false;
+
+  pending.reject(new PendingUserInputCancelledError(reason));
+  getLogger().info({ chatId, sessionId: pending.sessionId, reason }, "Cancelled pending ask_user");
+
+  if (opts?.notifyUser) {
+    const api = getTelegramApi();
+    if (api) {
+      try {
+        await api.sendMessage(chatId, reason);
+      } catch (err) {
+        getLogger().warn({ err, chatId }, "Failed to send ask_user cancellation notice");
+      }
+    }
+  }
+
+  return true;
+}
+
+export async function cancelPendingUserInputForSession(
+  chatId: number,
+  sessionId: string,
+  reason: string,
+  opts?: { notifyUser?: boolean },
+): Promise<boolean> {
+  const pending = pendingInputs.get(chatId);
+  if (!pending || pending.sessionId !== sessionId) return false;
+
+  return cancelPendingUserInput(chatId, reason, opts);
+}
+
+export async function cancelAllPendingUserInputs(
+  reason: string,
+  opts?: { notifyUser?: boolean },
+): Promise<void> {
+  const chatIds = Array.from(pendingInputs.keys());
+  for (const chatId of chatIds) {
+    await cancelPendingUserInput(chatId, reason, opts);
+  }
+}
