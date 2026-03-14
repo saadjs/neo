@@ -1,11 +1,11 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import type { ModelInfo } from "@github/copilot-sdk";
+import { getClient } from "../agent.js";
 import { config } from "../config.js";
 
-const MODEL_CATALOG_URL = "https://models.github.ai/catalog/models";
-const MODEL_CATALOG_API_VERSION = "2026-03-10";
 const MODEL_CATALOG_TTL_MS = 24 * 60 * 60 * 1000;
-const MODEL_CATALOG_CACHE_FILE = join(config.paths.data, "github-models-cache.json");
+const MODEL_CATALOG_CACHE_FILE = join(config.paths.data, "copilot-models-cache.json");
 
 export interface AvailableModel {
   id: string;
@@ -55,41 +55,27 @@ async function writeModelCatalogCache(cache: ModelCatalogCache): Promise<void> {
   await writeFile(MODEL_CATALOG_CACHE_FILE, `${JSON.stringify(cache, null, 2)}\n`, "utf-8");
 }
 
-function normalizeModel(value: unknown): AvailableModel | null {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+function normalizeModel(value: ModelInfo): AvailableModel | null {
+  if (!value || typeof value !== "object") return null;
+  if (value.policy?.state === "disabled") return null;
 
-  const candidate = value as Record<string, unknown>;
-  if (typeof candidate.id !== "string" || !candidate.id.trim()) return null;
+  const id = value.id.trim();
+  if (!id) return null;
 
-  const id = candidate.id.trim();
-  const label =
-    typeof candidate.name === "string" && candidate.name.trim() ? candidate.name.trim() : id;
-
+  const label = value.name.trim() || id;
   return { id, label };
 }
 
-async function fetchModelCatalogFromGithub(): Promise<ModelCatalogCache> {
-  const response = await fetch(MODEL_CATALOG_URL, {
-    headers: {
-      Authorization: `Bearer ${config.github.token}`,
-      "X-GitHub-Api-Version": MODEL_CATALOG_API_VERSION,
-      Accept: "application/json",
-      "User-Agent": "Neo/1.0",
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`GitHub models request failed with status ${response.status}`);
+async function fetchModelCatalogFromCopilot(): Promise<ModelCatalogCache> {
+  const client = getClient();
+  if (!client) {
+    throw new Error("Copilot client is not started");
   }
 
-  const payload = (await response.json()) as unknown;
-  if (!Array.isArray(payload)) {
-    throw new Error("GitHub models response was not an array");
-  }
-
+  const payload = await client.listModels();
   const models = payload.map(normalizeModel).filter((value) => value !== null);
   if (models.length === 0) {
-    throw new Error("GitHub models response did not contain any usable models");
+    throw new Error("Copilot models response did not contain any usable models");
   }
 
   return {
@@ -121,7 +107,7 @@ export async function loadModelCatalog(options?: {
   }
 
   try {
-    const fresh = await fetchModelCatalogFromGithub();
+    const fresh = await fetchModelCatalogFromCopilot();
     await writeModelCatalogCache(fresh);
     return {
       fetchedAt: fresh.fetchedAt,

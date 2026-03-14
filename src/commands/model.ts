@@ -224,14 +224,13 @@ export async function handleModelCallback(ctx: Context): Promise<boolean> {
 
       await switchModel(ctx.chat.id, selected.id);
       picker.currentModel = selected.id;
+      modelPickers.delete(parsed.pickerId);
 
-      const page = Math.floor(parsed.index / MODELS_PER_PAGE);
-      const nextMessage = getModelPickerMessage(parsed.pickerId, page);
-      if (nextMessage) {
-        await ctx.api.editMessageText(ctx.chat.id, message.message_id, nextMessage.text, {
-          reply_markup: nextMessage.reply_markup,
-        });
-      }
+      await ctx.api.editMessageText(
+        ctx.chat.id,
+        message.message_id,
+        `✅ Session model switched to ${selected.id} for this chat.`,
+      );
       await ctx.answerCallbackQuery({ text: `Switched to ${selected.id}` });
       return true;
     }
