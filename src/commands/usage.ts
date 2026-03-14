@@ -21,6 +21,28 @@ function buildQuotaLine(label: string, quota: CopilotQuotaSnapshot | null): stri
   return `${label}: ${formatPercent(quota.percentRemaining)} remaining`;
 }
 
+function formatResetTime(isoDate: string, timeZone: string): string {
+  const date = new Date(isoDate);
+
+  const localFormatter = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+
+  const utcFormatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "UTC",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+
+  return `${localFormatter.format(date)} ET (${utcFormatter.format(date)} UTC)`;
+}
+
 export function buildUsageMessage(model: string, usage: CopilotUsageSnapshot): string {
   const lines = ["📈 Copilot Usage", "", `Model: ${model}`];
 
@@ -44,6 +66,9 @@ export function buildUsageMessage(model: string, usage: CopilotUsageSnapshot): s
   }
 
   lines.push(`Resets in: ${usage.resetsIn}`);
+  if (usage.resetAt) {
+    lines.push(`Reset time: ${formatResetTime(usage.resetAt, "America/New_York")}`);
+  }
 
   return lines.join("\n");
 }

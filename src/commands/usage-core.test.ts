@@ -18,8 +18,11 @@ import { fetchCopilotUsage, formatDuration, parseCopilotUsageSnapshot } from "./
 describe("usage-core", () => {
   it("formats reset countdowns", () => {
     expect(formatDuration(0)).toBe("now");
-    expect(formatDuration(61)).toBe("1m");
-    expect(formatDuration(3660)).toBe("1h 1m");
+    expect(formatDuration(61)).toBe("1 minute");
+    expect(formatDuration(3660)).toBe("1 hour 1 minute");
+    expect(formatDuration(86_400 * 18)).toBe("18 days");
+    expect(formatDuration(86_400 * 18 + 4 * 60)).toBe("18 days 4 minutes");
+    expect(formatDuration(30)).toBe("<1 minute");
   });
 
   it("parses copilot quota snapshots with direct percentages", () => {
@@ -46,7 +49,8 @@ describe("usage-core", () => {
         remaining: null,
         entitlement: null,
       },
-      resetsIn: "7d",
+      resetsIn: "7 days",
+      resetAt: "2026-03-20T00:00:00.000Z",
       plan: "individual",
     });
   });
@@ -71,7 +75,8 @@ describe("usage-core", () => {
         remaining: 250,
         entitlement: 500,
       },
-      resetsIn: "19d",
+      resetsIn: "19 days",
+      resetAt: "2026-04-01T00:00:00.000Z",
       plan: null,
     });
   });
@@ -126,7 +131,8 @@ describe("usage-core", () => {
           entitlement: null,
         },
         chat: null,
-        resetsIn: "19d",
+        resetsIn: "19 days",
+        resetAt: "2026-04-01T00:00:00.000Z",
         plan: null,
       },
     });
@@ -145,11 +151,12 @@ describe("usage-core", () => {
           remaining: 250,
           entitlement: 500,
         },
-        resetsIn: "19d",
+        resetsIn: "19 days",
+        resetAt: "2026-04-01T00:00:00.000Z",
         plan: "individual",
       }),
     ).toBe(
-      "📈 Copilot Usage\n\nModel: gpt-4.1\nPlan: individual\n\nPremium interactions: 400 / 1000 remaining (40%)\nChat: 250 / 500 remaining (50%)\nResets in: 19d",
+      "📈 Copilot Usage\n\nModel: gpt-4.1\nPlan: individual\n\nPremium interactions: 400 / 1000 remaining (40%)\nChat: 250 / 500 remaining (50%)\nResets in: 19 days\nReset time: Mar 31, 8:00 PM ET (Apr 1, 12:00 AM UTC)",
     );
   });
 });

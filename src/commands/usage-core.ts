@@ -8,6 +8,7 @@ export interface CopilotUsageSnapshot {
   premiumInteractions: CopilotQuotaSnapshot | null;
   chat: CopilotQuotaSnapshot | null;
   resetsIn: string;
+  resetAt: string | null;
   plan: string | null;
 }
 
@@ -88,12 +89,17 @@ export function formatDuration(seconds: number): string {
   const hours = Math.floor((seconds % 86_400) / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
 
-  if (days > 0 && hours > 0) return `${days}d ${hours}h`;
-  if (days > 0) return `${days}d`;
-  if (hours > 0 && minutes > 0) return `${hours}h ${minutes}m`;
-  if (hours > 0) return `${hours}h`;
-  if (minutes > 0) return `${minutes}m`;
-  return "<1m";
+  const formatPart = (value: number, unit: string): string =>
+    `${value} ${unit}${value === 1 ? "" : "s"}`;
+
+  const parts = [
+    days > 0 ? formatPart(days, "day") : null,
+    hours > 0 ? formatPart(hours, "hour") : null,
+    minutes > 0 ? formatPart(minutes, "minute") : null,
+  ].filter(Boolean);
+
+  if (parts.length > 0) return parts.slice(0, 2).join(" ");
+  return "<1 minute";
 }
 
 export function formatResetsAt(isoDate: string, nowMs = Date.now()): string {
@@ -109,15 +115,18 @@ function nextUtcMonthBoundaryMs(nowMs = Date.now()): number {
   return Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1, 0, 0, 0, 0);
 }
 
-function copilotResetCountdown(data: Record<string, unknown>, nowMs = Date.now()): string {
+function resolveCopilotResetAt(data: Record<string, unknown>, nowMs = Date.now()): string {
   const quotaResetDate = data.quota_reset_date;
   if (typeof quotaResetDate === "string") {
-    const formatted = formatResetsAt(quotaResetDate, nowMs);
-    if (formatted) return formatted;
+    const parsed = new Date(quotaResetDate).getTime();
+    if (Number.isFinite(parsed)) return new Date(parsed).toISOString();
   }
 
-  const nextBoundary = nextUtcMonthBoundaryMs(nowMs);
-  return formatDuration(Math.max(0, (nextBoundary - nowMs) / 1000));
+  return new Date(nextUtcMonthBoundaryMs(nowMs)).toISOString();
+}
+
+function copilotResetCountdown(resetAt: string, nowMs = Date.now()): string {
+  return formatResetsAt(resetAt, nowMs);
 }
 
 function readPercentRemaining(snapshot: Record<string, unknown>): number | null {
@@ -191,7 +200,8 @@ export function parseCopilotUsageSnapshot(
   return {
     premiumInteractions,
     chat,
-    resetsIn: copilotResetCountdown(record, nowMs),
+    resetAt: resolveCopilotResetAt(record, nowMs),
+    resetsIn: copilotResetCountdown(resolveCopilotResetAt(record, nowMs), nowMs),
     plan: typeof record.copilot_plan === "string" ? record.copilot_plan : null,
   };
 }
