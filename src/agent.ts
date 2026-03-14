@@ -1,3 +1,5 @@
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import { CopilotClient, CopilotSession, approveAll } from "@github/copilot-sdk";
 import { config } from "./config.js";
 import { allTools } from "./tools/index.js";
@@ -15,6 +17,37 @@ const sessions = new Map<number, CopilotSession>();
 const sessionModels = new Map<number, string>();
 const activeSessionTurns = new Map<number, number>();
 const staleSessions = new Map<number, Set<CopilotSession>>();
+const SESSION_MODEL_OVERRIDES_FILE = join(config.paths.data, "session-model-overrides.json");
+
+async function loadSessionModelOverrides(): Promise<void> {
+  try {
+    const raw = await readFile(SESSION_MODEL_OVERRIDES_FILE, "utf-8");
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return;
+    }
+
+    sessionModels.clear();
+    for (const [chatId, model] of Object.entries(parsed as Record<string, unknown>)) {
+      if (typeof model !== "string" || !model.trim()) continue;
+      const numericChatId = Number(chatId);
+      if (!Number.isInteger(numericChatId)) continue;
+      sessionModels.set(numericChatId, model.trim());
+    }
+  } catch {
+    // no persisted overrides yet
+  }
+}
+
+async function persistSessionModelOverrides(): Promise<void> {
+  const payload: Record<string, string> = {};
+  for (const [chatId, model] of sessionModels) {
+    payload[String(chatId)] = model;
+  }
+
+  await mkdir(dirname(SESSION_MODEL_OVERRIDES_FILE), { recursive: true });
+  await writeFile(SESSION_MODEL_OVERRIDES_FILE, `${JSON.stringify(payload, null, 2)}\n`, "utf-8");
+}
 
 export async function startAgent(): Promise<CopilotClient> {
   const log = getLogger();
@@ -25,7 +58,8 @@ export async function startAgent(): Promise<CopilotClient> {
   });
 
   await client.start();
-  log.info("Copilot SDK client started");
+  await loadSessionModelOverrides();
+  log.info({ overrides: sessionModels.size }, "Copilot SDK client started");
   return client;
 }
 
@@ -75,10 +109,14 @@ export async function getOrCreateSession(opts: CreateSessionOptions): Promise<Co
         previousSessionId,
         await buildSessionConfig(opts.chatId),
       );
+
+      const desiredModel = sessionModels.get(opts.chatId) ?? config.copilot.model;
+      await resumed.setModel(desiredModel);
+
       sessions.set(opts.chatId, resumed);
       setActiveSession(opts.chatId, resumed.sessionId);
       getLogger().info(
-        { chatId: opts.chatId, sessionId: resumed.sessionId },
+        { chatId: opts.chatId, sessionId: resumed.sessionId, model: desiredModel },
         "Resumed Copilot session",
       );
       return resumed;
@@ -129,6 +167,12 @@ export async function createNewSession(opts: CreateSessionOptions): Promise<Copi
 
 export async function switchModel(chatId: number, model: string): Promise<void> {
   sessionModels.set(chatId, model);
+  try {
+    await persistSessionModelOverrides();
+  } catch (err) {
+    getLogger().warn({ chatId, err }, "Failed to persist model overrides");
+  }
+
   const session = sessions.get(chatId);
   if (session) {
     await session.setModel(model);

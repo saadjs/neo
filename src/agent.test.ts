@@ -49,6 +49,7 @@ vi.mock("./config.js", () => ({
     },
     paths: {
       root: "/tmp/neo",
+      data: "/tmp/neo-data",
     },
   },
 }));
