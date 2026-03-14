@@ -40,8 +40,8 @@ export interface RestartRecord {
   source: "tool" | "command" | "startup";
   reason: string;
   chatId?: number;
-  mode: "systemctl" | "process-exit" | "startup-detected";
-  status: "requested" | "completed" | "failed";
+  mode: "process-exit" | "startup-detected";
+  status: "requested" | "completed";
   detail?: string;
 }
 
@@ -428,45 +428,15 @@ export async function restartService(params: {
     source: params.source,
     reason: params.reason,
     chatId: params.chatId,
-    mode: "systemctl",
+    mode: "process-exit",
     status: "requested",
   } satisfies RestartRecord);
 
-  const args =
-    config.service.systemctlScope === "user"
-      ? ["--user", "restart", config.service.systemdUnit]
-      : ["restart", config.service.systemdUnit];
-
-  try {
-    await execFileAsync("systemctl", args);
-    setTimeout(() => process.exit(0), 250);
-    return {
-      message: `Restart requested via systemctl for ${config.service.systemdUnit}.`,
-      mode: "systemctl" as const,
-    };
-  } catch (error) {
-    const detail =
-      (error as { stderr?: string }).stderr?.trim() ||
-      (error as { stdout?: string }).stdout?.trim() ||
-      (error instanceof Error ? error.message : String(error));
-
-    await appendJsonLine(config.paths.restartHistory, {
-      timestamp: new Date().toISOString(),
-      actor: params.actor,
-      source: params.source,
-      reason: params.reason,
-      chatId: params.chatId,
-      mode: "systemctl",
-      status: "failed",
-      detail,
-    } satisfies RestartRecord);
-
-    setTimeout(() => process.exit(0), 500);
-    return {
-      message: `systemctl restart failed (${detail}). Falling back to process exit for supervisor restart.`,
-      mode: "process-exit" as const,
-    };
-  }
+  setTimeout(() => process.exit(0), 250);
+  return {
+    message: `Restart requested for ${config.service.systemdUnit}; exiting for supervisor restart.`,
+    mode: "process-exit" as const,
+  };
 }
 
 export async function noteStartupRestart(marker: RestartMarker | null) {

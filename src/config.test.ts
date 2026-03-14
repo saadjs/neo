@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -64,5 +64,60 @@ describe("parseBrowserCredentials", () => {
       username: "neo@example.com",
       password: "  secret  ",
     });
+  });
+
+  it("defaults skill directories to an empty list when the local skills directory is absent", async () => {
+    const dataDir = mkdtempSync(join(tmpdir(), "neo-config-test-"));
+    const logDir = mkdtempSync(join(tmpdir(), "neo-config-test-"));
+    tempDirs.push(dataDir, logDir);
+
+    for (const [key, value] of Object.entries(REQUIRED_ENV)) {
+      vi.stubEnv(key, value);
+    }
+    vi.stubEnv("NEO_DATA_DIR", dataDir);
+    vi.stubEnv("NEO_LOG_DIR", logDir);
+
+    const { config } = await import("./config.js");
+
+    expect(config.copilot.skillDirectories).toEqual([]);
+
+    const persistedConfig = JSON.parse(readFileSync(join(dataDir, "config.json"), "utf-8")) as {
+      NEO_SKILL_DIRS: string[];
+    };
+    expect(persistedConfig.NEO_SKILL_DIRS).toEqual([]);
+  });
+
+  it("preserves configured skill directories from config.json", async () => {
+    const dataDir = mkdtempSync(join(tmpdir(), "neo-config-test-"));
+    const logDir = mkdtempSync(join(tmpdir(), "neo-config-test-"));
+    const skillsDir = mkdtempSync(join(tmpdir(), "neo-skills-test-"));
+    tempDirs.push(dataDir, logDir, skillsDir);
+
+    writeFileSync(
+      join(dataDir, "config.json"),
+      `${JSON.stringify(
+        {
+          COPILOT_MODEL: "gpt-4.1",
+          NEO_LOG_LEVEL: "info",
+          NEO_SKILL_DIRS: [skillsDir],
+          NEO_CONTEXT_COMPACTION_ENABLED: true,
+          NEO_CONTEXT_COMPACTION_THRESHOLD: 0.8,
+          NEO_CONTEXT_BUFFER_EXHAUSTION_THRESHOLD: 0.95,
+        },
+        null,
+        2,
+      )}\n`,
+      "utf-8",
+    );
+
+    for (const [key, value] of Object.entries(REQUIRED_ENV)) {
+      vi.stubEnv(key, value);
+    }
+    vi.stubEnv("NEO_DATA_DIR", dataDir);
+    vi.stubEnv("NEO_LOG_DIR", logDir);
+
+    const { config } = await import("./config.js");
+
+    expect(config.copilot.skillDirectories).toEqual([skillsDir]);
   });
 });

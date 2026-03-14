@@ -10,6 +10,7 @@ import {
 import { dirname, join, resolve } from "node:path";
 
 const PROJECT_ROOT = resolve(".");
+const DEFAULT_SKILL_DIR = join(PROJECT_ROOT, "skills");
 const LOG_LEVELS = ["error", "warn", "info", "debug", "trace"] as const;
 
 export type LogLevel = (typeof LOG_LEVELS)[number];
@@ -143,6 +144,10 @@ export function parseBrowserCredentials(
   return credentials;
 }
 
+function defaultSkillDirectories() {
+  return existsSync(DEFAULT_SKILL_DIR) ? [DEFAULT_SKILL_DIR] : [];
+}
+
 export const managedConfigDefinitions: Record<
   ManagedConfigKey,
   ManagedConfigDefinition<unknown>
@@ -166,7 +171,7 @@ export const managedConfigDefinitions: Record<
     behavior: "Controls Neo log verbosity for stdout and file logs.",
   },
   NEO_SKILL_DIRS: {
-    defaultValue: [join(PROJECT_ROOT, "skills")],
+    defaultValue: defaultSkillDirectories(),
     parse: (value: unknown) => parseStringArray("NEO_SKILL_DIRS", value),
     redact: false,
     mutability: "restart_required",

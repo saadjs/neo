@@ -10,7 +10,7 @@ Personal AI agent powered by the GitHub Copilot SDK, accessible via Telegram.
 - GitHub account with Copilot access
 - Telegram Bot Token (from [@BotFather](https://t.me/BotFather))
 - Your Telegram user ID (from [@userinfobot](https://t.me/userinfobot))
-- Playwright Chromium browser (`npx playwright install chromium`)
+- Playwright Chromium browser (`npx playwright install --with-deps chromium`)
 
 ### Install
 
@@ -46,14 +46,32 @@ docker compose logs -f  # view logs
 
 ### Deploy with systemd
 
-Install Node.js `v24.14.0` on the host first, or use the Docker deployment instead.
+This path assumes a direct Ubuntu host install under `/opt/neo` and a `systemd` service running as the `neo` user.
 
 ```bash
-sudo cp deploy/neo.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now neo
+sudo ./deploy/install-systemd.sh
+
+sudo rsync -a --delete ./ /opt/neo/
+cd /opt/neo
+
+npm ci
+npm run build
+npx playwright install --with-deps chromium
+
+# Create and edit /opt/neo/.env first
+sudo chown -R neo:neo /opt/neo
+sudo -u neo ./deploy/preflight.sh
+
+sudo systemctl start neo
 sudo journalctl -u neo -f  # view logs
 ```
+
+Notes:
+
+- The service expects system Node at `/usr/bin/node` and currently targets `v24.14.0`.
+- Neo restarts by exiting and letting `systemd` restart the service via `Restart=always`.
+- Runtime state defaults to `/opt/neo/data` and `/opt/neo/logs` through the unit file.
+- If you use the `google_workspace` tool, install the `gws` CLI or set `GOOGLE_WORKSPACE_CLI_PATH`.
 
 ## Commands
 
@@ -113,6 +131,11 @@ See [`.env.example`](.env.example) for all options.
 | `NEO_BROWSER_HEADLESS` | No | Browser mode (default: `true`) |
 | `NEO_BROWSER_LAUNCH_ARGS` | No | Extra Chromium flags |
 | `NEO_BROWSER_CREDENTIALS_JSON` | No | Stored login credentials (JSON) |
+| `NEO_DATA_DIR` | No | Override runtime data dir |
+| `NEO_LOG_DIR` | No | Override runtime log dir |
+| `NEO_SYSTEMD_UNIT` | No | Service unit name exposed to status/restart logic |
+| `NEO_SYSTEMCTL_SCOPE` | No | `system` or `user` for status checks |
+| `GOOGLE_WORKSPACE_CLI_PATH` | No | Path to the `gws` CLI used by the Google Workspace tool |
 
 Browser credentials format:
 
@@ -139,4 +162,4 @@ Safe autonomous config updates are limited to:
 - `NEO_CONTEXT_COMPACTION_THRESHOLD`
 - `NEO_CONTEXT_BUFFER_EXHAUSTION_THRESHOLD`
 
-Other managed settings remain approval-required. When a change requires a restart, Neo writes a structured restart marker and attempts `systemctl restart <unit>`, falling back to exiting for supervisor restart if `systemctl` is unavailable or denied.
+Other managed settings remain approval-required. When a change requires a restart, Neo writes a structured restart marker and exits so the service supervisor can restart it cleanly.
