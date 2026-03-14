@@ -184,7 +184,7 @@ main() {
   echo "Useful commands:"
   echo "  sudo systemctl status ${service_name}"
   echo "  sudo journalctl -u ${service_name} -f"
-  echo "  cd ${install_dir} && git pull && npm ci && npm run build && sudo systemctl restart ${service_name}"
+  echo "  cd ${SOURCE_ROOT} && git pull && ./deploy/setup-ubuntu.sh"
 }
 
 main "$@"

@@ -54,6 +54,13 @@ Recommended first-time setup:
 ./deploy/setup-ubuntu.sh
 ```
 
+For later updates, run the same command again from the server-side Git checkout after pulling the latest commit:
+
+```bash
+git pull
+./deploy/setup-ubuntu.sh
+```
+
 The script will prompt for the service name, install directory, and app user, then:
 
 - install or update the pinned system Node runtime at `/usr/bin/node` when needed
