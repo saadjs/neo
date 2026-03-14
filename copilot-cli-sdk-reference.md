@@ -1,8 +1,8 @@
 # Copilot CLI / SDK Reference for Neo
 
-This file is a maintainer reference for deciding whether a capability should be implemented in Neo or simply configured/enabled from GitHub Copilot CLI and the Copilot SDK.
+Maintainer reference for deciding whether a capability belongs in Neo or can be configured directly from GitHub Copilot CLI and the Copilot SDK.
 
-The goal is simple: **do not rebuild features that Copilot CLI or the SDK already provide out of the box.** Add custom Neo code only when we need Telegram-specific behavior, project-specific state, or genuinely new capabilities.
+Goal: **do not rebuild features that Copilot CLI or the SDK already provide out of the box.** Add custom Neo code only for Telegram-specific behavior, project-specific state, or genuinely new capabilities.
 
 ## Upstream references
 
@@ -16,7 +16,7 @@ The goal is simple: **do not rebuild features that Copilot CLI or the SDK alread
 
 ## What Copilot CLI already provides
 
-From the upstream Copilot CLI README, the CLI already gives us:
+Capabilities documented in the upstream Copilot CLI README:
 
 - A terminal-native coding agent that can build, edit, debug, refactor, and understand code through natural-language conversations.
 - GitHub integration out of the box.
@@ -29,7 +29,7 @@ From the upstream Copilot CLI README, the CLI already gives us:
 
 ## What the Copilot SDK already provides
 
-From the upstream SDK READMEs, the SDK already gives us:
+Capabilities documented in the upstream SDK READMEs:
 
 - A programmatic client (`CopilotClient`) for driving Copilot CLI over JSON-RPC, with `clientName` identification.
 - Automatic CLI lifecycle management, or connection to an already-running CLI server via `cliUrl`.
@@ -51,9 +51,9 @@ From the upstream SDK READMEs, the SDK already gives us:
 - Multiple authentication paths: logged-in user, GitHub tokens, OAuth GitHub App tokens, and BYOK.
 - Telemetry via `TelemetryConfig` — OTLP endpoint export, file-based export, content capture, and trace context propagation.
 
-## Built-in tools we should treat as already available
+## Built-in tools treated as already available
 
-Neo should assume the following capabilities already exist in the Copilot CLI runtime and should **not** be reimplemented as Neo custom tools:
+The following capabilities already exist in the Copilot CLI runtime and are **not** candidates for reimplementation as Neo custom tools:
 
 ### Shell and process tools
 
@@ -107,11 +107,11 @@ In this environment these are exposed through `github-mcp-server-*` tool namespa
 ### Conditional built-in tools
 
 - `ask_user` is available when the SDK app provides `onUserInputRequest`.
-- Neo **does** provide that handler, so user-interactive clarification is already supported through Telegram and should not be reinvented as a separate custom tool.
+- Neo provides that handler, so user-interactive clarification is already supported through Telegram and does not require a separate custom tool.
 
 ## Permission model: CLI default vs SDK default vs Neo
 
-This is one of the most important distinctions.
+One of the most important distinctions in the integration.
 
 ### Plain Copilot CLI default
 
@@ -129,25 +129,25 @@ Neo explicitly configures:
 onPermissionRequest: approveAll
 ```
 
-in `src/agent.ts`, so Neo is intentionally **auto-approving tool executions** instead of relying on interactive terminal confirmation.
+`src/agent.ts` intentionally **auto-approves tool executions** instead of relying on interactive terminal confirmation.
 
-That means:
+Implications:
 
 - Neo is closer to an embedded autonomous agent than a manually-approved CLI session.
-- Permission policy changes should usually be implemented through SDK hooks and tool configuration, not by recreating approval UX from scratch.
-- If we need finer control, the right place is `onPreToolUse`, `onPostToolUse`, or custom tool definitions, not duplicate tool wrappers.
+- Permission policy changes are best implemented through SDK hooks and tool configuration rather than a recreated approval UX.
+- Finer control belongs in `onPreToolUse`, `onPostToolUse`, or custom tool definitions rather than duplicate tool wrappers.
 
 ### Custom-tool permission controls already supported by the SDK
 
 The SDK already supports:
 
 - `overridesBuiltInTool: true` for intentional replacement of a built-in tool.
-- `skipPermission: true` for custom tools that should execute without a permission prompt.
+- `skipPermission: true` for custom tools that execute without a permission prompt.
 - Hook-driven decisions of `"allow"`, `"deny"`, or `"ask"` in `onPreToolUse`.
 
 ## Neo's current SDK integration
 
-Neo already wires a substantial amount of SDK functionality in `src/agent.ts`:
+`src/agent.ts` already wires a substantial amount of SDK functionality:
 
 - `clientName: "neo"`
 - `systemMessage: { mode: "replace", content: systemContext }`
@@ -159,7 +159,7 @@ Neo already wires a substantial amount of SDK functionality in `src/agent.ts`:
 - `workingDirectory: config.paths.root`
 - `infiniteSessions: { ... }`
 
-This means Neo is already using the SDK for:
+Current SDK usage in Neo:
 
 - client identification
 - full system-prompt replacement
@@ -171,15 +171,15 @@ This means Neo is already using the SDK for:
 - repo-root tool execution
 - infinite session compaction
 
-## SDK features Neo could leverage via Telegram
+## SDK features available for Telegram integration
 
-These are SDK capabilities Neo does not yet use but could wire into the Telegram experience instead of building custom:
+These SDK capabilities are not yet wired into the Telegram experience and could be integrated instead of building custom alternatives:
 
 | SDK Feature | Telegram Integration Opportunity |
 |---|---|
-| `reasoningEffort` | Expose via `/model` command or per-chat config — let users pick reasoning depth per conversation |
+| `reasoningEffort` | Expose via `/model` command or per-chat config for per-conversation reasoning depth |
 | `abort()` | Wire to a `/cancel` Telegram command to stop an in-progress agent turn |
-| `onUserPromptSubmitted` | Use for prompt augmentation (inject channel context, memory hints) instead of building it into system prompt assembly |
+| `onUserPromptSubmitted` | Use for prompt augmentation (channel context, memory hints) instead of building it into system prompt assembly |
 | `onSessionStart` | Replace or complement custom session init logic in `agent.ts` with this hook |
 | `streaming` config flag | Explicitly enable for faster Telegram progress message updates |
 | `deleteSession()` | Wire to `/new` or a `/delete` command for explicit session cleanup from disk |
@@ -188,7 +188,7 @@ These are SDK capabilities Neo does not yet use but could wire into the Telegram
 
 ## What is custom in Neo
 
-Only these areas should be thought of as Neo-specific capabilities, because they are not covered by the default CLI/SDK stack:
+These areas are Neo-specific capabilities because they are not covered by the default CLI/SDK stack:
 
 - `browser`
 - `memory`
@@ -208,11 +208,11 @@ Neo also adds custom runtime behavior around:
 - config persistence and restart logic
 - audit and cost tracking
 
-## Features we should prefer configuring instead of rebuilding
+## Features better handled through configuration than rebuilding
 
-Before adding a new feature, check this list first.
+Check this list before adding a new feature.
 
-### Do not add a custom Neo tool if the need is:
+### Cases where a custom Neo tool is unnecessary
 
 - shell execution
 - reading or editing files
@@ -230,7 +230,7 @@ Before adding a new feature, check this list first.
 - connecting to external model providers via BYOK
 - telemetry/export of traces
 
-### Prefer SDK/CLI configuration if the need is:
+### Cases better handled through SDK/CLI configuration
 
 - changing the approval policy
 - modifying prompts or persona
@@ -245,7 +245,7 @@ Before adding a new feature, check this list first.
 - BYOK / custom provider setup
 - OpenTelemetry trace export
 
-### Add custom Neo code only when the need is:
+### Cases that justify custom Neo code
 
 - Telegram-specific UX or transport behavior
 - repository-specific business logic
@@ -256,7 +256,7 @@ Before adding a new feature, check this list first.
 
 ## Practical rule of thumb
 
-When in doubt:
+Decision sequence:
 
 1. Check whether the capability is already a built-in CLI tool.
 2. Check whether the SDK already exposes it as session config, hooks, tools, skills, user input, provider config, or telemetry.
