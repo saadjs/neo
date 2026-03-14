@@ -7,6 +7,7 @@ import {
   renameSync,
   writeFileSync,
 } from "node:fs";
+import { mkdir, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 
@@ -422,10 +423,30 @@ export function writeManagedConfigFile(path: string, values: ManagedConfigValues
   snapshotManagedConfigFile(path);
 }
 
+export async function ensureDataDir(): Promise<{ isFirstRun: boolean }> {
+  const dataDir = resolve(process.env.NEO_DATA_DIR?.trim() || join(homedir(), ".neo"));
+  const soulPath = join(dataDir, "SOUL.md");
+  const isFirstRun = !existsSync(soulPath);
+
+  await mkdir(dataDir, { recursive: true });
+  await mkdir(join(dataDir, "memory"), { recursive: true });
+  await mkdir(join(dataDir, "browser", "sessions"), { recursive: true });
+  await mkdir(join(dataDir, "browser", "screenshots"), { recursive: true });
+  await mkdir(join(dataDir, "browser", "downloads"), { recursive: true });
+
+  if (isFirstRun) {
+    await writeFile(soulPath, "# Soul\n\nYou are Neo, a personal AI agent.\n", "utf-8");
+    await writeFile(join(dataDir, "HUMAN.md"), "# Human\n", "utf-8");
+    await writeFile(join(dataDir, "PREFERENCES.md"), "# Preferences\n", "utf-8");
+  }
+
+  return { isFirstRun };
+}
+
 function loadConfig(): Config {
   try {
-    const dataDir = resolve(process.env.NEO_DATA_DIR?.trim() || join(PROJECT_ROOT, "data"));
-    const logDir = resolve(process.env.NEO_LOG_DIR?.trim() || join(PROJECT_ROOT, "logs"));
+    const dataDir = resolve(process.env.NEO_DATA_DIR?.trim() || join(homedir(), ".neo"));
+    const logDir = resolve(process.env.NEO_LOG_DIR?.trim() || join(homedir(), ".neo", "logs"));
     const managedConfigFile = join(dataDir, "config.json");
     const managed = loadManagedConfigFile(managedConfigFile);
 
