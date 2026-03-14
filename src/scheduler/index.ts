@@ -2,6 +2,8 @@ import type { Api } from "grammy";
 import { getLogger } from "../logging/index.js";
 import { config } from "../config.js";
 import { initRemindersTable, getDueReminders, markFired } from "./db.js";
+import { executeJob } from "./job-runner.js";
+import { initJobsTable, getDueJobs, advanceNextRun } from "./jobs-db.js";
 
 const HEARTBEAT_MS = 30_000;
 
@@ -11,7 +13,8 @@ export function startScheduler(api: Api): void {
   const log = getLogger();
 
   initRemindersTable();
-  log.info("Reminder scheduler started (30s heartbeat)");
+  initJobsTable();
+  log.info("Scheduler started (30s heartbeat)");
 
   intervalId = setInterval(() => {
     tick(api).catch((err) => {
@@ -30,9 +33,10 @@ export function stopScheduler(): void {
 async function tick(api: Api): Promise<void> {
   const log = getLogger();
   const now = new Date().toISOString();
-  const due = getDueReminders(now);
+  const dueReminders = getDueReminders(now);
+  const dueJobs = getDueJobs(now);
 
-  for (const reminder of due) {
+  for (const reminder of dueReminders) {
     const text = `Reminder: ${reminder.label}\n\n${reminder.message}`;
     try {
       await api.sendMessage(config.telegram.ownerId, text);
@@ -41,5 +45,12 @@ async function tick(api: Api): Promise<void> {
     }
     // Mark fired regardless to avoid infinite retries
     markFired(reminder.id, reminder.recurrence);
+  }
+
+  for (const job of dueJobs) {
+    advanceNextRun(job.id);
+    void executeJob(job, api).catch((err) => {
+      log.error({ err, jobId: job.id, jobName: job.name }, "Job execution failed");
+    });
   }
 }
