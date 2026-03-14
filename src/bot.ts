@@ -15,7 +15,33 @@ import { downloadTelegramFile } from "./telegram/files.js";
 import { splitMessage } from "./telegram/messages.js";
 import { appendCompactionMemory } from "./memory/index.js";
 import { isVoiceEnabled, transcribeFile } from "./voice/transcribe.js";
-const TYPING_REFRESH_MS = 4000;
+const TYPING_REFRESH_MS = 3000;
+const PROGRESS_REFRESH_MS = 8000;
+const PROGRESS_EDIT_DEBOUNCE_MS = 1500;
+
+function formatProgressName(value?: string) {
+  return String(value || "work")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function buildProgressText(
+  phase: "thinking" | "reasoning" | "tool" | "done-tool" | "skill" | "compacting",
+  detail: string,
+  startedAt: number,
+) {
+  const elapsedSeconds = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
+  const elapsed = elapsedSeconds >= 8 ? ` (${elapsedSeconds}s)` : "";
+
+  if (phase === "tool" && detail) return `Working… using ${detail}${elapsed}`;
+  if (phase === "skill" && detail) return `Working… running ${detail}${elapsed}`;
+  if (phase === "compacting") return `Tidying context, then answering${elapsed}`;
+  if (phase === "reasoning") return `Thinking… still on it${elapsed}`;
+  if (phase === "done-tool" && detail) return `Still working… finished ${detail}${elapsed}`;
+
+  return `Thinking…${elapsed}`;
+}
 
 export function createBot(): Bot {
   const bot = new Bot(config.telegram.botToken);
@@ -113,8 +139,8 @@ async function handleMessage(
 ) {
   const log = getLogger();
   const chatId = ctx.chat!.id;
+  const startedAt = Date.now();
 
-  // Send typing indicator
   await ctx.replyWithChatAction("typing");
 
   let typingActive = true;
@@ -122,15 +148,69 @@ async function handleMessage(
     if (!typingActive) return;
     try {
       await ctx.replyWithChatAction("typing");
-    } catch {
-      // ignore
-    }
+    } catch {}
   };
 
-  // Keep typing indicator alive during processing.
   const typingInterval = setInterval(() => {
     void sendTyping();
   }, TYPING_REFRESH_MS);
+
+  let progressMessageId: number | null = null;
+  let progressText = "";
+  let progressPhase: "thinking" | "reasoning" | "tool" | "done-tool" | "skill" | "compacting" = "thinking";
+  let progressDetail = "";
+  let lastProgressEditAt = 0;
+
+  const setProgress = async (
+    phase: "thinking" | "reasoning" | "tool" | "done-tool" | "skill" | "compacting",
+    detail = "",
+    force = false,
+  ) => {
+    progressPhase = phase;
+    progressDetail = detail;
+
+    const nextText = buildProgressText(phase, detail, startedAt);
+    const now = Date.now();
+
+    if (!force) {
+      if (nextText === progressText) return;
+      if (now - lastProgressEditAt < PROGRESS_EDIT_DEBOUNCE_MS) return;
+    }
+
+    lastProgressEditAt = now;
+    progressText = nextText;
+
+    try {
+      if (progressMessageId == null) {
+        const message = await ctx.reply(nextText);
+        progressMessageId = message.message_id;
+        return;
+      }
+
+      await ctx.api.editMessageText(chatId, progressMessageId, nextText);
+    } catch (err) {
+      log.debug({ err, chatId, nextText }, "Failed to update progress message");
+    }
+  };
+
+  const progressInterval = setInterval(() => {
+    void setProgress(progressPhase, progressDetail, true);
+  }, PROGRESS_REFRESH_MS);
+
+  const clearLiveStatus = async () => {
+    typingActive = false;
+    clearInterval(typingInterval);
+    clearInterval(progressInterval);
+
+    if (progressMessageId != null) {
+      try {
+        await ctx.api.deleteMessage(chatId, progressMessageId);
+      } catch {}
+    }
+  };
+
+  await setProgress("thinking", "", true);
+
   let unsubscribe = () => {};
 
   try {
@@ -144,9 +224,7 @@ async function handleMessage(
     const onEvent = async (event: SessionEvent) => {
       if (event.type === "assistant.message") {
         const content = (event.data as { content?: string }).content;
-        if (content) {
-          responseBuffer = content;
-        }
+        if (content) responseBuffer = content;
       }
 
       if (event.type === "assistant.reasoning") {
@@ -154,12 +232,14 @@ async function handleMessage(
         if (reasoning) {
           log.debug({ chatId, reasoning: reasoning.slice(0, 100) }, "Agent reasoning");
         }
+        await setProgress("reasoning");
       }
 
       if (event.type === "tool.execution_start") {
         const d = event.data as { toolCallId?: string; toolName?: string; arguments?: unknown };
         if (d.toolCallId && d.toolName) {
           toolStartTimes.set(d.toolCallId, Date.now());
+          await setProgress("tool", formatProgressName(d.toolName));
           try {
             logToolCall(sessionId, d.toolCallId, d.toolName, d.arguments);
           } catch {}
@@ -167,10 +247,14 @@ async function handleMessage(
       }
 
       if (event.type === "tool.execution_complete") {
-        const d = event.data as { toolCallId?: string; success?: boolean; result?: unknown };
+        const d = event.data as { toolCallId?: string; toolName?: string; success?: boolean; result?: unknown };
         if (d.toolCallId) {
           const startTime = toolStartTimes.get(d.toolCallId);
           const duration = startTime ? Date.now() - startTime : undefined;
+          const toolName = d.toolName ? formatProgressName(d.toolName) : "tool";
+
+          await setProgress("done-tool", toolName);
+
           try {
             completeToolCall(d.toolCallId, d.result, d.success ?? true, duration);
           } catch {}
@@ -180,10 +264,12 @@ async function handleMessage(
       if (event.type === "skill.invoked") {
         const d = event.data as { name?: string; path?: string };
         log.info({ chatId, skill: d.name, path: d.path }, "Skill invoked");
+        await setProgress("skill", formatProgressName(d.name));
       }
 
       if (event.type === "session.compaction_start") {
         log.info({ chatId, sessionId }, "Session compaction started");
+        await setProgress("compacting");
       }
 
       if (event.type === "session.compaction_complete") {
@@ -231,23 +317,19 @@ async function handleMessage(
       logMessage(sessionId, "assistant", finalContent || "(no response)", result?.id);
     } catch {}
 
-    typingActive = false;
-    clearInterval(typingInterval);
+    await clearLiveStatus();
 
     if (!finalContent || finalContent.trim() === "") {
       await ctx.reply("_(no response)_", { parse_mode: "Markdown" });
       return;
     }
 
-    // Split long messages
     const chunks = splitMessage(finalContent);
-
     for (const chunk of chunks) {
       await sendChunk(ctx, chunk);
     }
   } catch (err) {
-    typingActive = false;
-    clearInterval(typingInterval);
+    await clearLiveStatus();
     log.error({ err, chatId }, "Error handling message");
     await ctx.reply("⚠️ Something went wrong. Try /new to start a fresh session.");
   } finally {
