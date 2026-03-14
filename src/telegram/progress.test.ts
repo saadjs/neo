@@ -32,6 +32,10 @@ describe("buildProgressText", () => {
     expect(buildProgressText("compacting", "", startedAt)).toMatch(/Tidying context/);
   });
 
+  it("shows waiting message", () => {
+    expect(buildProgressText("waiting", "", startedAt)).toMatch(/Waiting for your answer/);
+  });
+
   it("shows default thinking message", () => {
     expect(buildProgressText("thinking", "", startedAt)).toMatch(/Thinking…/);
   });

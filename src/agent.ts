@@ -5,6 +5,12 @@ import { config } from "./config.js";
 import { allTools } from "./tools/index.js";
 import { buildSystemContext } from "./memory/index.js";
 import { getLogger } from "./logging/index.js";
+import { buildSessionHooks } from "./hooks/index.js";
+import {
+  cancelAllPendingUserInputs,
+  cancelPendingUserInput,
+  requestUserInput,
+} from "./telegram/user-input.js";
 import {
   clearActiveSession,
   getActiveSessionId,
@@ -65,6 +71,11 @@ export async function startAgent(): Promise<CopilotClient> {
 
 export async function stopAgent(): Promise<void> {
   const log = getLogger();
+
+  await cancelAllPendingUserInputs(
+    "Task interrupted while waiting for your answer. Please retry after Neo is back online.",
+    { notifyUser: true },
+  );
 
   for (const [chatId, session] of sessions) {
     try {
@@ -191,6 +202,8 @@ export async function switchDefaultModel(model: string): Promise<void> {
 }
 
 export async function destroySession(chatId: number): Promise<void> {
+  await cancelPendingUserInput(chatId, "Pending question cancelled because the session was reset.");
+
   try {
     clearActiveSession(chatId);
   } catch {
@@ -222,6 +235,14 @@ export async function destroySession(chatId: number): Promise<void> {
 
 export function getSessionForChat(chatId: number): CopilotSession | undefined {
   return sessions.get(chatId);
+}
+
+export function hasTrackedSession(chatId: number, session: CopilotSession): boolean {
+  if (sessions.get(chatId) === session) {
+    return true;
+  }
+
+  return staleSessions.get(chatId)?.has(session) ?? false;
 }
 
 export function discardSession(chatId: number, session: CopilotSession): void {
@@ -306,6 +327,11 @@ export async function endSessionTurn(chatId: number): Promise<void> {
  * in-flight sendAndWait call in handleMessage.
  */
 export async function refreshSessionContext(chatId: number): Promise<void> {
+  await cancelPendingUserInput(
+    chatId,
+    "Pending question cancelled because the session context changed. Please ask again.",
+  );
+
   try {
     clearActiveSession(chatId);
   } catch {
@@ -343,6 +369,11 @@ async function buildSessionConfig(chatId: number) {
     tools: allTools,
     skillDirectories: config.copilot.skillDirectories,
     onPermissionRequest: approveAll,
+    onUserInputRequest: async (
+      request: { question: string; choices?: string[]; allowFreeform?: boolean },
+      invocation: { sessionId: string },
+    ) => requestUserInput(chatId, invocation.sessionId, request),
+    hooks: buildSessionHooks(chatId),
     workingDirectory: config.paths.root,
     infiniteSessions: {
       enabled: config.copilot.contextCompaction.enabled,

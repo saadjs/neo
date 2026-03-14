@@ -8,6 +8,7 @@ import {
   getClient,
   getModelForChat,
   getOrCreateSession,
+  hasTrackedSession,
 } from "./agent.js";
 import { getLogger } from "./logging/index.js";
 import {
@@ -30,6 +31,7 @@ import {
   TYPING_REFRESH_MS,
   PROGRESS_REFRESH_MS,
   PROGRESS_EDIT_DEBOUNCE_MS,
+  type ProgressPhase,
   formatProgressName,
   buildProgressText,
 } from "./telegram/progress.js";
@@ -37,6 +39,14 @@ import {
   isMessageNotModifiedError,
   isMissingProgressMessageError,
 } from "./telegram/session-timeout.js";
+import {
+  cancelPendingUserInputForSession,
+  getPendingUserInput,
+  resolvePendingUserInput,
+  watchPendingUserInput,
+} from "./telegram/user-input.js";
+import { shouldSilenceSessionError } from "./telegram/session-errors.js";
+import { consumeSessionErrorNotified } from "./hooks/error-state.js";
 
 const SESSION_HEALTH_POLL_MS = 1000;
 
@@ -125,6 +135,19 @@ export async function createBot(): Promise<Bot> {
   bot.on("message:text", async (ctx) => {
     const text = ctx.message.text;
 
+    const pendingInput = getPendingUserInput(ctx.chat!.id);
+    if (pendingInput) {
+      const response = resolvePendingUserInput(ctx.chat!.id, text);
+      if (response) {
+        await ctx.reply("Resuming task…");
+      } else {
+        await ctx.reply(
+          "That answer doesn't match the allowed choices. Reply with one of the listed options.",
+        );
+      }
+      return;
+    }
+
     // Skip slash commands (handled by command handlers)
     if (text.startsWith("/")) return;
 
@@ -133,6 +156,8 @@ export async function createBot(): Promise<Bot> {
 
   // Handle photos sent to the bot
   bot.on("message:photo", async (ctx) => {
+    if (await replyIfWaitingForTextAnswer(ctx)) return;
+
     const caption = ctx.message.caption ?? "What's in this image?";
     const photos = ctx.message.photo;
     // Telegram sends multiple sizes — pick the largest
@@ -149,6 +174,8 @@ export async function createBot(): Promise<Bot> {
 
   // Handle documents/files sent to the bot
   bot.on("message:document", async (ctx) => {
+    if (await replyIfWaitingForTextAnswer(ctx)) return;
+
     const doc = ctx.message.document;
     const caption = ctx.message.caption ?? `I sent you a file: ${doc.file_name ?? "unknown"}`;
 
@@ -169,6 +196,8 @@ export async function createBot(): Promise<Bot> {
 
   // Handle voice messages
   bot.on("message:voice", async (ctx) => {
+    if (await replyIfWaitingForTextAnswer(ctx)) return;
+
     if (!isVoiceEnabled()) {
       await ctx.reply("Voice messages are not configured. Set DEEPGRAM_API_KEY to enable.");
       return;
@@ -218,22 +247,15 @@ async function handleMessage(
     } catch {}
   };
 
-  const typingInterval = setInterval(() => {
-    void sendTyping();
-  }, TYPING_REFRESH_MS);
-
   let progressMessageId: number | null = null;
   let progressText = "";
-  let progressPhase: "thinking" | "reasoning" | "tool" | "done-tool" | "skill" | "compacting" =
-    "thinking";
+  let progressPhase: ProgressPhase = "thinking";
   let progressDetail = "";
   let lastProgressEditAt = 0;
+  let typingInterval: ReturnType<typeof setInterval> | null = null;
+  let progressInterval: ReturnType<typeof setInterval> | null = null;
 
-  const setProgress = async (
-    phase: "thinking" | "reasoning" | "tool" | "done-tool" | "skill" | "compacting",
-    detail = "",
-    force = false,
-  ) => {
+  const setProgress = async (phase: ProgressPhase, detail = "", force = false) => {
     progressPhase = phase;
     progressDetail = detail;
 
@@ -265,14 +287,39 @@ async function handleMessage(
     }
   };
 
-  const progressInterval = setInterval(() => {
-    void setProgress(progressPhase, progressDetail, true);
-  }, PROGRESS_REFRESH_MS);
+  const startTypingLoop = () => {
+    if (typingInterval) return;
+    typingInterval = setInterval(() => {
+      void sendTyping();
+    }, TYPING_REFRESH_MS);
+  };
+
+  const stopTypingLoop = () => {
+    if (!typingInterval) return;
+    clearInterval(typingInterval);
+    typingInterval = null;
+  };
+
+  const startProgressLoop = () => {
+    if (progressInterval) return;
+    progressInterval = setInterval(() => {
+      void setProgress(progressPhase, progressDetail, true);
+    }, PROGRESS_REFRESH_MS);
+  };
+
+  const stopProgressLoop = () => {
+    if (!progressInterval) return;
+    clearInterval(progressInterval);
+    progressInterval = null;
+  };
+
+  startTypingLoop();
+  startProgressLoop();
 
   const clearLiveStatus = async () => {
     typingActive = false;
-    clearInterval(typingInterval);
-    clearInterval(progressInterval);
+    stopTypingLoop();
+    stopProgressLoop();
 
     if (progressMessageId != null) {
       try {
@@ -284,6 +331,7 @@ async function handleMessage(
   await setProgress("thinking", "", true);
 
   let unsubscribe = () => {};
+  let unwatchPendingInput = () => {};
   let sessionTurnStarted = false;
 
   try {
@@ -296,6 +344,23 @@ async function handleMessage(
     const session = await getOrCreateSession({ chatId });
     activeSession = session;
     sessionId = session.sessionId;
+
+    unwatchPendingInput = watchPendingUserInput(chatId, (pending) => {
+      if (pending?.sessionId === sessionId) {
+        typingActive = false;
+        stopTypingLoop();
+        stopProgressLoop();
+        void setProgress("waiting", "", true);
+        return;
+      }
+
+      if (progressPhase !== "waiting") return;
+
+      typingActive = true;
+      startTypingLoop();
+      startProgressLoop();
+      void setProgress("thinking", "", true);
+    });
 
     const onEvent = async (event: SessionEvent) => {
       if (event.type === "assistant.message") {
@@ -436,13 +501,44 @@ async function handleMessage(
     }
   } catch (err) {
     await clearLiveStatus();
-    if (activeSession && getClient()?.getState() !== "connected") {
+    const clientState = getClient()?.getState();
+    const hasActiveSession = activeSession !== null;
+    const isTrackedSession = activeSession ? hasTrackedSession(chatId, activeSession) : false;
+    const sessionId = activeSession?.sessionId;
+
+    if (sessionId) {
+      await cancelPendingUserInputForSession(
+        chatId,
+        sessionId,
+        "The pending question was cancelled because the session ended.",
+      );
+    }
+
+    if (activeSession && clientState !== "connected") {
       discardSession(chatId, activeSession);
     }
+
+    if (
+      shouldSilenceSessionError(err, {
+        hasActiveSession,
+        isTrackedSession,
+        clientState,
+      })
+    ) {
+      log.info({ chatId, err }, "Session ended without user-facing error");
+      return;
+    }
+
+    if (sessionId && consumeSessionErrorNotified(sessionId)) {
+      log.info({ chatId, sessionId, err }, "Session error already surfaced to user");
+      return;
+    }
+
     log.error({ err, chatId }, "Error handling message");
     await ctx.reply("⚠️ Something went wrong. Try /new to start a fresh session.");
   } finally {
     unsubscribe();
+    unwatchPendingInput();
     if (sessionTurnStarted) {
       await endSessionTurn(chatId);
     }
@@ -456,4 +552,11 @@ async function sendChunk(ctx: Context, text: string) {
     // Fallback without markdown parsing
     await ctx.reply(text);
   }
+}
+
+async function replyIfWaitingForTextAnswer(ctx: Context): Promise<boolean> {
+  if (!getPendingUserInput(ctx.chat!.id)) return false;
+
+  await ctx.reply("I’m waiting for a text answer to the pending question before I can continue.");
+  return true;
 }

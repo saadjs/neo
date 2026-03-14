@@ -6,6 +6,7 @@ import { config } from "../config.js";
 import { allTools } from "../tools/index.js";
 import { buildSystemContext } from "../memory/index.js";
 import { getLogger } from "../logging/index.js";
+import { preToolUse } from "../hooks/pre-tool.js";
 import { splitMessage } from "../telegram/messages.js";
 import { createJobRun, completeJobRun, failJobRun } from "./jobs-db.js";
 import type { Job } from "./jobs-db.js";
@@ -13,6 +14,10 @@ import type { Job } from "./jobs-db.js";
 const JOB_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
 let running = false;
+
+export function isJobRunning(): boolean {
+  return running;
+}
 
 export async function executeJob(job: Job, api: Api): Promise<void> {
   const log = getLogger();
@@ -43,6 +48,9 @@ export async function executeJob(job: Job, api: Api): Promise<void> {
       },
       tools: allTools,
       onPermissionRequest: approveAll,
+      hooks: {
+        onPreToolUse: preToolUse(config.telegram.ownerId),
+      },
       workingDirectory: config.paths.root,
     });
 

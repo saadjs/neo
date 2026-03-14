@@ -11,6 +11,9 @@ const {
   setActiveSessionMock,
   getActiveSessionIdMock,
   approveAllMock,
+  requestUserInputMock,
+  cancelPendingUserInputMock,
+  cancelAllPendingUserInputsMock,
 } = vi.hoisted(() => ({
   createSessionMock: vi.fn(),
   resumeSessionMock: vi.fn(),
@@ -22,6 +25,9 @@ const {
   setActiveSessionMock: vi.fn(),
   getActiveSessionIdMock: vi.fn(),
   approveAllMock: vi.fn(),
+  requestUserInputMock: vi.fn(),
+  cancelPendingUserInputMock: vi.fn(),
+  cancelAllPendingUserInputsMock: vi.fn(),
 }));
 
 vi.mock("@github/copilot-sdk", () => ({
@@ -76,6 +82,12 @@ vi.mock("./logging/conversations.js", () => ({
   getActiveSessionId: getActiveSessionIdMock,
 }));
 
+vi.mock("./telegram/user-input.js", () => ({
+  requestUserInput: requestUserInputMock,
+  cancelPendingUserInput: cancelPendingUserInputMock,
+  cancelAllPendingUserInputs: cancelAllPendingUserInputsMock,
+}));
+
 afterEach(async () => {
   const { stopAgent } = await import("./agent.js");
   await stopAgent();
@@ -90,9 +102,39 @@ afterEach(async () => {
   setActiveSessionMock.mockReset();
   getActiveSessionIdMock.mockReset();
   approveAllMock.mockReset();
+  requestUserInputMock.mockReset();
+  cancelPendingUserInputMock.mockReset();
+  cancelAllPendingUserInputsMock.mockReset();
 });
 
 describe("refreshSessionContext", () => {
+  it("registers the ask_user bridge for interactive sessions", async () => {
+    const session = {
+      sessionId: "session-ask",
+      destroy: vi.fn().mockResolvedValue(undefined),
+      disconnect: vi.fn().mockResolvedValue(undefined),
+    };
+    createSessionMock.mockResolvedValue(session);
+    buildSystemContextMock.mockResolvedValue("context");
+    getActiveSessionIdMock.mockReturnValue(null);
+    requestUserInputMock.mockResolvedValue({ answer: "yes", wasFreeform: true });
+
+    const { createNewSession, startAgent } = await import("./agent.js");
+
+    await startAgent();
+    await createNewSession({ chatId: -100123 });
+
+    const configArg = createSessionMock.mock.calls[0]?.[0];
+    expect(configArg.onUserInputRequest).toBeTypeOf("function");
+
+    await expect(
+      configArg.onUserInputRequest({ question: "Proceed?" }, { sessionId: "session-ask" }),
+    ).resolves.toEqual({ answer: "yes", wasFreeform: true });
+    expect(requestUserInputMock).toHaveBeenCalledWith(-100123, "session-ask", {
+      question: "Proceed?",
+    });
+  });
+
   it("destroys an idle cached session immediately", async () => {
     const session = {
       sessionId: "session-1",
@@ -360,5 +402,44 @@ describe("discardSession", () => {
     expect(getChatIdForSession("session-stale")).toBeUndefined();
     expect(getSessionForChat(-100123)).toBe(freshSession);
     expect(clearActiveSessionMock).not.toHaveBeenCalled();
+  });
+
+  it("reports stale refreshed sessions as still tracked until they are discarded", async () => {
+    const staleSession = {
+      sessionId: "session-stale",
+      destroy: vi.fn().mockResolvedValue(undefined),
+      disconnect: vi.fn().mockResolvedValue(undefined),
+    };
+    const freshSession = {
+      sessionId: "session-fresh",
+      destroy: vi.fn().mockResolvedValue(undefined),
+      disconnect: vi.fn().mockResolvedValue(undefined),
+    };
+    createSessionMock.mockResolvedValueOnce(staleSession).mockResolvedValueOnce(freshSession);
+    buildSystemContextMock.mockResolvedValue("context");
+    getActiveSessionIdMock.mockReturnValue(null);
+
+    const {
+      beginSessionTurn,
+      createNewSession,
+      discardSession,
+      getOrCreateSession,
+      hasTrackedSession,
+      refreshSessionContext,
+      startAgent,
+    } = await import("./agent.js");
+
+    await startAgent();
+    await createNewSession({ chatId: -100123 });
+    beginSessionTurn(-100123);
+    await refreshSessionContext(-100123);
+
+    expect(hasTrackedSession(-100123, staleSession as never)).toBe(true);
+
+    await expect(getOrCreateSession({ chatId: -100123 })).resolves.toBe(freshSession);
+    expect(hasTrackedSession(-100123, staleSession as never)).toBe(true);
+
+    discardSession(-100123, staleSession as never);
+    expect(hasTrackedSession(-100123, staleSession as never)).toBe(false);
   });
 });
