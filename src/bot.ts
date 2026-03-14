@@ -137,7 +137,8 @@ async function handleMessage(
 
   let progressMessageId: number | null = null;
   let progressText = "";
-  let progressPhase: "thinking" | "reasoning" | "tool" | "done-tool" | "skill" | "compacting" = "thinking";
+  let progressPhase: "thinking" | "reasoning" | "tool" | "done-tool" | "skill" | "compacting" =
+    "thinking";
   let progressDetail = "";
   let lastProgressEditAt = 0;
 
@@ -227,7 +228,12 @@ async function handleMessage(
       }
 
       if (event.type === "tool.execution_complete") {
-        const d = event.data as { toolCallId?: string; toolName?: string; success?: boolean; result?: unknown };
+        const d = event.data as {
+          toolCallId?: string;
+          toolName?: string;
+          success?: boolean;
+          result?: unknown;
+        };
         if (d.toolCallId) {
           const startTime = toolStartTimes.get(d.toolCallId);
           const duration = startTime ? Date.now() - startTime : undefined;
@@ -325,4 +331,3 @@ async function sendChunk(ctx: Context, text: string) {
     await ctx.reply(text);
   }
 }
-

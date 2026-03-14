@@ -577,7 +577,9 @@ export function formatSystemStatusSummary(status: Awaited<ReturnType<typeof getS
   ];
 
   if (status.restart.lastRestart) {
-    lines.push(`Last restart: ${status.restart.lastRestart.timestamp} — ${status.restart.lastRestart.reason}`);
+    lines.push(
+      `Last restart: ${status.restart.lastRestart.timestamp} — ${status.restart.lastRestart.reason}`,
+    );
   }
 
   return lines.join("\n");

@@ -58,17 +58,11 @@ export function initJobsTable(): void {
   ).run();
 }
 
-export function createJob(
-  name: string,
-  prompt: string,
-  cronExpression: string,
-): number {
+export function createJob(name: string, prompt: string, cronExpression: string): number {
   const db = getConversationDb();
   const nextRun = getNextCronTime(cronExpression, new Date()).toISOString();
   const result = db
-    .prepare(
-      "INSERT INTO jobs (name, prompt, cron_expression, next_run_at) VALUES (?, ?, ?, ?)",
-    )
+    .prepare("INSERT INTO jobs (name, prompt, cron_expression, next_run_at) VALUES (?, ?, ?, ?)")
     .run(name, prompt, cronExpression, nextRun);
   return Number(result.lastInsertRowid);
 }
@@ -120,9 +114,7 @@ export function updateJob(
   sets.push("updated_at = datetime('now')");
   values.push(id);
 
-  const result = db
-    .prepare(`UPDATE jobs SET ${sets.join(", ")} WHERE id = ?`)
-    .run(...values);
+  const result = db.prepare(`UPDATE jobs SET ${sets.join(", ")} WHERE id = ?`).run(...values);
   return result.changes > 0;
 }
 
@@ -161,17 +153,11 @@ export function advanceNextRun(jobId: number): void {
 
 export function createJobRun(jobId: number): number {
   const db = getConversationDb();
-  const result = db
-    .prepare("INSERT INTO job_runs (job_id) VALUES (?)")
-    .run(jobId);
+  const result = db.prepare("INSERT INTO job_runs (job_id) VALUES (?)").run(jobId);
   return Number(result.lastInsertRowid);
 }
 
-export function completeJobRun(
-  runId: number,
-  output: string,
-  durationMs: number,
-): void {
+export function completeJobRun(runId: number, output: string, durationMs: number): void {
   const db = getConversationDb();
   db.prepare(
     "UPDATE job_runs SET status = 'completed', output = ?, duration_ms = ?, completed_at = datetime('now') WHERE id = ?",

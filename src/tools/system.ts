@@ -59,7 +59,11 @@ export const systemTool = defineTool("system", {
       args.key && isManagedConfigKey(args.key) && getManagedConfigDefinition(args.key).redact
         ? { ...args, value: args.value ? "[REDACTED]" : args.value }
         : args;
-    const audit = createAuditTimer(invocation.sessionId, "system", auditArgs as Record<string, unknown>);
+    const audit = createAuditTimer(
+      invocation.sessionId,
+      "system",
+      auditArgs as Record<string, unknown>,
+    );
 
     try {
       switch (args.action) {

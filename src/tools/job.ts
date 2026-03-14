@@ -26,10 +26,26 @@ export const jobTool = defineTool("job", {
     "Manage scheduled jobs that execute AI prompts on a cron schedule. Jobs run automatically and send their output to the owner. Use standard 5-field cron expressions (min hour dom month dow). All times are UTC.",
   parameters: z.object({
     action: z
-      .enum(["create", "list", "get", "update", "delete", "enable", "disable", "history", "run_now"])
+      .enum([
+        "create",
+        "list",
+        "get",
+        "update",
+        "delete",
+        "enable",
+        "disable",
+        "history",
+        "run_now",
+      ])
       .describe("The job action to perform"),
-    name: z.string().optional().describe("Job name (required for create, used as identifier for other actions)"),
-    prompt: z.string().optional().describe("The AI prompt to execute on schedule (required for create)"),
+    name: z
+      .string()
+      .optional()
+      .describe("Job name (required for create, used as identifier for other actions)"),
+    prompt: z
+      .string()
+      .optional()
+      .describe("The AI prompt to execute on schedule (required for create)"),
     cron_expression: z
       .string()
       .optional()
@@ -38,11 +54,7 @@ export const jobTool = defineTool("job", {
     limit: z.number().optional().describe("Number of history entries to return (default: 10)"),
   }),
   handler: async (args, invocation) => {
-    const audit = createAuditTimer(
-      invocation.sessionId,
-      "job",
-      args as Record<string, unknown>,
-    );
+    const audit = createAuditTimer(invocation.sessionId, "job", args as Record<string, unknown>);
 
     try {
       initJobsTable();
@@ -58,7 +70,16 @@ export const jobTool = defineTool("job", {
 });
 
 function execute(args: {
-  action: "create" | "list" | "get" | "update" | "delete" | "enable" | "disable" | "history" | "run_now";
+  action:
+    | "create"
+    | "list"
+    | "get"
+    | "update"
+    | "delete"
+    | "enable"
+    | "disable"
+    | "history"
+    | "run_now";
   name?: string;
   prompt?: string;
   cron_expression?: string;
@@ -94,11 +115,14 @@ function execute(args: {
       if (!job) return "Error: job not found. Provide a valid id or name.";
 
       const runs = getJobRuns(job.id, 5);
-      const runLines = runs.length > 0
-        ? runs.map(
-            (r) => `  Run #${r.id} | ${r.status} | ${r.started_at} | ${r.duration_ms ?? "-"}ms`,
-          ).join("\n")
-        : "  No runs yet.";
+      const runLines =
+        runs.length > 0
+          ? runs
+              .map(
+                (r) => `  Run #${r.id} | ${r.status} | ${r.started_at} | ${r.duration_ms ?? "-"}ms`,
+              )
+              .join("\n")
+          : "  No runs yet.";
 
       return [
         `Job #${job.id}: ${job.name}`,

@@ -111,10 +111,7 @@ export async function executeJob(job: Job, api: Api): Promise<void> {
     log.error({ err, jobId: job.id, jobName: job.name }, "Job execution failed");
 
     try {
-      await api.sendMessage(
-        config.telegram.ownerId,
-        `⚠️ Job "${job.name}" failed: ${errorMsg}`,
-      );
+      await api.sendMessage(config.telegram.ownerId, `⚠️ Job "${job.name}" failed: ${errorMsg}`);
     } catch (sendErr) {
       log.error({ err: sendErr, jobId: job.id }, "Failed to send job error notification");
     }
