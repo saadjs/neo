@@ -154,6 +154,28 @@ function defaultSkillDirectories() {
   );
 }
 
+function detectSystemctlScope(): "system" | "user" {
+  const configuredScope = process.env.NEO_SYSTEMCTL_SCOPE?.trim();
+  if (configuredScope === "user" || configuredScope === "system") {
+    return configuredScope;
+  }
+
+  const invocationId = process.env.INVOCATION_ID?.trim();
+  const runtimeDir = process.env.XDG_RUNTIME_DIR?.trim();
+  const uid = typeof process.getuid === "function" ? process.getuid() : undefined;
+
+  if (
+    invocationId &&
+    runtimeDir &&
+    uid !== undefined &&
+    resolve(runtimeDir) === `/run/user/${uid}`
+  ) {
+    return "user";
+  }
+
+  return "system";
+}
+
 export const managedConfigDefinitions: Record<
   ManagedConfigKey,
   ManagedConfigDefinition<unknown>
@@ -502,7 +524,7 @@ function loadConfig(): Config {
       },
       service: {
         systemdUnit: process.env.NEO_SYSTEMD_UNIT?.trim() || "neo",
-        systemctlScope: process.env.NEO_SYSTEMCTL_SCOPE?.trim() === "user" ? "user" : "system",
+        systemctlScope: detectSystemctlScope(),
       },
     };
   } catch (error) {

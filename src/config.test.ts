@@ -21,6 +21,8 @@ const ENV_KEYS = [
   "NEO_BROWSER_LAUNCH_ARGS",
   "NEO_SYSTEMD_UNIT",
   "NEO_SYSTEMCTL_SCOPE",
+  "INVOCATION_ID",
+  "XDG_RUNTIME_DIR",
   "HOME",
 ] as const;
 
@@ -37,6 +39,10 @@ afterEach(() => {
   }
   tempDirs = [];
 });
+
+function currentUid() {
+  return typeof process.getuid === "function" ? process.getuid() : 0;
+}
 
 describe("parseBrowserCredentials", () => {
   it("preserves leading and trailing password whitespace", async () => {
@@ -149,5 +155,42 @@ describe("parseBrowserCredentials", () => {
     const { config } = await import("./config.js");
 
     expect(config.copilot.skillDirectories).toEqual([skillsDir]);
+  });
+
+  it("auto-detects user systemd scope when launched by the user manager", async () => {
+    const dataDir = mkdtempSync(join(tmpdir(), "neo-config-test-"));
+    const logDir = mkdtempSync(join(tmpdir(), "neo-config-test-"));
+    tempDirs.push(dataDir, logDir);
+
+    for (const [key, value] of Object.entries(REQUIRED_ENV)) {
+      vi.stubEnv(key, value);
+    }
+    vi.stubEnv("NEO_DATA_DIR", dataDir);
+    vi.stubEnv("NEO_LOG_DIR", logDir);
+    vi.stubEnv("INVOCATION_ID", "test-invocation");
+    vi.stubEnv("XDG_RUNTIME_DIR", `/run/user/${currentUid()}`);
+
+    const { config } = await import("./config.js");
+
+    expect(config.service.systemctlScope).toBe("user");
+  });
+
+  it("prefers an explicit system scope over auto-detection", async () => {
+    const dataDir = mkdtempSync(join(tmpdir(), "neo-config-test-"));
+    const logDir = mkdtempSync(join(tmpdir(), "neo-config-test-"));
+    tempDirs.push(dataDir, logDir);
+
+    for (const [key, value] of Object.entries(REQUIRED_ENV)) {
+      vi.stubEnv(key, value);
+    }
+    vi.stubEnv("NEO_DATA_DIR", dataDir);
+    vi.stubEnv("NEO_LOG_DIR", logDir);
+    vi.stubEnv("INVOCATION_ID", "test-invocation");
+    vi.stubEnv("XDG_RUNTIME_DIR", `/run/user/${currentUid()}`);
+    vi.stubEnv("NEO_SYSTEMCTL_SCOPE", "system");
+
+    const { config } = await import("./config.js");
+
+    expect(config.service.systemctlScope).toBe("system");
   });
 });
