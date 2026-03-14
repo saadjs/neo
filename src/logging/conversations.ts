@@ -107,7 +107,19 @@ export function getActiveSessionId(chatId: number): string | undefined {
   const row = getConversationDb()
     .prepare("SELECT current_session_id FROM chat_session_state WHERE chat_id = ?")
     .get(chatId) as { current_session_id?: string } | undefined;
-  return row?.current_session_id;
+  return row?.current_session_id || undefined;
+}
+
+export function clearActiveSession(chatId: number): void {
+  getConversationDb()
+    .prepare(
+      `INSERT INTO chat_session_state (chat_id, current_session_id, updated_at)
+       VALUES (?, '', datetime('now'))
+       ON CONFLICT(chat_id) DO UPDATE SET
+         current_session_id = '',
+         updated_at = datetime('now')`,
+    )
+    .run(chatId);
 }
 
 export function getLastCompactionEventId(chatId: number): string | undefined {

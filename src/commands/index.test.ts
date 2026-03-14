@@ -13,6 +13,7 @@ vi.mock("./restart.js", () => ({ handleRestart: vi.fn() }));
 vi.mock("./status.js", () => ({ handleStatus: vi.fn() }));
 vi.mock("./audit.js", () => ({ handleAudit: vi.fn() }));
 vi.mock("./cost.js", () => ({ handleCost: vi.fn() }));
+vi.mock("./channel.js", () => ({ handleChannel: vi.fn() }));
 
 import { registerCommands } from "./index.js";
 import { getTelegramCommands } from "./definitions.js";

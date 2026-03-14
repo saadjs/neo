@@ -2,6 +2,7 @@ interface DailyMemoryFile {
   filename: string;
   date: string; // YYYY-MM-DD
   content: string;
+  chatId?: number;
 }
 
 export type { DailyMemoryFile };

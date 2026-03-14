@@ -55,6 +55,11 @@ export const commandDefinitions = [
     usage: "[week|month]",
   },
   {
+    command: "channel",
+    description: "Channel config (groups only)",
+    usage: "[label|topics] [value]",
+  },
+  {
     command: "restart",
     description: "Restart Neo",
   },

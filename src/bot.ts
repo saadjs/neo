@@ -1,7 +1,7 @@
 import { Bot, Context } from "grammy";
 import type { SessionEvent, MessageOptions } from "@github/copilot-sdk";
 import { config } from "./config.js";
-import { getModelForChat, getOrCreateSession } from "./agent.js";
+import { beginSessionTurn, endSessionTurn, getModelForChat, getOrCreateSession } from "./agent.js";
 import { getLogger } from "./logging/index.js";
 import {
   logMessage,
@@ -196,12 +196,15 @@ async function handleMessage(
   await setProgress("thinking", "", true);
 
   let unsubscribe = () => {};
+  let sessionTurnStarted = false;
 
   try {
     let responseBuffer = "";
     let sessionId = "";
     const toolStartTimes = new Map<string, number>();
 
+    beginSessionTurn(chatId);
+    sessionTurnStarted = true;
     const session = await getOrCreateSession({ chatId });
     sessionId = session.sessionId;
 
@@ -344,6 +347,9 @@ async function handleMessage(
     await ctx.reply("⚠️ Something went wrong. Try /new to start a fresh session.");
   } finally {
     unsubscribe();
+    if (sessionTurnStarted) {
+      await endSessionTurn(chatId);
+    }
   }
 }
 

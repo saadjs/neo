@@ -1,5 +1,6 @@
 import type { Context } from "grammy";
 import {
+  isChannelChat,
   loadPreferences,
   readDailyMemory,
   searchMemory,
@@ -10,12 +11,14 @@ import { searchSessionsByTag } from "../logging/conversations.js";
 export async function handleMemory(ctx: Context) {
   const text = ctx.message?.text ?? "";
   const arg = text.replace(/^\/memory\s*/, "").trim();
+  const chatId = ctx.chat?.id;
+  const channelId = chatId != null && isChannelChat(chatId) ? chatId : undefined;
 
   if (!arg) {
     // Show summary
-    const files = await listMemoryFiles();
+    const files = await listMemoryFiles(channelId);
     const prefs = await loadPreferences();
-    const today = await readDailyMemory();
+    const today = await readDailyMemory(undefined, channelId);
 
     let msg = `**Memory overview:**\n`;
     msg += `• ${files.length} daily memory file(s)\n`;
@@ -60,7 +63,7 @@ export async function handleMemory(ctx: Context) {
       const date = new Date();
       date.setDate(date.getDate() - i);
       const dateStr = date.toISOString().split("T")[0];
-      const content = await readDailyMemory(dateStr);
+      const content = await readDailyMemory(dateStr, channelId);
       if (content.trim()) {
         hasContent = true;
         const preview = content.trim().slice(0, 500);
@@ -79,7 +82,7 @@ export async function handleMemory(ctx: Context) {
   }
 
   // FTS search
-  const results = await searchMemory(arg);
+  const results = await searchMemory(arg, channelId);
   await ctx
     .reply(results.slice(0, 4000), { parse_mode: "Markdown" })
     .catch(() => ctx.reply(results.slice(0, 4000)));

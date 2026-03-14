@@ -15,6 +15,7 @@ describe("getTelegramCommands", () => {
       { command: "status", description: "Show runtime status" },
       { command: "audit", description: "Tool usage stats" },
       { command: "cost", description: "Token usage & cost" },
+      { command: "channel", description: "Channel config (groups only)" },
       { command: "restart", description: "Restart Neo" },
     ]);
   });

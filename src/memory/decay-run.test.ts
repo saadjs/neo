@@ -10,7 +10,9 @@ const state = vi.hoisted(() => ({
 vi.mock("../config.js", () => ({
   config: {
     paths: {
-      memoryDir: state.memoryDir,
+      get memoryDir() {
+        return state.memoryDir;
+      },
     },
   },
 }));
@@ -70,5 +72,54 @@ describe("runMemoryDecay", () => {
 
     const remainingFile = readFileSync(join(tempDir, "MEMORY-2026-03-03.md"), "utf-8");
     expect(remainingFile.startsWith("<!-- summarized -->\n")).toBe(true);
+  });
+
+  it("produces separate summaries for channel-scoped and global files", async () => {
+    // Global file
+    writeFileSync(join(tempDir, "MEMORY-2026-03-02.md"), "# Memory — 2026-03-02\n- Global note\n");
+    // Channel file (negative chatId for groups)
+    writeFileSync(
+      join(tempDir, "MEMORY--100123-2026-03-02.md"),
+      "# Memory — 2026-03-02\n- Channel discussion\n",
+    );
+
+    const { runMemoryDecay } = await import("./decay.js");
+    const processed = await runMemoryDecay();
+
+    expect(processed).toBe(2);
+
+    // Global summary
+    const globalSummary = readFileSync(join(tempDir, "MEMORY-SUMMARY-2026-W10.md"), "utf-8");
+    expect(globalSummary).toContain("- Global note");
+    expect(globalSummary).not.toContain("- Channel discussion");
+
+    // Channel summary
+    const channelSummary = readFileSync(
+      join(tempDir, "MEMORY-SUMMARY-ch-100123-2026-W10.md"),
+      "utf-8",
+    );
+    expect(channelSummary).toContain("- Channel discussion");
+    expect(channelSummary).not.toContain("- Global note");
+  });
+
+  it("loads channel-scoped summaries separately from global", async () => {
+    writeFileSync(
+      join(tempDir, "MEMORY-SUMMARY-2026-W10.md"),
+      "# Weekly Summary — 2026-W10\n- Global stuff\n",
+    );
+    writeFileSync(
+      join(tempDir, "MEMORY-SUMMARY-ch-100123-2026-W10.md"),
+      "# Weekly Summary — 2026-W10\n- Channel stuff\n",
+    );
+
+    const { loadRecentSummaries } = await import("./decay.js");
+
+    const globalSummaries = await loadRecentSummaries(4);
+    expect(globalSummaries).toContain("- Global stuff");
+    expect(globalSummaries).not.toContain("- Channel stuff");
+
+    const channelSummaries = await loadRecentSummaries(4, -100123);
+    expect(channelSummaries).toContain("- Channel stuff");
+    expect(channelSummaries).not.toContain("- Global stuff");
   });
 });

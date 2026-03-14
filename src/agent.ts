@@ -3,11 +3,18 @@ import { config } from "./config.js";
 import { allTools } from "./tools/index.js";
 import { buildSystemContext } from "./memory/index.js";
 import { getLogger } from "./logging/index.js";
-import { getActiveSessionId, logSession, setActiveSession } from "./logging/conversations.js";
+import {
+  clearActiveSession,
+  getActiveSessionId,
+  logSession,
+  setActiveSession,
+} from "./logging/conversations.js";
 
 let client: CopilotClient | null = null;
 const sessions = new Map<number, CopilotSession>();
 const sessionModels = new Map<number, string>();
+const activeSessionTurns = new Map<number, number>();
+const staleSessions = new Map<number, Set<CopilotSession>>();
 
 export async function startAgent(): Promise<CopilotClient> {
   const log = getLogger();
@@ -33,6 +40,18 @@ export async function stopAgent(): Promise<void> {
     }
   }
   sessions.clear();
+
+  for (const [chatId, sessionsForChat] of staleSessions) {
+    for (const session of sessionsForChat) {
+      try {
+        await session.destroy();
+      } catch (err) {
+        log.warn({ chatId, err }, "Error destroying stale session");
+      }
+    }
+  }
+  staleSessions.clear();
+  activeSessionTurns.clear();
 
   if (client) {
     await client.stop();
@@ -128,6 +147,12 @@ export async function switchDefaultModel(model: string): Promise<void> {
 }
 
 export async function destroySession(chatId: number): Promise<void> {
+  try {
+    clearActiveSession(chatId);
+  } catch {
+    // ignore
+  }
+
   const session = sessions.get(chatId);
   if (session) {
     try {
@@ -136,6 +161,18 @@ export async function destroySession(chatId: number): Promise<void> {
       // ignore
     }
     sessions.delete(chatId);
+  }
+
+  const staleSessionsForChat = staleSessions.get(chatId);
+  if (staleSessionsForChat) {
+    for (const staleSession of staleSessionsForChat) {
+      try {
+        await staleSession.destroy();
+      } catch {
+        // ignore
+      }
+    }
+    staleSessions.delete(chatId);
   }
 }
 
@@ -158,6 +195,11 @@ export function getChatIdForSession(sessionId: string): number | undefined {
   for (const [chatId, session] of sessions) {
     if (session.sessionId === sessionId) return chatId;
   }
+  for (const [chatId, sessionsForChat] of staleSessions) {
+    for (const session of sessionsForChat) {
+      if (session.sessionId === sessionId) return chatId;
+    }
+  }
   return undefined;
 }
 
@@ -165,8 +207,69 @@ export function getModelForChat(chatId: number): string {
   return sessionModels.get(chatId) ?? config.copilot.model;
 }
 
+export function beginSessionTurn(chatId: number): void {
+  activeSessionTurns.set(chatId, (activeSessionTurns.get(chatId) ?? 0) + 1);
+}
+
+export async function endSessionTurn(chatId: number): Promise<void> {
+  const nextCount = (activeSessionTurns.get(chatId) ?? 0) - 1;
+  if (nextCount > 0) {
+    activeSessionTurns.set(chatId, nextCount);
+    return;
+  }
+
+  activeSessionTurns.delete(chatId);
+
+  const staleSessionsForChat = staleSessions.get(chatId);
+  if (!staleSessionsForChat) return;
+
+  staleSessions.delete(chatId);
+
+  for (const staleSession of staleSessionsForChat) {
+    try {
+      await staleSession.destroy();
+    } catch {
+      // ignore
+    }
+  }
+}
+
+/**
+ * Mark the session for context refresh. The updated system context will take
+ * effect when the current turn finishes and /new creates a fresh session, or
+ * on the next message if no session exists yet. We intentionally do NOT
+ * destroy the active session here — doing so mid-turn would kill the
+ * in-flight sendAndWait call in handleMessage.
+ */
+export async function refreshSessionContext(chatId: number): Promise<void> {
+  try {
+    clearActiveSession(chatId);
+  } catch {
+    // ignore
+  }
+
+  const session = sessions.get(chatId);
+  if (!session) return;
+
+  if ((activeSessionTurns.get(chatId) ?? 0) > 0) {
+    sessions.delete(chatId);
+    const sessionsForChat = staleSessions.get(chatId) ?? new Set<CopilotSession>();
+    sessionsForChat.add(session);
+    staleSessions.set(chatId, sessionsForChat);
+    return;
+  }
+
+  sessions.delete(chatId);
+
+  try {
+    await session.destroy();
+  } catch {
+    // ignore
+  }
+}
+
 async function buildSessionConfig(chatId: number) {
-  const systemContext = await buildSystemContext();
+  const systemContext = await buildSystemContext(chatId);
   const model = sessionModels.get(chatId) ?? config.copilot.model;
 
   return {
