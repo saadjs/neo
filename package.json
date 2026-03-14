@@ -9,16 +9,19 @@
     "build": "esbuild src/index.ts --bundle --platform=node --target=node24 --format=esm --outfile=dist/index.js --packages=external",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
-    "lint": "oxlint src/",
-    "fmt": "oxfmt --write src/",
-    "fmt:check": "oxfmt --check src/",
+    "lint": "oxlint src vitest.config.ts --tsconfig tsconfig.json --deny-warnings --import-plugin --promise-plugin --vitest-plugin",
+    "lint:fix": "npm run lint -- --fix",
+    "fmt": "oxfmt --write src vitest.config.ts",
+    "fmt:check": "oxfmt --check src vitest.config.ts",
+    "check:staged": "lint-staged && npm run typecheck",
+    "check": "npm run lint && npm run fmt:check && npm run typecheck && npm run test",
     "test": "vitest run",
     "test:watch": "vitest",
     "prepare": "husky"
   },
   "lint-staged": {
-    "*.{ts,js}": [
-      "oxlint",
+    "*.{ts,js,mjs,cjs}": [
+      "oxlint --tsconfig tsconfig.json --deny-warnings --import-plugin --promise-plugin --vitest-plugin",
       "oxfmt --write"
     ]
   },
