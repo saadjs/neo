@@ -15,7 +15,7 @@ Personal AI agent powered by the GitHub Copilot SDK, accessible via Telegram.
 ### Install
 
 ```bash
-git clone <repo-url> neo && cd neo
+git clone https://github.com/saadjs/neo.git neo && cd neo
 nvm use
 npm install
 cp .env.example .env
