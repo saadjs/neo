@@ -248,15 +248,11 @@ async function clearPromptReplyMarkup(chatId: number, messageId: number): Promis
   }
 }
 
-async function safeAnswerCallbackQuery(
-  ctx: Context,
-  text: string,
-  extra?: Record<string, unknown>,
-): Promise<void> {
+async function safeAnswerCallbackQuery(ctx: Context, text: string): Promise<void> {
   try {
     await ctx.answerCallbackQuery({ text });
   } catch (err) {
-    getLogger().warn({ err, ...extra }, "Failed to answer ask_user callback query");
+    getLogger().warn({ err, chatId: ctx.chat?.id }, "Failed to answer ask_user callback query");
   }
 }
 
@@ -271,27 +267,12 @@ export async function handleUserInputCallback(ctx: Context): Promise<boolean> {
 
   const pending = ctx.chat ? pendingInputs.get(ctx.chat.id) : undefined;
   const message = callbackQuery.message;
-  const callbackMessageId = message && "message_id" in message ? message.message_id : undefined;
-  getLogger().info(
-    {
-      chatId: ctx.chat?.id,
-      callbackData: data,
-      callbackMessageId,
-      pendingRequestId: pending?.requestId,
-      pendingPromptMessageId: pending?.promptMessageId,
-    },
-    "Received ask_user callback",
-  );
 
   if (!pending || !message || !("message_id" in message) || !ctx.chat) {
-    if (ctx.chat && callbackMessageId) {
-      await clearPromptReplyMarkup(ctx.chat.id, callbackMessageId);
+    if (ctx.chat && message && "message_id" in message) {
+      await clearPromptReplyMarkup(ctx.chat.id, message.message_id);
     }
-    await safeAnswerCallbackQuery(ctx, "This prompt is no longer active.", {
-      chatId: ctx.chat?.id,
-      callbackData: data,
-      callbackMessageId,
-    });
+    await safeAnswerCallbackQuery(ctx, "This prompt is no longer active.");
     return true;
   }
 
@@ -300,28 +281,18 @@ export async function handleUserInputCallback(ctx: Context): Promise<boolean> {
     (pending.promptMessageId !== undefined && pending.promptMessageId !== message.message_id)
   ) {
     await clearPromptReplyMarkup(ctx.chat.id, message.message_id);
-    await safeAnswerCallbackQuery(ctx, "This prompt expired. Please use the latest one.", {
-      chatId: ctx.chat.id,
-      callbackData: data,
-      callbackMessageId: message.message_id,
-      pendingRequestId: pending.requestId,
-      pendingPromptMessageId: pending.promptMessageId,
-    });
+    await safeAnswerCallbackQuery(ctx, "This prompt expired. Please use the latest one.");
     return true;
   }
 
   const choice = pending.choices?.[parsed.choiceIndex];
   if (!choice) {
     await clearPromptReplyMarkup(ctx.chat.id, message.message_id);
-    await safeAnswerCallbackQuery(ctx, "That option is no longer available.", {
-      chatId: ctx.chat.id,
-      callbackData: data,
-      callbackMessageId: message.message_id,
-      pendingRequestId: pending.requestId,
-      pendingPromptMessageId: pending.promptMessageId,
-    });
+    await safeAnswerCallbackQuery(ctx, "That option is no longer available.");
     return true;
   }
+
+  getLogger().info({ chatId: ctx.chat.id, choice }, "ask_user choice selected");
 
   pending.resolve({
     answer: choice,
@@ -329,14 +300,7 @@ export async function handleUserInputCallback(ctx: Context): Promise<boolean> {
   });
 
   await clearPromptReplyMarkup(ctx.chat.id, message.message_id);
-
-  await safeAnswerCallbackQuery(ctx, `Selected: ${choice}`, {
-    chatId: ctx.chat.id,
-    callbackData: data,
-    callbackMessageId: message.message_id,
-    pendingRequestId: pending.requestId,
-    pendingPromptMessageId: pending.promptMessageId,
-  });
+  await safeAnswerCallbackQuery(ctx, `Selected: ${choice}`);
   return true;
 }
 
