@@ -37,6 +37,22 @@ describe("handleModel", () => {
     });
   });
 
+  it("ignores the bot mention in group-chat commands", async () => {
+    const { handleModel } = await import("./model.js");
+    const reply = vi.fn();
+
+    await handleModel({
+      chat: { id: 42 },
+      message: { text: "/model@neural_neo_bot gpt-5" },
+      reply,
+    } as never);
+
+    expect(switchModelMock).toHaveBeenCalledWith(42, "gpt-5");
+    expect(reply).toHaveBeenCalledWith("Session model switched to `gpt-5` for this chat only.", {
+      parse_mode: "Markdown",
+    });
+  });
+
   it("replies with a paginated picker when no model name is provided", async () => {
     getModelForChatMock.mockReturnValue("gpt-4.1");
     loadModelCatalogMock.mockResolvedValue({
@@ -70,6 +86,29 @@ describe("handleModel", () => {
         .flat()
         .some((button: { text: string }) => button.text === "Refresh"),
     ).toBe(true);
+  });
+
+  it("opens the picker when the command only includes a bot mention", async () => {
+    getModelForChatMock.mockReturnValue("gpt-4.1");
+    loadModelCatalogMock.mockResolvedValue({
+      fetchedAt: "2026-03-13T10:00:00.000Z",
+      models: [{ id: "model-1", label: "Model 1" }],
+      stale: false,
+      source: "cache",
+    });
+
+    const { handleModel } = await import("./model.js");
+    const reply = vi.fn();
+
+    await handleModel({
+      chat: { id: 42 },
+      message: { text: "/model@neural_neo_bot" },
+      reply,
+    } as never);
+
+    expect(loadModelCatalogMock).toHaveBeenCalled();
+    expect(switchModelMock).not.toHaveBeenCalled();
+    expect(reply.mock.calls[0][0]).toContain("Current: gpt-4.1");
   });
 });
 
