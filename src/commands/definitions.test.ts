@@ -25,8 +25,11 @@ describe("getTelegramCommands", () => {
 describe("buildHelpText", () => {
   it("renders help from the shared command definitions", () => {
     expect(buildHelpText()).toContain("/start — Show available commands");
-    expect(buildHelpText()).toContain("/model <name> — Switch the model for this chat only");
+    expect(buildHelpText()).toContain("/model [name] — Switch the model for this chat only");
     expect(buildHelpText()).toContain("/memory [query] — View or search memory");
     expect(buildHelpText()).toContain("/usage — Show Copilot monthly usage");
+    expect(buildHelpText()).toContain(
+      "/model opens a clickable picker; /model <name> still switches directly",
+    );
   });
 });

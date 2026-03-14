@@ -12,6 +12,7 @@ import {
   setSessionTags,
 } from "./logging/conversations.js";
 import { registerCommands } from "./commands/index.js";
+import { handleModelCallback, isModelCallback } from "./commands/model.js";
 import { downloadTelegramFile } from "./telegram/files.js";
 import { splitMessage } from "./telegram/messages.js";
 import { appendCompactionMemory } from "./memory/index.js";
@@ -37,6 +38,11 @@ export async function createBot(): Promise<Bot> {
   });
 
   await registerCommands(bot);
+
+  bot.on("callback_query:data", async (ctx) => {
+    if (!isModelCallback(ctx.callbackQuery.data)) return;
+    await handleModelCallback(ctx);
+  });
 
   // Handle text messages
   bot.on("message:text", async (ctx) => {

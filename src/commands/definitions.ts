@@ -20,7 +20,7 @@ export const commandDefinitions = [
   {
     command: "model",
     description: "Switch the model for this chat only",
-    usage: "<name>",
+    usage: "[name]",
   },
   {
     command: "sessions",
@@ -85,6 +85,7 @@ ${commandLines.join("\n")}
 
 Notes:
 - /start and /help both show this command list
+- /model opens a clickable picker; /model <name> still switches directly
 - /new keeps this chat's model override if you set one with /model
 - Otherwise /new uses Neo's default model from config.json
 
