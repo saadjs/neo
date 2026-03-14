@@ -118,9 +118,11 @@ export async function createBot(): Promise<Bot> {
   const bot = new Bot(config.telegram.botToken);
   const log = getLogger();
 
-  // Owner-only middleware — silently ignore everyone else
+  // Keep DMs owner-only, but allow group chats to flow without requiring a tag.
   bot.use(async (ctx, next) => {
-    if (ctx.from?.id !== config.telegram.ownerId) return;
+    const chatType = ctx.chat?.type;
+    const isGroupChat = chatType === "group" || chatType === "supergroup";
+    if (!isGroupChat && ctx.from?.id !== config.telegram.ownerId) return;
     await next();
   });
 

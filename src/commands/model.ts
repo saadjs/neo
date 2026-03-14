@@ -2,6 +2,7 @@ import type { Context } from "grammy";
 import { InlineKeyboard } from "grammy";
 import { getModelForChat, switchModel } from "../agent.js";
 import { loadModelCatalog, type AvailableModel, type ModelCatalogResult } from "./model-catalog.js";
+import { getCommandArgs } from "./command-text.js";
 
 const MODELS_PER_PAGE = 8;
 const PICKER_TTL_MS = 24 * 60 * 60 * 1000;
@@ -162,7 +163,7 @@ export function isModelCallback(data: string | undefined): boolean {
 
 export async function handleModel(ctx: Context) {
   const text = ctx.message?.text ?? "";
-  const model = text.replace(/^\/model\s*/, "").trim();
+  const model = getCommandArgs(text, "model");
 
   if (!model) {
     try {

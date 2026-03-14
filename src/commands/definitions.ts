@@ -28,7 +28,7 @@ export const commandDefinitions = [
   },
   {
     command: "memory",
-    description: "View or search memory",
+    description: "View, search, or filter memory",
     usage: "[query]",
   },
   {
@@ -90,6 +90,7 @@ ${commandLines.join("\n")}
 Notes:
 - /start and /help both show this command list
 - /model opens a clickable picker; /model <name> still switches directly
+- /memory supports full-text search, /memory recent N, and /memory #tag
 - /whichmodel shows default model vs this chat's active model
 - /new keeps this chat's model override if you set one with /model
 - Otherwise /new uses Neo's default model from config.json
