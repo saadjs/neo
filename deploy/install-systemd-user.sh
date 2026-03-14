@@ -31,8 +31,8 @@ mkdir -p "$INSTALL_DIR" "$UNIT_DIR"
 cp "$ROOT_DIR/deploy/neo-user.service" "$SERVICE_PATH"
 sed -i.bak \
   -e "s|^WorkingDirectory=.*|WorkingDirectory=${INSTALL_DIR}|" \
-  -e "s|^Environment=NEO_DATA_DIR=.*|Environment=NEO_DATA_DIR=${INSTALL_DIR}/data|" \
-  -e "s|^Environment=NEO_LOG_DIR=.*|Environment=NEO_LOG_DIR=${INSTALL_DIR}/logs|" \
+  -e "s|^Environment=NEO_DATA_DIR=.*|Environment=NEO_DATA_DIR=${CURRENT_HOME}/.neo|" \
+  -e "s|^Environment=NEO_LOG_DIR=.*|Environment=NEO_LOG_DIR=${CURRENT_HOME}/.neo/logs|" \
   -e "s|^Environment=NEO_SYSTEMD_UNIT=.*|Environment=NEO_SYSTEMD_UNIT=${SERVICE_NAME}|" \
   -e "s|^EnvironmentFile=.*|EnvironmentFile=${INSTALL_DIR}/.env|" \
   "$SERVICE_PATH"

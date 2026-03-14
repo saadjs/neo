@@ -1,7 +1,6 @@
-import { config } from "./config.js";
+import { config, ensureDataDir } from "./config.js";
 import { createLogger } from "./logging/index.js";
 import { closeConversationDb } from "./logging/conversations.js";
-import { ensureMemoryDir } from "./memory/index.js";
 import { startAgent, stopAgent } from "./agent.js";
 import { createBot } from "./bot.js";
 import { startScheduler, stopScheduler } from "./scheduler/index.js";
@@ -20,7 +19,7 @@ async function main() {
   log.info({ pid: process.pid }, "Neo starting up...");
 
   // Ensure data directories exist
-  await ensureMemoryDir();
+  const { isFirstRun } = await ensureDataDir();
 
   // Check for restart marker
   const restartInfo = await consumeRestartMarker();
@@ -52,6 +51,18 @@ async function main() {
       );
     } catch (err) {
       log.warn({ err }, "Failed to send restart notification");
+    }
+  }
+
+  // First-run onboarding greeting
+  if (isFirstRun && !restartInfo) {
+    try {
+      await bot.api.sendMessage(
+        config.telegram.ownerId,
+        "Hey, just came online for the first time. How would you like my personality to be?",
+      );
+    } catch (err) {
+      log.warn({ err }, "Failed to send onboarding greeting");
     }
   }
 

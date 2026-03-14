@@ -7,8 +7,8 @@ Wants=network-online.target
 Type=simple
 WorkingDirectory=%h/neo
 Environment=NODE_ENV=production
-Environment=NEO_DATA_DIR=%h/neo/data
-Environment=NEO_LOG_DIR=%h/neo/logs
+Environment=NEO_DATA_DIR=%h/.neo
+Environment=NEO_LOG_DIR=%h/.neo/logs
 Environment=NEO_SYSTEMD_UNIT=neo
 Environment=NEO_SYSTEMCTL_SCOPE=user
 EnvironmentFile=%h/neo/.env

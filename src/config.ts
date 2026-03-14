@@ -7,10 +7,13 @@ import {
   renameSync,
   writeFileSync,
 } from "node:fs";
+import { mkdir, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 
 const PROJECT_ROOT = resolve(".");
+const DEFAULT_DATA_DIR = resolve(process.env.NEO_DATA_DIR?.trim() || join(homedir(), ".neo"));
+const DEFAULT_LOG_DIR = resolve(process.env.NEO_LOG_DIR?.trim() || join(homedir(), ".neo", "logs"));
 const DEFAULT_SKILL_DIRS = [join(PROJECT_ROOT, "skills"), join(homedir(), ".agents", "skills")];
 const LOG_LEVELS = ["error", "warn", "info", "debug", "trace"] as const;
 
@@ -422,10 +425,29 @@ export function writeManagedConfigFile(path: string, values: ManagedConfigValues
   snapshotManagedConfigFile(path);
 }
 
+export async function ensureDataDir(): Promise<{ isFirstRun: boolean }> {
+  const soulPath = join(DEFAULT_DATA_DIR, "SOUL.md");
+  const isFirstRun = !existsSync(soulPath);
+
+  await mkdir(DEFAULT_DATA_DIR, { recursive: true });
+  await mkdir(join(DEFAULT_DATA_DIR, "memory"), { recursive: true });
+  await mkdir(join(DEFAULT_DATA_DIR, "browser", "sessions"), { recursive: true });
+  await mkdir(join(DEFAULT_DATA_DIR, "browser", "screenshots"), { recursive: true });
+  await mkdir(join(DEFAULT_DATA_DIR, "browser", "downloads"), { recursive: true });
+
+  if (isFirstRun) {
+    await writeFile(soulPath, "# Soul\n\nYou are Neo, a personal AI agent.\n", "utf-8");
+    await writeFile(join(DEFAULT_DATA_DIR, "HUMAN.md"), "# Human\n", "utf-8");
+    await writeFile(join(DEFAULT_DATA_DIR, "PREFERENCES.md"), "# Preferences\n", "utf-8");
+  }
+
+  return { isFirstRun };
+}
+
 function loadConfig(): Config {
   try {
-    const dataDir = resolve(process.env.NEO_DATA_DIR?.trim() || join(PROJECT_ROOT, "data"));
-    const logDir = resolve(process.env.NEO_LOG_DIR?.trim() || join(PROJECT_ROOT, "logs"));
+    const dataDir = DEFAULT_DATA_DIR;
+    const logDir = DEFAULT_LOG_DIR;
     const managedConfigFile = join(dataDir, "config.json");
     const managed = loadManagedConfigFile(managedConfigFile);
 
