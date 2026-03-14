@@ -1,7 +1,14 @@
 import { Bot, Context } from "grammy";
 import type { SessionEvent, MessageOptions } from "@github/copilot-sdk";
 import { config } from "./config.js";
-import { beginSessionTurn, endSessionTurn, getModelForChat, getOrCreateSession } from "./agent.js";
+import {
+  beginSessionTurn,
+  discardSession,
+  endSessionTurn,
+  getClient,
+  getModelForChat,
+  getOrCreateSession,
+} from "./agent.js";
 import { getLogger } from "./logging/index.js";
 import {
   logMessage,
@@ -26,6 +33,76 @@ import {
   formatProgressName,
   buildProgressText,
 } from "./telegram/progress.js";
+import {
+  isMessageNotModifiedError,
+  isMissingProgressMessageError,
+} from "./telegram/session-timeout.js";
+
+const SESSION_HEALTH_POLL_MS = 1000;
+
+async function sendAndWaitForSessionIdle(
+  chatId: number,
+  session: { on(handler: (event: SessionEvent) => void): () => void },
+  send: () => Promise<unknown>,
+): Promise<void> {
+  let resolveWhenIdle: (() => void) | null = null;
+  let rejectWhenIdle: ((error: Error) => void) | null = null;
+  let settled = false;
+
+  const settle = (handler: (() => void) | ((error: Error) => void) | null, value?: Error) => {
+    if (settled || !handler) return;
+    settled = true;
+    if (value) {
+      (handler as (error: Error) => void)(value);
+      return;
+    }
+    (handler as () => void)();
+  };
+
+  const idlePromise = new Promise<void>((resolve, reject) => {
+    resolveWhenIdle = resolve;
+    rejectWhenIdle = reject;
+  });
+
+  const unsubscribe = session.on((event) => {
+    if (event.type === "session.idle") {
+      settle(resolveWhenIdle);
+      return;
+    }
+
+    if (event.type === "session.error") {
+      const data = event.data as { message?: string; stack?: string };
+      const error = new Error(data.message || "Session error");
+      error.stack = data.stack;
+      settle(rejectWhenIdle, error);
+    }
+  });
+
+  const connectionPromise = new Promise<void>((_, reject) => {
+    const interval = setInterval(() => {
+      const state = getClient()?.getState();
+      if (state === "connected") return;
+
+      clearInterval(interval);
+      const error = new Error(
+        `Copilot client connection lost while waiting for session completion (chat ${chatId})`,
+      );
+      settle(rejectWhenIdle, error);
+      reject(error);
+    }, SESSION_HEALTH_POLL_MS);
+
+    void idlePromise.finally(() => {
+      clearInterval(interval);
+    });
+  });
+
+  try {
+    await send();
+    await Promise.race([idlePromise, connectionPromise]);
+  } finally {
+    unsubscribe();
+  }
+}
 
 export async function createBot(): Promise<Bot> {
   const bot = new Bot(config.telegram.botToken);
@@ -129,6 +206,7 @@ async function handleMessage(
   const log = getLogger();
   const chatId = ctx.chat!.id;
   const startedAt = Date.now();
+  let activeSession: Awaited<ReturnType<typeof getOrCreateSession>> | null = null;
 
   await ctx.replyWithChatAction("typing");
 
@@ -179,6 +257,10 @@ async function handleMessage(
 
       await ctx.api.editMessageText(chatId, progressMessageId, nextText);
     } catch (err) {
+      if (isMessageNotModifiedError(err)) return;
+      if (isMissingProgressMessageError(err)) {
+        progressMessageId = null;
+      }
       log.debug({ err, chatId, nextText }, "Failed to update progress message");
     }
   };
@@ -207,15 +289,17 @@ async function handleMessage(
   try {
     let responseBuffer = "";
     let sessionId = "";
+    let lastAssistantMessage: SessionEvent | undefined;
     const toolStartTimes = new Map<string, number>();
-
     beginSessionTurn(chatId);
     sessionTurnStarted = true;
     const session = await getOrCreateSession({ chatId });
+    activeSession = session;
     sessionId = session.sessionId;
 
     const onEvent = async (event: SessionEvent) => {
       if (event.type === "assistant.message") {
+        lastAssistantMessage = event;
         const content = (event.data as { content?: string }).content;
         if (content) responseBuffer = content;
       }
@@ -323,11 +407,14 @@ async function handleMessage(
       });
     } catch {}
 
-    const result = await session.sendAndWait({ prompt: text, attachments });
-    const finalContent = (result?.data as { content?: string })?.content ?? responseBuffer;
+    await sendAndWaitForSessionIdle(chatId, session, async () => {
+      await session.send({ prompt: text, attachments });
+    });
+    const finalContent =
+      (lastAssistantMessage?.data as { content?: string } | undefined)?.content ?? responseBuffer;
 
     try {
-      logMessage(sessionId, "assistant", finalContent || "(no response)", result?.id);
+      logMessage(sessionId, "assistant", finalContent || "(no response)", lastAssistantMessage?.id);
       recordMessageEstimate({
         sessionId,
         model: getModelForChat(chatId),
@@ -349,6 +436,9 @@ async function handleMessage(
     }
   } catch (err) {
     await clearLiveStatus();
+    if (activeSession && getClient()?.getState() !== "connected") {
+      discardSession(chatId, activeSession);
+    }
     log.error({ err, chatId }, "Error handling message");
     await ctx.reply("⚠️ Something went wrong. Try /new to start a fresh session.");
   } finally {

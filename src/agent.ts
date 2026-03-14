@@ -224,6 +224,26 @@ export function getSessionForChat(chatId: number): CopilotSession | undefined {
   return sessions.get(chatId);
 }
 
+export function discardSession(chatId: number, session: CopilotSession): void {
+  const activeSession = sessions.get(chatId);
+  if (activeSession === session) {
+    sessions.delete(chatId);
+    try {
+      clearActiveSession(chatId);
+    } catch {
+      // ignore
+    }
+  }
+
+  const staleSessionsForChat = staleSessions.get(chatId);
+  if (!staleSessionsForChat) return;
+
+  staleSessionsForChat.delete(session);
+  if (staleSessionsForChat.size === 0) {
+    staleSessions.delete(chatId);
+  }
+}
+
 export function listActiveSessions(): { chatId: number; sessionId: string }[] {
   return Array.from(sessions.entries()).map(([chatId, session]) => ({
     chatId,

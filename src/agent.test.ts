@@ -295,3 +295,70 @@ describe("refreshSessionContext", () => {
     expect(staleSession.destroy).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("discardSession", () => {
+  it("clears the active cached session and persisted session id", async () => {
+    const session = {
+      sessionId: "session-active",
+      destroy: vi.fn().mockResolvedValue(undefined),
+      disconnect: vi.fn().mockResolvedValue(undefined),
+    };
+    createSessionMock.mockResolvedValue(session);
+    buildSystemContextMock.mockResolvedValue("context");
+    getActiveSessionIdMock.mockReturnValue(null);
+
+    const { createNewSession, discardSession, getSessionForChat, startAgent } =
+      await import("./agent.js");
+
+    await startAgent();
+    await createNewSession({ chatId: -100123 });
+    expect(getSessionForChat(-100123)).toBe(session);
+
+    discardSession(-100123, session as never);
+
+    expect(getSessionForChat(-100123)).toBeUndefined();
+    expect(clearActiveSessionMock).toHaveBeenCalledWith(-100123);
+  });
+
+  it("removes a stale session from lookup without touching the active session", async () => {
+    const staleSession = {
+      sessionId: "session-stale",
+      destroy: vi.fn().mockResolvedValue(undefined),
+      disconnect: vi.fn().mockResolvedValue(undefined),
+    };
+    const freshSession = {
+      sessionId: "session-fresh",
+      destroy: vi.fn().mockResolvedValue(undefined),
+      disconnect: vi.fn().mockResolvedValue(undefined),
+    };
+    createSessionMock.mockResolvedValueOnce(staleSession).mockResolvedValueOnce(freshSession);
+    buildSystemContextMock.mockResolvedValue("context");
+    getActiveSessionIdMock.mockReturnValue(null);
+
+    const {
+      beginSessionTurn,
+      createNewSession,
+      discardSession,
+      getChatIdForSession,
+      getOrCreateSession,
+      getSessionForChat,
+      refreshSessionContext,
+      startAgent,
+    } = await import("./agent.js");
+
+    await startAgent();
+    await createNewSession({ chatId: -100123 });
+    beginSessionTurn(-100123);
+    await refreshSessionContext(-100123);
+
+    expect(getChatIdForSession("session-stale")).toBe(-100123);
+
+    await expect(getOrCreateSession({ chatId: -100123 })).resolves.toBe(freshSession);
+    clearActiveSessionMock.mockClear();
+    discardSession(-100123, staleSession as never);
+
+    expect(getChatIdForSession("session-stale")).toBeUndefined();
+    expect(getSessionForChat(-100123)).toBe(freshSession);
+    expect(clearActiveSessionMock).not.toHaveBeenCalled();
+  });
+});
