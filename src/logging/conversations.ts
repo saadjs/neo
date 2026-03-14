@@ -2,6 +2,7 @@ import { DatabaseSync } from "node:sqlite";
 import { join } from "node:path";
 import { config } from "../config.js";
 import { getLogger } from "./index.js";
+import { initTokenUsageTable } from "./cost.js";
 
 let db: DatabaseSync | null = null;
 
@@ -77,6 +78,8 @@ export function getConversationDb(): DatabaseSync {
   } catch {
     // Column already exists — ignore
   }
+
+  initTokenUsageTable();
 
   getLogger().info({ dbPath }, "Conversation database initialized");
   return db;

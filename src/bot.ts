@@ -15,6 +15,7 @@ import { registerCommands } from "./commands/index.js";
 import { downloadTelegramFile } from "./telegram/files.js";
 import { splitMessage } from "./telegram/messages.js";
 import { appendCompactionMemory } from "./memory/index.js";
+import { recordCompactionTokens, recordMessageEstimate } from "./logging/cost.js";
 import { extractTags } from "./memory/tagging.js";
 import { isVoiceEnabled, transcribeFile } from "./voice/transcribe.js";
 import {
@@ -284,6 +285,12 @@ async function handleMessage(
             checkpointPath: data.checkpointPath,
             summaryContent: data.summaryContent,
           });
+          recordCompactionTokens({
+            sessionId,
+            model: getModelForChat(chatId),
+            preCompactionTokens: data.preCompactionTokens,
+            postCompactionTokens: data.postCompactionTokens,
+          });
           setLastCompactionEventId(chatId, event.id);
           const tags = extractTags(data.summaryContent);
           setSessionTags(sessionId, tags);
@@ -299,6 +306,12 @@ async function handleMessage(
 
     try {
       logMessage(sessionId, "user", text);
+      recordMessageEstimate({
+        sessionId,
+        model: getModelForChat(chatId),
+        role: "user",
+        content: text,
+      });
     } catch {}
 
     const result = await session.sendAndWait({ prompt: text, attachments });
@@ -306,6 +319,12 @@ async function handleMessage(
 
     try {
       logMessage(sessionId, "assistant", finalContent || "(no response)", result?.id);
+      recordMessageEstimate({
+        sessionId,
+        model: getModelForChat(chatId),
+        role: "assistant",
+        content: finalContent || "",
+      });
     } catch {}
 
     await clearLiveStatus();
