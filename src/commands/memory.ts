@@ -5,6 +5,7 @@ import {
   searchMemory,
   listMemoryFiles,
 } from "../memory/index.js";
+import { searchSessionsByTag } from "../logging/conversations.js";
 
 export async function handleMemory(ctx: Context) {
   const text = ctx.message?.text ?? "";
@@ -26,7 +27,58 @@ export async function handleMemory(ctx: Context) {
     return;
   }
 
-  // Search
+  if (arg.startsWith("#")) {
+    const tag = arg.slice(1).trim().toLowerCase();
+    if (!tag) {
+      await ctx.reply("Usage: /memory #tag");
+      return;
+    }
+    const sessions = searchSessionsByTag(tag, 10);
+    if (sessions.length === 0) {
+      await ctx.reply(`No sessions found with tag "${tag}".`);
+      return;
+    }
+    let msg = `🏷️ Sessions tagged "${tag}":\n\n`;
+    for (const s of sessions) {
+      const date = s.created_at.split("T")[0] ?? s.created_at.slice(0, 10);
+      const tags = s.tags ?? "";
+      msg += `• ${date} — ${s.model ?? "unknown"} [${tags}]\n`;
+    }
+    await ctx.reply(msg.slice(0, 4000)).catch(() => ctx.reply(msg.slice(0, 4000)));
+    return;
+  }
+
+  if (arg === "recent" || arg.startsWith("recent ")) {
+    const parts = arg.split(/\s+/);
+    const days = parts.length > 1 ? parseInt(parts[1], 10) || 3 : 3;
+    const maxDays = Math.min(days, 14);
+
+    let msg = `📅 Recent memory (last ${maxDays} days):\n\n`;
+    let hasContent = false;
+
+    for (let i = 0; i < maxDays; i++) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toISOString().split("T")[0];
+      const content = await readDailyMemory(dateStr);
+      if (content.trim()) {
+        hasContent = true;
+        const preview = content.trim().slice(0, 500);
+        msg += `**${dateStr}**\n${preview}\n\n`;
+      }
+    }
+
+    if (!hasContent) {
+      msg += "No memory entries found for this period.";
+    }
+
+    await ctx
+      .reply(msg.slice(0, 4000), { parse_mode: "Markdown" })
+      .catch(() => ctx.reply(msg.slice(0, 4000)));
+    return;
+  }
+
+  // FTS search
   const results = await searchMemory(arg);
   await ctx
     .reply(results.slice(0, 4000), { parse_mode: "Markdown" })
