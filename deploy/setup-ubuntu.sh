@@ -6,6 +6,7 @@ SOURCE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DEFAULT_SERVICE_NAME="neo"
 DEFAULT_INSTALL_DIR="/opt/neo"
 DEFAULT_APP_USER="neo"
+EXPECTED_NODE_VERSION="24.14.0"
 
 prompt() {
   local label="$1"
@@ -43,12 +44,67 @@ run_as_app_user() {
   sudo -u "$app_user" "$@"
 }
 
+detect_node_arch() {
+  case "$(uname -m)" in
+    x86_64) printf '%s\n' "x64" ;;
+    aarch64 | arm64) printf '%s\n' "arm64" ;;
+    *)
+      echo "Unsupported architecture for automatic Node install: $(uname -m)" >&2
+      exit 1
+      ;;
+  esac
+}
+
+ensure_system_node() {
+  local expected_version="v${EXPECTED_NODE_VERSION}"
+  local current_version=""
+  local tmp_dir=""
+
+  if [[ -x /usr/bin/node ]]; then
+    current_version="$(/usr/bin/node -v)"
+  fi
+
+  if [[ "$current_version" == "$expected_version" ]]; then
+    return 0
+  fi
+
+  echo "Installing Node ${EXPECTED_NODE_VERSION} to /usr/bin/node..."
+
+  require_command curl
+  require_command tar
+  require_command sudo
+
+  local arch
+  arch="$(detect_node_arch)"
+  tmp_dir="$(mktemp -d)"
+  local archive="node-v${EXPECTED_NODE_VERSION}-linux-${arch}.tar.xz"
+  local url="https://nodejs.org/dist/v${EXPECTED_NODE_VERSION}/${archive}"
+
+  curl -fsSL "$url" -o "$tmp_dir/$archive"
+  tar -xJf "$tmp_dir/$archive" -C "$tmp_dir"
+
+  sudo rm -rf /usr/local/lib/nodejs
+  sudo mkdir -p /usr/local/lib/nodejs
+  sudo cp -R "$tmp_dir/node-v${EXPECTED_NODE_VERSION}-linux-${arch}/." /usr/local/lib/nodejs/
+  sudo ln -sf /usr/local/lib/nodejs/bin/node /usr/bin/node
+  sudo ln -sf /usr/local/lib/nodejs/bin/npm /usr/bin/npm
+  sudo ln -sf /usr/local/lib/nodejs/bin/npx /usr/bin/npx
+
+  [[ "$(/usr/bin/node -v)" == "$expected_version" ]] || {
+    echo "Failed to install Node ${EXPECTED_NODE_VERSION}" >&2
+    exit 1
+  }
+
+  rm -rf "$tmp_dir"
+}
+
 main() {
   require_command sudo
   require_command rsync
+  require_command systemctl
+  ensure_system_node
   require_command npm
   require_command npx
-  require_command systemctl
 
   echo "Neo Ubuntu setup"
   echo

@@ -56,6 +56,7 @@ Recommended first-time setup:
 
 The script will prompt for the service name, install directory, and app user, then:
 
+- install or update the pinned system Node runtime at `/usr/bin/node` when needed
 - install the `systemd` unit
 - sync the repo into the install directory
 - optionally create and open `.env`
@@ -86,7 +87,7 @@ sudo journalctl -u neo -f  # view logs
 
 Notes:
 
-- The service expects system Node at `/usr/bin/node` and currently targets `v24.14.0`.
+- The setup script bootstraps system Node at `/usr/bin/node` and currently targets `v24.14.0`.
 - Neo restarts by exiting and letting `systemd` restart the service via `Restart=always`.
 - Runtime state defaults to `/opt/neo/data` and `/opt/neo/logs` through the unit file.
 - If you use the `google_workspace` tool, install the `gws` CLI or set `GOOGLE_WORKSPACE_CLI_PATH`.
