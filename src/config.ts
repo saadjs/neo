@@ -1,4 +1,12 @@
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  renameSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, join, resolve } from "node:path";
 
 const PROJECT_ROOT = resolve(".");
@@ -28,6 +36,11 @@ export interface ManagedConfigValues {
   NEO_CONTEXT_BUFFER_EXHAUSTION_THRESHOLD: number;
 }
 
+export interface BrowserCredential {
+  username: string;
+  password: string;
+}
+
 function requiredString(name: string, raw: string | undefined) {
   if (!raw?.trim()) throw new Error(`${name} is required`);
   return raw.trim();
@@ -35,6 +48,14 @@ function requiredString(name: string, raw: string | undefined) {
 
 function optionalString(raw: string | undefined) {
   return raw?.trim() || undefined;
+}
+
+function optionalBoolean(raw: string | undefined, fallback: boolean) {
+  if (!raw?.trim()) return fallback;
+  const normalized = raw.trim().toLowerCase();
+  if (["1", "true", "yes", "on"].includes(normalized)) return true;
+  if (["0", "false", "no", "off"].includes(normalized)) return false;
+  throw new Error(`Expected boolean value but got "${raw}"`);
 }
 
 function positiveInteger(name: string, raw: string | undefined) {
@@ -81,7 +102,51 @@ function parseStringArray(name: string, value: unknown) {
   return value.map((item) => resolve(item));
 }
 
-export const managedConfigDefinitions: Record<ManagedConfigKey, ManagedConfigDefinition<unknown>> = {
+export function parseBrowserCredentials(
+  raw: string | undefined,
+): Record<string, BrowserCredential> {
+  if (!raw?.trim()) return {};
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`NEO_BROWSER_CREDENTIALS_JSON must be valid JSON: ${message}`);
+  }
+
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error("NEO_BROWSER_CREDENTIALS_JSON must be a JSON object");
+  }
+
+  const credentials: Record<string, BrowserCredential> = {};
+  for (const [key, value] of Object.entries(parsed)) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      throw new Error(`Credential "${key}" must be an object with username and password`);
+    }
+
+    const username = (value as Record<string, unknown>).username;
+    const password = (value as Record<string, unknown>).password;
+    if (typeof username !== "string" || !username.trim()) {
+      throw new Error(`Credential "${key}" username must be a non-empty string`);
+    }
+    if (typeof password !== "string" || !password.trim()) {
+      throw new Error(`Credential "${key}" password must be a non-empty string`);
+    }
+
+    credentials[key] = {
+      username: username.trim(),
+      password,
+    };
+  }
+
+  return credentials;
+}
+
+export const managedConfigDefinitions: Record<
+  ManagedConfigKey,
+  ManagedConfigDefinition<unknown>
+> = {
   COPILOT_MODEL: {
     defaultValue: "gpt-4.1",
     parse: (value: unknown) => parseString("COPILOT_MODEL", value),
@@ -159,6 +224,11 @@ export interface Config {
       bufferExhaustionThreshold: number;
     };
   };
+  browser: {
+    defaultHeadless: boolean;
+    launchArgs: string[];
+    credentials: Record<string, BrowserCredential>;
+  };
   paths: {
     root: string;
     data: string;
@@ -172,6 +242,10 @@ export interface Config {
     restartHistory: string;
     managedConfigFile: string;
     managedConfigBackupDir: string;
+    browserData: string;
+    browserSessions: string;
+    browserScreenshots: string;
+    browserDownloads: string;
   };
   logging: {
     level: LogLevel;
@@ -187,12 +261,12 @@ export function defaultManagedConfig(): ManagedConfigValues {
     COPILOT_MODEL: managedConfigDefinitions.COPILOT_MODEL.defaultValue as string,
     NEO_LOG_LEVEL: managedConfigDefinitions.NEO_LOG_LEVEL.defaultValue as LogLevel,
     NEO_SKILL_DIRS: managedConfigDefinitions.NEO_SKILL_DIRS.defaultValue as string[],
-    NEO_CONTEXT_COMPACTION_ENABLED:
-      managedConfigDefinitions.NEO_CONTEXT_COMPACTION_ENABLED.defaultValue as boolean,
-    NEO_CONTEXT_COMPACTION_THRESHOLD:
-      managedConfigDefinitions.NEO_CONTEXT_COMPACTION_THRESHOLD.defaultValue as number,
-    NEO_CONTEXT_BUFFER_EXHAUSTION_THRESHOLD:
-      managedConfigDefinitions.NEO_CONTEXT_BUFFER_EXHAUSTION_THRESHOLD.defaultValue as number,
+    NEO_CONTEXT_COMPACTION_ENABLED: managedConfigDefinitions.NEO_CONTEXT_COMPACTION_ENABLED
+      .defaultValue as boolean,
+    NEO_CONTEXT_COMPACTION_THRESHOLD: managedConfigDefinitions.NEO_CONTEXT_COMPACTION_THRESHOLD
+      .defaultValue as number,
+    NEO_CONTEXT_BUFFER_EXHAUSTION_THRESHOLD: managedConfigDefinitions
+      .NEO_CONTEXT_BUFFER_EXHAUSTION_THRESHOLD.defaultValue as number,
   };
 }
 
@@ -367,6 +441,14 @@ function loadConfig(): Config {
           bufferExhaustionThreshold: managed.NEO_CONTEXT_BUFFER_EXHAUSTION_THRESHOLD,
         },
       },
+      browser: {
+        defaultHeadless: optionalBoolean(process.env.NEO_BROWSER_HEADLESS, true),
+        launchArgs: (process.env.NEO_BROWSER_LAUNCH_ARGS || "")
+          .split(/\s+/)
+          .map((arg) => arg.trim())
+          .filter(Boolean),
+        credentials: parseBrowserCredentials(process.env.NEO_BROWSER_CREDENTIALS_JSON),
+      },
       paths: {
         root: PROJECT_ROOT,
         data: dataDir,
@@ -380,14 +462,17 @@ function loadConfig(): Config {
         restartHistory: join(dataDir, "restart-history.jsonl"),
         managedConfigFile,
         managedConfigBackupDir: configBackupDir(managedConfigFile),
+        browserData: join(dataDir, "browser"),
+        browserSessions: join(dataDir, "browser", "sessions"),
+        browserScreenshots: join(dataDir, "browser", "screenshots"),
+        browserDownloads: join(dataDir, "browser", "downloads"),
       },
       logging: {
         level: managed.NEO_LOG_LEVEL,
       },
       service: {
         systemdUnit: process.env.NEO_SYSTEMD_UNIT?.trim() || "neo",
-        systemctlScope:
-          process.env.NEO_SYSTEMCTL_SCOPE?.trim() === "user" ? "user" : "system",
+        systemctlScope: process.env.NEO_SYSTEMCTL_SCOPE?.trim() === "user" ? "user" : "system",
       },
     };
   } catch (error) {
