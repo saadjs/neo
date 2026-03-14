@@ -37,7 +37,7 @@ node dist/index.js
 
 ```bash
 cp .env.example .env
-# Edit .env with your tokens
+# Edit .env with your secrets
 docker compose up -d
 docker compose logs -f  # view logs
 ```
@@ -56,13 +56,16 @@ sudo journalctl -u neo -f  # view logs
 | Command | Description |
 |---------|-------------|
 | `/new` | Start a fresh conversation |
-| `/model <name>` | Switch LLM model |
+| `/model <name>` | Switch the model for the current chat only |
 | `/sessions` | List active sessions |
 | `/memory [query]` | View or search memory |
 | `/loglevel <level>` | Set log verbosity (error/warn/info/debug/trace) |
 | `/soul` | Show current persona |
+| `/status` | Show runtime status and restart state |
 | `/restart` | Restart Neo |
 | `/help` | Show all commands |
+
+`/model <name>` sets a chat-specific model override. `/new` starts a fresh session but keeps that chat-specific override if one exists; otherwise it uses Neo's default model from `data/config.json`.
 
 ## Tools
 
@@ -73,7 +76,7 @@ Neo has 6 tools available to the agent:
 - **google_workspace** — Google Workspace CLI wrapper
 - **memory** — Read/write/search memory files
 - **filesystem** — Full filesystem access
-- **system** — System info, restart, log level
+- **system** — Explain status, inspect settings, apply safe config changes, restart
 
 GitHub operations are handled natively by the Copilot SDK agent runtime.
 
@@ -88,3 +91,20 @@ Neo also auto-compacts long conversations before they fall out of context. When 
 ## Environment Variables
 
 See [`.env.example`](.env.example) for all options.
+
+## Autonomy
+
+Neo now maintains a managed runtime state snapshot in `data/runtime-state.json`, records config changes in `data/config-history.jsonl`, and records restart requests/results in `data/restart-history.jsonl`.
+
+Mutable application settings live in `data/config.json`. Secrets stay in `.env`.
+
+Safe autonomous config updates are limited to:
+
+- `COPILOT_MODEL` (Neo's default model, not chat-specific overrides)
+- `NEO_LOG_LEVEL`
+- `NEO_SKILL_DIRS`
+- `NEO_CONTEXT_COMPACTION_ENABLED`
+- `NEO_CONTEXT_COMPACTION_THRESHOLD`
+- `NEO_CONTEXT_BUFFER_EXHAUSTION_THRESHOLD`
+
+Other managed settings remain approval-required. When a change requires a restart, Neo writes a structured restart marker and attempts `systemctl restart <unit>`, falling back to exiting for supervisor restart if `systemctl` is unavailable or denied.

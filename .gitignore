@@ -6,4 +6,7 @@ data/memory/MEMORY-*.md
 data/conversations.db
 data/conversations.db-*
 data/downloads/
+data/config-history.jsonl
+data/restart-history.jsonl
+data/runtime-state.json
 *.tgz

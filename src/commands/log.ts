@@ -1,5 +1,6 @@
 import type { Context } from "grammy";
-import { setLogLevel, getLogLevel, type LogLevel } from "../logging/index.js";
+import { getLogLevel, type LogLevel } from "../logging/index.js";
+import { applyConfigChange } from "../runtime/state.js";
 
 const VALID_LEVELS: LogLevel[] = ["error", "warn", "info", "debug", "trace"];
 
@@ -25,6 +26,15 @@ export async function handleLogLevel(ctx: Context) {
     return;
   }
 
-  setLogLevel(level as LogLevel);
-  await ctx.reply(`Log level set to \`${level}\`.`, { parse_mode: "Markdown" });
+  const result = await applyConfigChange({
+    key: "NEO_LOG_LEVEL",
+    value: level,
+    actor: "telegram-owner",
+    source: "command",
+    reason: "/loglevel command",
+  });
+
+  await ctx.reply(`Log level set to \`${level}\`.\n${result.reason}`, {
+    parse_mode: "Markdown",
+  });
 }

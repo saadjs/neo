@@ -117,6 +117,16 @@ export async function switchModel(chatId: number, model: string): Promise<void> 
   }
 }
 
+export async function switchDefaultModel(model: string): Promise<void> {
+  config.copilot.model = model;
+
+  for (const [chatId, session] of sessions) {
+    if (sessionModels.has(chatId)) continue;
+    await session.setModel(model);
+    getLogger().info({ chatId, model }, "Default model applied to active session");
+  }
+}
+
 export async function destroySession(chatId: number): Promise<void> {
   const session = sessions.get(chatId);
   if (session) {

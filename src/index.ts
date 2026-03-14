@@ -1,5 +1,3 @@
-import { readFile, unlink } from "node:fs/promises";
-import { join } from "node:path";
 import { config } from "./config.js";
 import { createLogger } from "./logging/index.js";
 import { closeConversationDb } from "./logging/conversations.js";
@@ -7,6 +5,12 @@ import { ensureMemoryDir } from "./memory/index.js";
 import { startAgent, stopAgent } from "./agent.js";
 import { createBot } from "./bot.js";
 import { startScheduler, stopScheduler } from "./scheduler/index.js";
+import {
+  consumeRestartMarker,
+  formatSystemStatusSummary,
+  getSystemStatus,
+  logAutonomyStartup,
+} from "./runtime/state.js";
 
 async function main() {
   // Initialize logger first
@@ -17,15 +21,10 @@ async function main() {
   await ensureMemoryDir();
 
   // Check for restart marker
-  const markerPath = join(config.paths.data, ".restart-marker");
-  let restartInfo: { chatId?: number; timestamp?: string } | null = null;
-  try {
-    const marker = await readFile(markerPath, "utf-8");
-    restartInfo = JSON.parse(marker);
-    await unlink(markerPath);
+  const restartInfo = await consumeRestartMarker();
+  await logAutonomyStartup(restartInfo);
+  if (restartInfo) {
     log.info({ restartInfo }, "Restart marker found — this is a restart");
-  } catch {
-    // No marker — fresh start
   }
 
   // Start the Copilot SDK client
@@ -38,10 +37,16 @@ async function main() {
   // Start reminder scheduler
   startScheduler(bot.api);
 
+  const startupStatus = await getSystemStatus();
+  log.info({ startupStatus }, "Runtime status on startup");
+
   // Send "I'm back" message after restart
   if (restartInfo?.chatId) {
     try {
-      await bot.api.sendMessage(restartInfo.chatId, "Back online. ⚡");
+      await bot.api.sendMessage(
+        restartInfo.chatId,
+        `Back online. ⚡\n${formatSystemStatusSummary(startupStatus)}`,
+      );
     } catch (err) {
       log.warn({ err }, "Failed to send restart notification");
     }

@@ -14,6 +14,7 @@ import { loadSoul } from "./soul.js";
 import { loadPreferences } from "./preferences.js";
 import { loadHuman } from "./human.js";
 import { readDailyMemory } from "./daily.js";
+import { getRuntimeContextSection } from "../runtime/state.js";
 
 export async function buildSystemContext(): Promise<string> {
   const [soul, preferences, human, todayMemory] = await Promise.all([
@@ -35,6 +36,11 @@ export async function buildSystemContext(): Promise<string> {
 
   if (todayMemory.trim()) {
     parts.push(`\n---\n\n## Today's Memory\n\n${todayMemory}`);
+  }
+
+  const runtimeContext = getRuntimeContextSection();
+  if (runtimeContext) {
+    parts.push(`\n---\n\n${runtimeContext}`);
   }
 
   parts.push(

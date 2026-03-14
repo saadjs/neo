@@ -1,14 +1,18 @@
 import { defineTool } from "@github/copilot-sdk";
 import { z } from "zod";
 import * as os from "node:os";
-import { join } from "node:path";
-import { writeFile } from "node:fs/promises";
-import { config } from "../config.js";
-import { setLogLevel } from "../logging/index.js";
 import { createAuditTimer } from "../logging/audit.js";
-import { switchModel, getClient, getChatIdForSession } from "../agent.js";
-
-const LOG_LEVELS = ["error", "warn", "info", "debug", "trace"] as const;
+import { getManagedConfigDefinition, isManagedConfigKey } from "../config.js";
+import {
+  applyConfigChange,
+  explainSetting,
+  formatSystemStatusSummary,
+  getRecentChanges,
+  getRecentRestarts,
+  getSystemStatus,
+  planConfigChange,
+  restartService,
+} from "../runtime/state.js";
 
 function formatUptime(seconds: number): string {
   const days = Math.floor(seconds / 86400);
@@ -26,26 +30,36 @@ function formatUptime(seconds: number): string {
 
 export const systemTool = defineTool("system", {
   description:
-    "Manage the Neo system: retrieve system info, restart the process, change log level, check uptime, switch model, or list available models.",
+    "Manage Neo through the governed control plane: inspect status, explain settings, plan or apply safe config changes, and restart the service.",
   parameters: z.object({
     action: z
-      .enum(["info", "restart", "set_log_level", "uptime", "switch_model", "list_models"])
+      .enum([
+        "info",
+        "status",
+        "explain_setting",
+        "plan_config_change",
+        "apply_config_change",
+        "restart_service",
+        "recent_changes",
+        "recent_restarts",
+        "uptime",
+      ])
       .describe("The system action to perform"),
-    log_level: z
-      .enum(LOG_LEVELS)
+    key: z.string().optional().describe("Managed config key for explain/plan/apply actions"),
+    value: z.string().optional().describe("Desired config value for plan/apply actions"),
+    reason: z.string().optional().describe("Why Neo should make the change or restart"),
+    chat_id: z.number().optional().describe("Telegram chat ID to notify after restart"),
+    allow_approval_required: z
+      .boolean()
       .optional()
-      .describe("Target log level (required for set_log_level action)"),
-    model: z
-      .string()
-      .optional()
-      .describe("Model ID to switch to (required for switch_model action)"),
-    chat_id: z
-      .number()
-      .optional()
-      .describe("Chat ID for model switch (required for switch_model action)"),
+      .describe("Override the auto-apply allowlist for approval-required settings"),
   }),
   handler: async (args, invocation) => {
-    const audit = createAuditTimer(invocation.sessionId, "system", args as Record<string, unknown>);
+    const auditArgs =
+      args.key && isManagedConfigKey(args.key) && getManagedConfigDefinition(args.key).redact
+        ? { ...args, value: args.value ? "[REDACTED]" : args.value }
+        : args;
+    const audit = createAuditTimer(invocation.sessionId, "system", auditArgs as Record<string, unknown>);
 
     try {
       switch (args.action) {
@@ -65,60 +79,110 @@ export const systemTool = defineTool("system", {
           return result;
         }
 
-        case "restart": {
-          const marker = join(config.paths.data, ".restart-marker");
-          await writeFile(marker, new Date().toISOString(), "utf-8");
-          const result = "Restart marker written. Process will exit in 500ms.";
+        case "status": {
+          const status = await getSystemStatus();
+          const result = JSON.stringify(
+            {
+              summary: formatSystemStatusSummary(status),
+              ...status,
+            },
+            null,
+            2,
+          );
           audit.complete(result);
-          setTimeout(() => process.exit(0), 500);
           return result;
         }
 
-        case "set_log_level": {
-          if (!args.log_level) {
-            const result = "Error: log_level is required for set_log_level action.";
+        case "explain_setting": {
+          if (!args.key || !isManagedConfigKey(args.key)) {
+            const result = "Error: key must be a managed config key.";
             audit.complete(result);
             return result;
           }
-          setLogLevel(args.log_level);
-          const result = `Log level set to "${args.log_level}".`;
+          const result = JSON.stringify(await explainSetting(args.key), null, 2);
+          audit.complete(result);
+          return result;
+        }
+
+        case "plan_config_change": {
+          if (!args.key || !isManagedConfigKey(args.key) || args.value === undefined) {
+            const result = "Error: key and value are required for plan_config_change.";
+            audit.complete(result);
+            return result;
+          }
+          const result = JSON.stringify(
+            await planConfigChange({
+              key: args.key,
+              value: args.value,
+              actor: "agent",
+              source: "tool",
+              reason: args.reason ?? "No reason provided.",
+            }),
+            null,
+            2,
+          );
+          audit.complete(result);
+          return result;
+        }
+
+        case "apply_config_change": {
+          if (!args.key || !isManagedConfigKey(args.key) || args.value === undefined) {
+            const result = "Error: key and value are required for apply_config_change.";
+            audit.complete(result);
+            return result;
+          }
+          const result = JSON.stringify(
+            await applyConfigChange({
+              key: args.key,
+              value: args.value,
+              actor: "agent",
+              source: "tool",
+              reason: args.reason ?? "No reason provided.",
+              allowApprovalRequired: args.allow_approval_required,
+            }),
+            null,
+            2,
+          );
+          audit.complete(result);
+          return result;
+        }
+
+        case "restart_service": {
+          const result = JSON.stringify(
+            await restartService({
+              actor: "agent",
+              source: "tool",
+              reason: args.reason ?? "Agent-triggered restart.",
+              chatId: args.chat_id,
+            }),
+            null,
+            2,
+          );
+          audit.complete(result);
+          return result;
+        }
+
+        case "recent_changes": {
+          const result = JSON.stringify(await getRecentChanges(), null, 2);
+          audit.complete(result);
+          return result;
+        }
+
+        case "recent_restarts": {
+          const result = JSON.stringify(await getRecentRestarts(), null, 2);
           audit.complete(result);
           return result;
         }
 
         case "uptime": {
-          const result = `Process uptime: ${formatUptime(process.uptime())}`;
-          audit.complete(result);
-          return result;
-        }
-
-        case "switch_model": {
-          if (!args.model) {
-            const result = "Error: model is required for switch_model action.";
-            audit.complete(result);
-            return result;
-          }
-          const chatId = args.chat_id ?? getChatIdForSession(invocation.sessionId);
-          if (!chatId) {
-            const result = "Error: could not resolve chat for this session.";
-            audit.complete(result);
-            return result;
-          }
-          await switchModel(chatId, args.model);
-          const result = `Model switched to "${args.model}".`;
-          audit.complete(result);
-          return result;
-        }
-
-        case "list_models": {
-          const client = getClient();
-          if (!client) {
-            const result = "Error: agent not started.";
-            audit.complete(result);
-            return result;
-          }
-          const models = await client.listModels();
-          const result = models.map((m) => `${m.id} — ${m.name}`).join("\n");
+          const result = JSON.stringify(
+            {
+              processUptime: formatUptime(process.uptime()),
+              systemUptime: formatUptime(os.uptime()),
+            },
+            null,
+            2,
+          );
           audit.complete(result);
           return result;
         }
