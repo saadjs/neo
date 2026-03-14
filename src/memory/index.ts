@@ -16,6 +16,7 @@ import { loadPreferences } from "./preferences.js";
 import { loadHuman } from "./human.js";
 import { readDailyMemory } from "./daily.js";
 import { getRuntimeContextSection } from "../runtime/state.js";
+import { formatAnomaliesForContext } from "../logging/anomalies.js";
 
 export async function buildSystemContext(): Promise<string> {
   const [soul, preferences, human, todayMemory] = await Promise.all([
@@ -47,6 +48,11 @@ export async function buildSystemContext(): Promise<string> {
   parts.push(
     `\n---\n\n## Timezone\n\nThe user's timezone is America/New_York. Always convert times to this timezone when displaying to the user, and convert from this timezone to UTC when storing times (e.g. for reminders).`,
   );
+
+  const anomalies = formatAnomaliesForContext();
+  if (anomalies) {
+    parts.push(`\n---\n\n${anomalies}`);
+  }
 
   return parts.join("\n");
 }
