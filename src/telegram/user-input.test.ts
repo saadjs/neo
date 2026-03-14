@@ -10,6 +10,7 @@ const { sendMessageMock, editMessageReplyMarkupMock, infoMock, warnMock } = vi.h
 vi.mock("./runtime.js", () => ({
   getTelegramApi: () => ({
     sendMessage: sendMessageMock,
+    editMessageReplyMarkup: editMessageReplyMarkupMock,
   }),
 }));
 
@@ -49,10 +50,14 @@ describe("user input bridge", () => {
       expect.stringContaining("Deploy now?"),
       expect.objectContaining({
         reply_markup: expect.objectContaining({
-          inline_keyboard: expect.any(Array),
+          inline_keyboard: [[expect.any(Object)], [expect.any(Object)]],
         }),
       }),
     );
+    expect(sendMessageMock.mock.calls[0][2]?.reply_markup?.inline_keyboard).toEqual([
+      [{ text: "Yes", callback_data: expect.stringMatching(/^ask:/) }],
+      [{ text: "No", callback_data: expect.stringMatching(/^ask:/) }],
+    ]);
     expect(getPendingUserInput(-100123)).toMatchObject({
       chatId: -100123,
       sessionId: "session-1",
@@ -72,6 +77,7 @@ describe("user input bridge", () => {
 
   it("cancels a pending question with a typed cancellation error", async () => {
     sendMessageMock.mockResolvedValue({ message_id: 9 });
+    editMessageReplyMarkupMock.mockResolvedValue(undefined);
 
     const { PendingUserInputCancelledError, cancelPendingUserInput, requestUserInput } =
       await import("./user-input.js");
@@ -85,6 +91,9 @@ describe("user input bridge", () => {
       cancelPendingUserInput(-100123, "Pending question cancelled.", { notifyUser: true }),
     ).resolves.toBe(true);
     await expect(pendingResponse).rejects.toBeInstanceOf(PendingUserInputCancelledError);
+    expect(editMessageReplyMarkupMock).toHaveBeenCalledWith(-100123, 9, {
+      reply_markup: expect.objectContaining({ inline_keyboard: [[]] }),
+    });
     expect(sendMessageMock).toHaveBeenLastCalledWith(-100123, "Pending question cancelled.");
   });
 
@@ -258,8 +267,55 @@ describe("user input bridge", () => {
       wasFreeform: false,
     });
     expect(editMessageReplyMarkupMock).toHaveBeenCalledWith(-100123, 13, {
-      reply_markup: { inline_keyboard: [] },
+      reply_markup: expect.objectContaining({ inline_keyboard: [[]] }),
     });
     expect(answerCallbackQuery).toHaveBeenCalledWith({ text: "Selected: Yes" });
+  });
+
+  it("resolves a callback even when promptMessageId has not been set yet", async () => {
+    let releaseSend: ((value: { message_id: number }) => void) | undefined;
+    sendMessageMock.mockImplementation(
+      () =>
+        new Promise<{ message_id: number }>((resolve) => {
+          releaseSend = resolve;
+        }),
+    );
+    editMessageReplyMarkupMock.mockResolvedValue(undefined);
+
+    const { handleUserInputCallback, requestUserInput } = await import("./user-input.js");
+
+    const pendingResponse = requestUserInput(-100123, "session-1", {
+      question: "Pick one",
+      choices: ["Alpha", "Beta"],
+      allowFreeform: false,
+    });
+
+    // sendMessage has NOT resolved yet, so promptMessageId is undefined
+    const sendArgs = sendMessageMock.mock.calls[0];
+    const buttons = sendArgs?.[2]?.reply_markup?.inline_keyboard as Array<
+      Array<{ callback_data: string }>
+    >;
+    const callbackData = buttons[0][0]?.callback_data;
+
+    const answerCallbackQuery = vi.fn().mockResolvedValue(undefined);
+    await expect(
+      handleUserInputCallback({
+        chat: { id: -100123 },
+        callbackQuery: {
+          data: callbackData,
+          message: { message_id: 77 },
+        },
+        answerCallbackQuery,
+      } as never),
+    ).resolves.toBe(true);
+
+    await expect(pendingResponse).resolves.toEqual({
+      answer: "Alpha",
+      wasFreeform: false,
+    });
+    expect(answerCallbackQuery).toHaveBeenCalledWith({ text: "Selected: Alpha" });
+
+    // Let sendMessage resolve after the fact — should not cause issues
+    releaseSend?.({ message_id: 77 });
   });
 });

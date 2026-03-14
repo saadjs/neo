@@ -84,12 +84,9 @@ function createRequestId(): string {
 }
 
 function buildChoicesMarkup(requestId: string, choices: string[]) {
-  const keyboard = new InlineKeyboard();
-  for (const [index, choice] of choices.entries()) {
-    keyboard.text(choice, `ask:${requestId}:${index}`);
-    keyboard.row();
-  }
-  return { inline_keyboard: keyboard.inline_keyboard };
+  return InlineKeyboard.from(
+    choices.map((choice, index) => [InlineKeyboard.text(choice, `ask:${requestId}:${index}`)]),
+  );
 }
 
 function parseUserInputCallbackData(
@@ -238,6 +235,31 @@ export function isUserInputCallback(data: string | undefined): boolean {
   return typeof data === "string" && data.startsWith("ask:");
 }
 
+async function clearPromptReplyMarkup(chatId: number, messageId: number): Promise<void> {
+  const api = getTelegramApi();
+  if (!api) return;
+
+  try {
+    await api.editMessageReplyMarkup(chatId, messageId, {
+      reply_markup: new InlineKeyboard(),
+    });
+  } catch (err) {
+    getLogger().warn({ err, chatId, messageId }, "Failed to clear ask_user prompt markup");
+  }
+}
+
+async function safeAnswerCallbackQuery(
+  ctx: Context,
+  text: string,
+  extra?: Record<string, unknown>,
+): Promise<void> {
+  try {
+    await ctx.answerCallbackQuery({ text });
+  } catch (err) {
+    getLogger().warn({ err, ...extra }, "Failed to answer ask_user callback query");
+  }
+}
+
 export async function handleUserInputCallback(ctx: Context): Promise<boolean> {
   const callbackQuery = ctx.callbackQuery;
   const data = callbackQuery?.data;
@@ -249,19 +271,55 @@ export async function handleUserInputCallback(ctx: Context): Promise<boolean> {
 
   const pending = ctx.chat ? pendingInputs.get(ctx.chat.id) : undefined;
   const message = callbackQuery.message;
+  const callbackMessageId = message && "message_id" in message ? message.message_id : undefined;
+  getLogger().info(
+    {
+      chatId: ctx.chat?.id,
+      callbackData: data,
+      callbackMessageId,
+      pendingRequestId: pending?.requestId,
+      pendingPromptMessageId: pending?.promptMessageId,
+    },
+    "Received ask_user callback",
+  );
+
   if (!pending || !message || !("message_id" in message) || !ctx.chat) {
-    await ctx.answerCallbackQuery({ text: "This prompt is no longer active." });
+    if (ctx.chat && callbackMessageId) {
+      await clearPromptReplyMarkup(ctx.chat.id, callbackMessageId);
+    }
+    await safeAnswerCallbackQuery(ctx, "This prompt is no longer active.", {
+      chatId: ctx.chat?.id,
+      callbackData: data,
+      callbackMessageId,
+    });
     return true;
   }
 
-  if (pending.requestId !== parsed.requestId || pending.promptMessageId !== message.message_id) {
-    await ctx.answerCallbackQuery({ text: "This prompt expired. Please use the latest one." });
+  if (
+    pending.requestId !== parsed.requestId ||
+    (pending.promptMessageId !== undefined && pending.promptMessageId !== message.message_id)
+  ) {
+    await clearPromptReplyMarkup(ctx.chat.id, message.message_id);
+    await safeAnswerCallbackQuery(ctx, "This prompt expired. Please use the latest one.", {
+      chatId: ctx.chat.id,
+      callbackData: data,
+      callbackMessageId: message.message_id,
+      pendingRequestId: pending.requestId,
+      pendingPromptMessageId: pending.promptMessageId,
+    });
     return true;
   }
 
   const choice = pending.choices?.[parsed.choiceIndex];
   if (!choice) {
-    await ctx.answerCallbackQuery({ text: "That option is no longer available." });
+    await clearPromptReplyMarkup(ctx.chat.id, message.message_id);
+    await safeAnswerCallbackQuery(ctx, "That option is no longer available.", {
+      chatId: ctx.chat.id,
+      callbackData: data,
+      callbackMessageId: message.message_id,
+      pendingRequestId: pending.requestId,
+      pendingPromptMessageId: pending.promptMessageId,
+    });
     return true;
   }
 
@@ -270,13 +328,15 @@ export async function handleUserInputCallback(ctx: Context): Promise<boolean> {
     wasFreeform: false,
   });
 
-  try {
-    await ctx.api.editMessageReplyMarkup(ctx.chat.id, message.message_id, {
-      reply_markup: { inline_keyboard: [] },
-    });
-  } catch {}
+  await clearPromptReplyMarkup(ctx.chat.id, message.message_id);
 
-  await ctx.answerCallbackQuery({ text: `Selected: ${choice}` });
+  await safeAnswerCallbackQuery(ctx, `Selected: ${choice}`, {
+    chatId: ctx.chat.id,
+    callbackData: data,
+    callbackMessageId: message.message_id,
+    pendingRequestId: pending.requestId,
+    pendingPromptMessageId: pending.promptMessageId,
+  });
   return true;
 }
 
@@ -287,6 +347,10 @@ export async function cancelPendingUserInput(
 ): Promise<boolean> {
   const pending = pendingInputs.get(chatId);
   if (!pending) return false;
+
+  if (pending.promptMessageId) {
+    await clearPromptReplyMarkup(chatId, pending.promptMessageId);
+  }
 
   pending.reject(new PendingUserInputCancelledError(reason));
   getLogger().info({ chatId, sessionId: pending.sessionId, reason }, "Cancelled pending ask_user");
