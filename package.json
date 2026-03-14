@@ -32,6 +32,7 @@
   "dependencies": {
     "@deepgram/sdk": "^5.0.0",
     "@github/copilot-sdk": "^0.1.32",
+    "@grammyjs/runner": "^2.0.3",
     "grammy": "^1.41.1",
     "pino": "^10.3.1",
     "pino-roll": "^4.0.0",

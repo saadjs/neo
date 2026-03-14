@@ -1,4 +1,5 @@
-import { Bot, Context } from "grammy";
+import { Bot, type Context } from "grammy";
+import { run, type RunnerHandle } from "@grammyjs/runner";
 import type { SessionEvent, MessageOptions } from "@github/copilot-sdk";
 import { config } from "./config.js";
 import {
@@ -116,7 +117,12 @@ async function sendAndWaitForSessionIdle(
   }
 }
 
-export async function createBot(): Promise<Bot> {
+export interface BotHandle {
+  api: Bot["api"];
+  runner: RunnerHandle;
+}
+
+export async function createBot(): Promise<BotHandle> {
   const bot = new Bot(config.telegram.botToken);
   const log = getLogger();
 
@@ -232,7 +238,10 @@ export async function createBot(): Promise<Bot> {
     log.error({ err: err.error, ctx: err.ctx?.update?.update_id }, "Bot error");
   });
 
-  return bot;
+  const runner = run(bot);
+  log.info("Telegram bot started (concurrent runner)");
+
+  return { api: bot.api, runner };
 }
 
 async function handleMessage(

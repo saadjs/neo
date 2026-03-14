@@ -19,6 +19,14 @@ vi.mock("grammy", () => ({
   },
 }));
 
+vi.mock("@grammyjs/runner", () => ({
+  run: vi.fn(() => ({
+    stop: vi.fn(),
+    task: vi.fn(() => Promise.resolve()),
+    isRunning: vi.fn(() => true),
+  })),
+}));
+
 vi.mock("./config.js", () => ({
   config: {
     telegram: {

@@ -70,7 +70,7 @@ async function main() {
   const shutdown = async (signal: string) => {
     log.info({ signal }, "Shutting down...");
     stopScheduler();
-    bot.stop();
+    bot.runner.stop();
     await closeAllBrowserSessions();
     await stopAgent();
     closeConversationDb();
@@ -81,13 +81,7 @@ async function main() {
   process.on("SIGINT", () => shutdown("SIGINT"));
   process.on("SIGTERM", () => shutdown("SIGTERM"));
 
-  // Start polling
-  log.info("Telegram bot starting (long polling)...");
-  bot.start({
-    onStart: () => {
-      log.info("Neo is online. Listening for messages.");
-    },
-  });
+  log.info("Neo is online. Listening for messages.");
 }
 
 main().catch((err) => {
