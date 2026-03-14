@@ -1,0 +1,22 @@
+[Unit]
+Description=Neo AI Agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/neo
+Environment=NODE_ENV=production
+Environment=NEO_DATA_DIR=%h/neo/data
+Environment=NEO_LOG_DIR=%h/neo/logs
+Environment=NEO_SYSTEMD_UNIT=neo
+Environment=NEO_SYSTEMCTL_SCOPE=user
+EnvironmentFile=%h/neo/.env
+ExecStart=/usr/bin/node --import ./deploy/esm-loader.mjs ./dist/index.js
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+UMask=0077
+
+[Install]
+WantedBy=default.target

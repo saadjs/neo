@@ -17,8 +17,6 @@ id -u "$APP_USER" >/dev/null 2>&1 || \
   useradd --system --home "$INSTALL_DIR" --shell /usr/sbin/nologin "$APP_USER"
 
 install -d -o "$APP_USER" -g "$APP_USER" "$INSTALL_DIR"
-install -d -o "$APP_USER" -g "$APP_USER" "$INSTALL_DIR/data"
-install -d -o "$APP_USER" -g "$APP_USER" "$INSTALL_DIR/logs"
 
 cp "$ROOT_DIR/deploy/neo.service" "$SERVICE_PATH"
 sed -i.bak \
@@ -36,7 +34,7 @@ systemctl enable "$SERVICE_NAME"
 
 echo "Installed $SERVICE_PATH"
 echo "Next steps:"
-echo "  1. rsync the repo to ${INSTALL_DIR}"
+echo "  1. clone or pull the GitHub repo into ${INSTALL_DIR}"
 echo "  2. cd ${INSTALL_DIR} && npm ci && npm run build"
 echo "  3. sudo -u ${APP_USER} ./deploy/preflight.sh"
 echo "  4. systemctl start $SERVICE_NAME"

@@ -44,6 +44,7 @@ require_file "$ROOT_DIR/package.json" "package.json"
 require_dir "$ROOT_DIR/node_modules" "node_modules"
 require_file "$ROOT_DIR/dist/index.js" "bundled app"
 require_file "$ROOT_DIR/deploy/neo.service" "systemd unit"
+require_file "$ROOT_DIR/deploy/neo-user.service" "systemd user unit"
 
 mkdir -p "$ROOT_DIR/data" "$ROOT_DIR/logs"
 [[ -w "$ROOT_DIR/data" ]] || fail "data directory is not writable"

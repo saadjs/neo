@@ -46,7 +46,10 @@ docker compose logs -f  # view logs
 
 ### Deploy with systemd
 
-This path assumes a direct Ubuntu host install under `/opt/neo` and a `systemd` service running as the `neo` user.
+Neo supports two Linux deployment modes:
+
+- user service: runs under `~/.config/systemd/user` as the login user who installs it, similar to OpenClaw
+- system service: runs under `/etc/systemd/system` as a dedicated `neo` user
 
 Recommended first-time setup:
 
@@ -54,30 +57,35 @@ Recommended first-time setup:
 ./deploy/setup-ubuntu.sh
 ```
 
-For later updates, run the same command again from the server-side Git checkout after pulling the latest commit:
+The script prompts for `systemd scope (system/user)`:
+
+- `user` is the default and installs a `systemd --user` unit at `~/.config/systemd/user`, defaults to `$HOME/neo`, and uses the current login user
+- `system` keeps the existing production layout with `/opt/neo` and the `neo` user
+
+For later updates, run the same command again from the server-side bootstrap checkout after pulling the latest commit:
 
 ```bash
 git pull
 ./deploy/setup-ubuntu.sh
 ```
 
-The script will prompt for the service name, install directory, and app user, then:
+The script will prompt for the systemd scope, service name, install directory, and app user, then:
 
 - install or update the pinned system Node runtime at `/usr/bin/node` when needed
 - install the `systemd` unit
-- sync the repo into the install directory
+- clone or update the GitHub repo in the install directory
 - optionally create and open `.env`
 - run `npm ci` and `npm run build`
 - install Playwright Ubuntu deps and Chromium
 - run preflight checks
 - optionally enable and start the service
 
-Manual equivalent:
+Manual equivalent for a system service:
 
 ```bash
 sudo ./deploy/install-systemd.sh
 
-sudo rsync -a --delete ./ /opt/neo/
+git clone --branch main git@github.com:saadjs/neo.git /opt/neo
 cd /opt/neo
 
 npm ci
@@ -92,11 +100,36 @@ sudo systemctl start neo
 sudo journalctl -u neo -f  # view logs
 ```
 
+Manual equivalent for a user service:
+
+```bash
+./deploy/install-systemd-user.sh neo "$HOME/neo" "$USER"
+
+git clone --branch main git@github.com:saadjs/neo.git "$HOME/neo"
+cd "$HOME/neo"
+
+npm ci
+npm run build
+npx playwright install --with-deps chromium
+
+# Create and edit $HOME/neo/.env first
+./deploy/preflight.sh "$HOME/neo/.env"
+
+sudo loginctl enable-linger "$USER"
+systemctl --user start neo
+journalctl --user -u neo -f  # view logs
+```
+
 Notes:
 
 - The setup script bootstraps system Node at `/usr/bin/node` and currently targets `v24.14.0`.
 - Neo restarts by exiting and letting `systemd` restart the service via `Restart=always`.
-- Runtime state defaults to `/opt/neo/data` and `/opt/neo/logs` through the unit file.
+- Runtime state defaults to `/opt/neo/data` and `/opt/neo/logs` for system services, or `$HOME/neo/data` and `$HOME/neo/logs` for user services.
+- The deploy setup now syncs code from the checkout's Git `origin` and current branch instead of copying files with `rsync`.
+- User-service installs must run as the same login user that will own the `systemd --user` unit.
+- User services run with the same filesystem permissions as the installing login user, so they can access files in that user's home directory such as shell dotfiles when needed.
+- `systemd` does not automatically source `.bashrc` or `.zshrc`; put required runtime settings in Neo's `.env` unless you explicitly load shell startup files yourself.
+- `sudo loginctl enable-linger "$USER"` keeps a user service running after logout.
 - If you use the `google_workspace` tool, install the `gws` CLI or set `GOOGLE_WORKSPACE_CLI_PATH`.
 
 ## Commands
