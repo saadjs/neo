@@ -10,20 +10,23 @@ export {
   ensureMemoryDir,
 } from "./daily.js";
 export { initMemoryTable, searchMemoryFts } from "./db.js";
+export { runMemoryDecay } from "./decay.js";
 
 import { loadSoul } from "./soul.js";
 import { loadPreferences } from "./preferences.js";
 import { loadHuman } from "./human.js";
 import { readDailyMemory } from "./daily.js";
+import { loadRecentSummaries } from "./decay.js";
 import { getRuntimeContextSection } from "../runtime/state.js";
 import { formatAnomaliesForContext } from "../logging/anomalies.js";
 
 export async function buildSystemContext(): Promise<string> {
-  const [soul, preferences, human, todayMemory] = await Promise.all([
+  const [soul, preferences, human, todayMemory, weeklySummaries] = await Promise.all([
     loadSoul(),
     loadPreferences(),
     loadHuman(),
     readDailyMemory(),
+    loadRecentSummaries(),
   ]);
 
   const parts = [soul];
@@ -38,6 +41,10 @@ export async function buildSystemContext(): Promise<string> {
 
   if (todayMemory.trim()) {
     parts.push(`\n---\n\n## Today's Memory\n\n${todayMemory}`);
+  }
+
+  if (weeklySummaries.trim()) {
+    parts.push(`\n---\n\n## Recent Weekly Summaries\n\n${weeklySummaries}`);
   }
 
   const runtimeContext = getRuntimeContextSection();
