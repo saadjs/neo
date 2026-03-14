@@ -6,7 +6,7 @@ After=network.target
 Type=simple
 User=neo
 WorkingDirectory=/opt/neo
-ExecStart=/usr/bin/node dist/index.js
+ExecStart=/usr/bin/node --import ./deploy/esm-loader.mjs dist/index.js
 Restart=always
 RestartSec=5
 Environment=NODE_ENV=production

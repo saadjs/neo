@@ -6,7 +6,7 @@ Personal AI agent powered by the GitHub Copilot SDK, accessible via Telegram.
 
 ### Prerequisites
 
-- Node.js ≥ 20
+- Node.js v24.14.0
 - GitHub account with Copilot access
 - Telegram Bot Token (from [@BotFather](https://t.me/BotFather))
 - Your Telegram user ID (from [@userinfobot](https://t.me/userinfobot))
@@ -15,6 +15,7 @@ Personal AI agent powered by the GitHub Copilot SDK, accessible via Telegram.
 
 ```bash
 git clone <repo-url> neo && cd neo
+nvm use
 npm install
 cp .env.example .env
 # Edit .env with your tokens
@@ -43,6 +44,8 @@ docker compose logs -f  # view logs
 ```
 
 ### Deploy with systemd
+
+Install Node.js `v24.14.0` on the host first, or use the Docker deployment instead.
 
 ```bash
 sudo cp deploy/neo.service /etc/systemd/system/

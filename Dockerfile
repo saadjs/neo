@@ -1,5 +1,5 @@
 # Build stage
-FROM node:22-slim AS builder
+FROM node:24.14.0-slim AS builder
 WORKDIR /app
 
 COPY package.json package-lock.json ./
@@ -10,7 +10,7 @@ COPY src/ src/
 RUN npm run build
 
 # Production stage
-FROM node:22-slim
+FROM node:24.14.0-slim
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
