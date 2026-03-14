@@ -42,6 +42,8 @@ import {
 import {
   cancelPendingUserInputForSession,
   getPendingUserInput,
+  handleUserInputCallback,
+  isUserInputCallback,
   resolvePendingUserInput,
   watchPendingUserInput,
 } from "./telegram/user-input.js";
@@ -129,6 +131,10 @@ export async function createBot(): Promise<Bot> {
   await registerCommands(bot);
 
   bot.on("callback_query:data", async (ctx) => {
+    if (isUserInputCallback(ctx.callbackQuery.data)) {
+      await handleUserInputCallback(ctx);
+      return;
+    }
     if (!isModelCallback(ctx.callbackQuery.data)) return;
     await handleModelCallback(ctx);
   });
@@ -144,7 +150,7 @@ export async function createBot(): Promise<Bot> {
         await ctx.reply("Resuming task…");
       } else {
         await ctx.reply(
-          "That answer doesn't match the allowed choices. Reply with one of the listed options.",
+          "That answer doesn't match the allowed choices. Tap one of the buttons on the pending prompt.",
         );
       }
       return;

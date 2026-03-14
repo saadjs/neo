@@ -1,3 +1,5 @@
+import type { Context } from "grammy";
+import { InlineKeyboard } from "grammy";
 import { getLogger } from "../logging/index.js";
 import { getTelegramApi } from "./runtime.js";
 
@@ -22,6 +24,7 @@ export class PendingUserInputCancelledError extends Error {
 export interface PendingUserInput {
   chatId: number;
   sessionId: string;
+  requestId: string;
   question: string;
   choices?: string[];
   allowFreeform: boolean;
@@ -43,6 +46,7 @@ function toPublicPending(state: PendingUserInputState): PendingUserInput {
   return {
     chatId: state.chatId,
     sessionId: state.sessionId,
+    requestId: state.requestId,
     question: state.question,
     choices: state.choices,
     allowFreeform: state.allowFreeform,
@@ -63,20 +67,41 @@ function emit(chatId: number) {
 
 function buildQuestionMessage(request: UserInputRequest): string {
   const lines = ["Need your input to continue:", "", request.question.trim()];
-  if (request.choices?.length) {
-    lines.push("", "Choices:");
-    for (const choice of request.choices) {
-      lines.push(`- ${choice}`);
-    }
-  }
 
-  if (request.allowFreeform === false && request.choices?.length) {
-    lines.push("", "Reply with one of the choices above.");
+  if (request.choices?.length && request.allowFreeform === false) {
+    lines.push("", "Choose one below.");
+  } else if (request.choices?.length) {
+    lines.push("", "Choose one below or reply with your own answer.");
   } else {
     lines.push("", "Reply with your answer in your next text message.");
   }
 
   return lines.join("\n");
+}
+
+function createRequestId(): string {
+  return Math.random().toString(36).slice(2, 10);
+}
+
+function buildChoicesMarkup(requestId: string, choices: string[]) {
+  const keyboard = new InlineKeyboard();
+  for (const [index, choice] of choices.entries()) {
+    keyboard.text(choice, `ask:${requestId}:${index}`);
+    keyboard.row();
+  }
+  return { inline_keyboard: keyboard.inline_keyboard };
+}
+
+function parseUserInputCallbackData(
+  data: string,
+): { requestId: string; choiceIndex: number } | null {
+  const parts = data.split(":");
+  if (parts.length !== 3 || parts[0] !== "ask") return null;
+
+  const choiceIndex = Number(parts[2]);
+  if (!Number.isInteger(choiceIndex) || choiceIndex < 0) return null;
+
+  return { requestId: parts[1], choiceIndex };
 }
 
 function normalizeAnswer(answer: string): string {
@@ -133,6 +158,7 @@ export async function requestUserInput(
     const state: PendingUserInputState = {
       chatId,
       sessionId,
+      requestId: createRequestId(),
       question: request.question,
       choices: request.choices,
       allowFreeform: request.allowFreeform !== false,
@@ -153,8 +179,12 @@ export async function requestUserInput(
     pendingInputs.set(chatId, state);
     emit(chatId);
 
+    const sendOptions = request.choices?.length
+      ? { reply_markup: buildChoicesMarkup(state.requestId, request.choices) }
+      : undefined;
+
     void api
-      .sendMessage(chatId, buildQuestionMessage(request))
+      .sendMessage(chatId, buildQuestionMessage(request), sendOptions)
       .then((message) => {
         const activeState = pendingInputs.get(chatId);
         if (activeState !== state) return;
@@ -202,6 +232,52 @@ export function resolvePendingUserInput(
     answer: matchedChoice ?? normalizedAnswer,
     wasFreeform,
   };
+}
+
+export function isUserInputCallback(data: string | undefined): boolean {
+  return typeof data === "string" && data.startsWith("ask:");
+}
+
+export async function handleUserInputCallback(ctx: Context): Promise<boolean> {
+  const callbackQuery = ctx.callbackQuery;
+  const data = callbackQuery?.data;
+  const parsed = data ? parseUserInputCallbackData(data) : null;
+
+  if (!callbackQuery || !parsed) {
+    return false;
+  }
+
+  const pending = ctx.chat ? pendingInputs.get(ctx.chat.id) : undefined;
+  const message = callbackQuery.message;
+  if (!pending || !message || !("message_id" in message) || !ctx.chat) {
+    await ctx.answerCallbackQuery({ text: "This prompt is no longer active." });
+    return true;
+  }
+
+  if (pending.requestId !== parsed.requestId || pending.promptMessageId !== message.message_id) {
+    await ctx.answerCallbackQuery({ text: "This prompt expired. Please use the latest one." });
+    return true;
+  }
+
+  const choice = pending.choices?.[parsed.choiceIndex];
+  if (!choice) {
+    await ctx.answerCallbackQuery({ text: "That option is no longer available." });
+    return true;
+  }
+
+  pending.resolve({
+    answer: choice,
+    wasFreeform: false,
+  });
+
+  try {
+    await ctx.api.editMessageReplyMarkup(ctx.chat.id, message.message_id, {
+      reply_markup: { inline_keyboard: [] },
+    });
+  } catch {}
+
+  await ctx.answerCallbackQuery({ text: `Selected: ${choice}` });
+  return true;
 }
 
 export async function cancelPendingUserInput(

@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const { sendMessageMock, infoMock, warnMock } = vi.hoisted(() => ({
+const { sendMessageMock, editMessageReplyMarkupMock, infoMock, warnMock } = vi.hoisted(() => ({
   sendMessageMock: vi.fn(),
+  editMessageReplyMarkupMock: vi.fn(),
   infoMock: vi.fn(),
   warnMock: vi.fn(),
 }));
@@ -23,6 +24,7 @@ afterEach(async () => {
   const { cancelAllPendingUserInputs } = await import("./user-input.js");
   await cancelAllPendingUserInputs("test cleanup");
   sendMessageMock.mockReset();
+  editMessageReplyMarkupMock.mockReset();
   infoMock.mockReset();
   warnMock.mockReset();
   vi.resetModules();
@@ -42,7 +44,15 @@ describe("user input bridge", () => {
 
     await Promise.resolve();
 
-    expect(sendMessageMock).toHaveBeenCalledWith(-100123, expect.stringContaining("Deploy now?"));
+    expect(sendMessageMock).toHaveBeenCalledWith(
+      -100123,
+      expect.stringContaining("Deploy now?"),
+      expect.objectContaining({
+        reply_markup: expect.objectContaining({
+          inline_keyboard: expect.any(Array),
+        }),
+      }),
+    );
     expect(getPendingUserInput(-100123)).toMatchObject({
       chatId: -100123,
       sessionId: "session-1",
@@ -205,5 +215,51 @@ describe("user input bridge", () => {
       answer: "No",
       wasFreeform: false,
     });
+  });
+
+  it("resolves a choice prompt from an inline button callback", async () => {
+    sendMessageMock.mockResolvedValue({ message_id: 13 });
+    editMessageReplyMarkupMock.mockResolvedValue(undefined);
+
+    const { handleUserInputCallback, requestUserInput } = await import("./user-input.js");
+
+    const pendingResponse = requestUserInput(-100123, "session-1", {
+      question: "Pick one",
+      choices: ["Yes", "No"],
+      allowFreeform: false,
+    });
+
+    await Promise.resolve();
+
+    const sendArgs = sendMessageMock.mock.calls[0];
+    const buttons = sendArgs?.[2]?.reply_markup?.inline_keyboard as Array<
+      Array<{ callback_data: string }>
+    >;
+    const callbackData = buttons[0][0]?.callback_data;
+    expect(callbackData).toMatch(/^ask:/);
+
+    const answerCallbackQuery = vi.fn().mockResolvedValue(undefined);
+    await expect(
+      handleUserInputCallback({
+        chat: { id: -100123 },
+        callbackQuery: {
+          data: callbackData,
+          message: { message_id: 13 },
+        },
+        api: {
+          editMessageReplyMarkup: editMessageReplyMarkupMock,
+        },
+        answerCallbackQuery,
+      } as never),
+    ).resolves.toBe(true);
+
+    await expect(pendingResponse).resolves.toEqual({
+      answer: "Yes",
+      wasFreeform: false,
+    });
+    expect(editMessageReplyMarkupMock).toHaveBeenCalledWith(-100123, 13, {
+      reply_markup: { inline_keyboard: [] },
+    });
+    expect(answerCallbackQuery).toHaveBeenCalledWith({ text: "Selected: Yes" });
   });
 });
