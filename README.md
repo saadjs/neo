@@ -2,6 +2,8 @@
 
 Personal AI agent powered by the GitHub Copilot SDK, accessible via Telegram.
 
+For a maintainer-focused breakdown of built-in Copilot CLI / SDK capabilities versus Neo-specific customizations, see [`copilot-cli-sdk-reference.md`](./copilot-cli-sdk-reference.md).
+
 ## Setup
 
 ### Prerequisites
