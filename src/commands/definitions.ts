@@ -27,6 +27,11 @@ export const commandDefinitions = [
     usage: "[name]",
   },
   {
+    command: "reasoning",
+    description: "Set reasoning effort for this chat",
+    usage: "[level|reset]",
+  },
+  {
     command: "sessions",
     description: "List active sessions",
   },

@@ -14,6 +14,7 @@ import { handleAudit } from "./audit.js";
 import { handleCost } from "./cost.js";
 import { handleChannel } from "./channel.js";
 import { handleUsage } from "./usage.js";
+import { handleReasoning } from "./reasoning.js";
 import { commandDefinitions, getTelegramCommands } from "./definitions.js";
 
 type CommandHandler = (ctx: Context) => Promise<unknown> | unknown;
@@ -35,6 +36,7 @@ const commandHandlers = {
   new: handleNewSession,
   cancel: handleCancel,
   model: handleModel,
+  reasoning: handleReasoning,
   sessions: handleSessions,
   memory: handleMemory,
   loglevel: handleLogLevel,

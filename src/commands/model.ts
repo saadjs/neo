@@ -1,7 +1,17 @@
 import type { Context } from "grammy";
 import { InlineKeyboard } from "grammy";
-import { getModelForChat, switchModel } from "../agent.js";
-import { loadModelCatalog, type AvailableModel, type ModelCatalogResult } from "./model-catalog.js";
+import {
+  clearReasoningEffort,
+  getModelForChat,
+  getReasoningEffortForChat,
+  switchModel,
+} from "../agent.js";
+import {
+  getModelReasoningInfo,
+  loadModelCatalog,
+  type AvailableModel,
+  type ModelCatalogResult,
+} from "./model-catalog.js";
 import { getCommandArgs } from "./command-text.js";
 
 const MODELS_PER_PAGE = 8;
@@ -161,6 +171,35 @@ export function isModelCallback(data: string | undefined): boolean {
   return typeof data === "string" && data.startsWith("model:");
 }
 
+async function buildReasoningNote(chatId: number, newModelId: string): Promise<string> {
+  let info: Awaited<ReturnType<typeof getModelReasoningInfo>> = null;
+  try {
+    info = await getModelReasoningInfo(newModelId);
+  } catch {
+    return "";
+  }
+
+  const currentEffort = getReasoningEffortForChat(chatId);
+
+  if (!info || !info.supported) {
+    if (currentEffort) {
+      await clearReasoningEffort(chatId);
+      return "\nReasoning effort override cleared (not supported by this model).";
+    }
+    return "\nReasoning effort: not supported by this model.";
+  }
+
+  if (currentEffort && !info.levels.includes(currentEffort)) {
+    await clearReasoningEffort(chatId);
+    return `\nReasoning effort override cleared (\`${currentEffort}\` not supported). Default: ${info.defaultLevel ?? "unknown"}. Use /reasoning to change.`;
+  }
+
+  if (currentEffort) {
+    return `\nReasoning effort: ${currentEffort} (override). Default: ${info.defaultLevel ?? "unknown"}. Use /reasoning to change.`;
+  }
+  return `\nReasoning effort: ${info.defaultLevel ?? "unknown"} (default). Use /reasoning to change.`;
+}
+
 export async function handleModel(ctx: Context) {
   const text = ctx.message?.text ?? "";
   const model = getCommandArgs(text, "model");
@@ -186,9 +225,9 @@ export async function handleModel(ctx: Context) {
 
   try {
     await switchModel(ctx.chat!.id, model);
-    await ctx.reply(`Session model switched to \`${model}\` for this chat only.`, {
-      parse_mode: "Markdown",
-    });
+    let reply = `Session model switched to \`${model}\` for this chat only.`;
+    reply += await buildReasoningNote(ctx.chat!.id, model);
+    await ctx.reply(reply, { parse_mode: "Markdown" });
   } catch (err) {
     await ctx.reply(`Failed to switch model: ${err}`);
   }
@@ -227,11 +266,10 @@ export async function handleModelCallback(ctx: Context): Promise<boolean> {
       picker.currentModel = selected.id;
       modelPickers.delete(parsed.pickerId);
 
-      await ctx.api.editMessageText(
-        ctx.chat.id,
-        message.message_id,
-        `✅ Session model switched to ${selected.id} for this chat.`,
-      );
+      let confirmText = `✅ Session model switched to ${selected.id} for this chat.`;
+      confirmText += await buildReasoningNote(ctx.chat.id, selected.id);
+
+      await ctx.api.editMessageText(ctx.chat.id, message.message_id, confirmText);
       await ctx.answerCallbackQuery({ text: `Switched to ${selected.id}` });
       return true;
     }

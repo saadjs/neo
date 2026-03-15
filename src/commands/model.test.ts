@@ -1,18 +1,31 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const { getModelForChatMock, switchModelMock, loadModelCatalogMock } = vi.hoisted(() => ({
+const {
+  getModelForChatMock,
+  switchModelMock,
+  getReasoningEffortForChatMock,
+  clearReasoningEffortMock,
+  loadModelCatalogMock,
+  getModelReasoningInfoMock,
+} = vi.hoisted(() => ({
   getModelForChatMock: vi.fn(),
   switchModelMock: vi.fn(),
+  getReasoningEffortForChatMock: vi.fn(),
+  clearReasoningEffortMock: vi.fn(),
   loadModelCatalogMock: vi.fn(),
+  getModelReasoningInfoMock: vi.fn(),
 }));
 
 vi.mock("../agent.js", () => ({
   getModelForChat: getModelForChatMock,
   switchModel: switchModelMock,
+  getReasoningEffortForChat: getReasoningEffortForChatMock,
+  clearReasoningEffort: clearReasoningEffortMock,
 }));
 
 vi.mock("./model-catalog.js", () => ({
   loadModelCatalog: loadModelCatalogMock,
+  getModelReasoningInfo: getModelReasoningInfoMock,
 }));
 
 afterEach(() => {
@@ -21,7 +34,13 @@ afterEach(() => {
 });
 
 describe("handleModel", () => {
-  it("switches directly when a model name is provided", async () => {
+  it("switches directly and shows reasoning info", async () => {
+    getModelReasoningInfoMock.mockResolvedValue({
+      supported: true,
+      levels: ["low", "medium", "high"],
+      defaultLevel: "medium",
+    });
+
     const { handleModel } = await import("./model.js");
     const reply = vi.fn();
 
@@ -32,12 +51,14 @@ describe("handleModel", () => {
     } as never);
 
     expect(switchModelMock).toHaveBeenCalledWith(42, "gpt-5");
-    expect(reply).toHaveBeenCalledWith("Session model switched to `gpt-5` for this chat only.", {
-      parse_mode: "Markdown",
-    });
+    const text = reply.mock.calls[0][0] as string;
+    expect(text).toContain("Session model switched to `gpt-5` for this chat only.");
+    expect(text).toContain("Reasoning effort: medium (default). Use /reasoning to change.");
   });
 
   it("ignores the bot mention in group-chat commands", async () => {
+    getModelReasoningInfoMock.mockResolvedValue(null);
+
     const { handleModel } = await import("./model.js");
     const reply = vi.fn();
 
@@ -48,9 +69,9 @@ describe("handleModel", () => {
     } as never);
 
     expect(switchModelMock).toHaveBeenCalledWith(42, "gpt-5");
-    expect(reply).toHaveBeenCalledWith("Session model switched to `gpt-5` for this chat only.", {
-      parse_mode: "Markdown",
-    });
+    const text = reply.mock.calls[0][0] as string;
+    expect(text).toContain("Session model switched to `gpt-5` for this chat only.");
+    expect(text).toContain("not supported by this model");
   });
 
   it("replies with a paginated picker when no model name is provided", async () => {
@@ -115,6 +136,11 @@ describe("handleModel", () => {
 describe("handleModelCallback", () => {
   it("switches to the selected model from the picker", async () => {
     getModelForChatMock.mockReturnValue("gpt-4.1");
+    getModelReasoningInfoMock.mockResolvedValue({
+      supported: true,
+      levels: ["low", "medium", "high"],
+      defaultLevel: "medium",
+    });
     loadModelCatalogMock.mockResolvedValue({
       fetchedAt: "2026-03-13T10:00:00.000Z",
       models: [
