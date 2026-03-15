@@ -23,14 +23,20 @@ function createModel(
   id: string,
   name: string,
   policyState: "enabled" | "disabled" | "unconfigured" = "enabled",
+  reasoning?: {
+    supported?: boolean;
+    levels?: ("low" | "medium" | "high" | "xhigh")[];
+    defaultLevel?: "low" | "medium" | "high" | "xhigh";
+  },
 ): ModelInfo {
+  const supportsReasoning = reasoning?.supported ?? true;
   return {
     id,
     name,
     capabilities: {
       supports: {
         vision: false,
-        reasoningEffort: true,
+        reasoningEffort: supportsReasoning,
       },
       limits: {
         max_context_window_tokens: 200000,
@@ -40,6 +46,10 @@ function createModel(
       state: policyState,
       terms: "",
     },
+    ...(supportsReasoning && {
+      supportedReasoningEfforts: reasoning?.levels ?? ["low", "medium", "high"],
+      defaultReasoningEffort: reasoning?.defaultLevel ?? "medium",
+    }),
   };
 }
 
@@ -66,11 +76,10 @@ describe("loadModelCatalog", () => {
 
     expect(result.source).toBe("network");
     expect(result.stale).toBe(false);
-    expect(result.models.map((model) => model.id)).toEqual([
-      "gpt-4.1",
-      "claude-opus-4.6",
-      "gpt-5.4",
-    ]);
+    expect(result.models.map((m) => m.id)).toEqual(["gpt-4.1", "claude-opus-4.6", "gpt-5.4"]);
+    expect(result.models[0].supportsReasoningEffort).toBe(true);
+    expect(result.models[0].supportedReasoningEfforts).toEqual(["low", "medium", "high"]);
+    expect(result.models[0].defaultReasoningEffort).toBe("medium");
     expect(listModelsMock).toHaveBeenCalledTimes(1);
   });
 
@@ -113,7 +122,8 @@ describe("loadModelCatalog", () => {
     const result = await loadModelCatalog({ now: Date.parse("2026-03-13T12:00:00.000Z") });
 
     expect(result.source).toBe("network");
-    expect(result.models).toEqual([{ id: "gpt-5.4", label: "GPT-5.4" }]);
+    expect(result.models[0].id).toBe("gpt-5.4");
+    expect(result.models[0].label).toBe("GPT-5.4");
     expect(listModelsMock).toHaveBeenCalledTimes(1);
   });
 
@@ -145,5 +155,61 @@ describe("loadModelCatalog", () => {
     const { loadModelCatalog } = await import("./model-catalog.js");
 
     await expect(loadModelCatalog()).rejects.toThrow("Copilot client is not started");
+  });
+
+  it("captures reasoning effort capabilities from model info", async () => {
+    listModelsMock.mockResolvedValue([
+      createModel("claude-sonnet-4", "Claude Sonnet 4", "enabled", {
+        supported: true,
+        levels: ["low", "medium", "high", "xhigh"],
+        defaultLevel: "high",
+      }),
+      createModel("gpt-4.1-nano", "GPT-4.1 Nano", "enabled", { supported: false }),
+    ]);
+    getClientMock.mockReturnValue({ listModels: listModelsMock });
+
+    const { loadModelCatalog } = await import("./model-catalog.js");
+    const result = await loadModelCatalog();
+
+    const sonnet = result.models.find((m) => m.id === "claude-sonnet-4")!;
+    expect(sonnet.supportsReasoningEffort).toBe(true);
+    expect(sonnet.supportedReasoningEfforts).toEqual(["low", "medium", "high", "xhigh"]);
+    expect(sonnet.defaultReasoningEffort).toBe("high");
+
+    const nano = result.models.find((m) => m.id === "gpt-4.1-nano")!;
+    expect(nano.supportsReasoningEffort).toBeUndefined();
+    expect(nano.supportedReasoningEfforts).toBeUndefined();
+  });
+});
+
+describe("getModelReasoningInfo", () => {
+  it("returns reasoning capabilities for a known model", async () => {
+    listModelsMock.mockResolvedValue([
+      createModel("claude-sonnet-4", "Claude Sonnet 4", "enabled", {
+        supported: true,
+        levels: ["low", "medium", "high"],
+        defaultLevel: "medium",
+      }),
+    ]);
+    getClientMock.mockReturnValue({ listModels: listModelsMock });
+
+    const { getModelReasoningInfo } = await import("./model-catalog.js");
+    const info = await getModelReasoningInfo("claude-sonnet-4");
+
+    expect(info).toEqual({
+      supported: true,
+      levels: ["low", "medium", "high"],
+      defaultLevel: "medium",
+    });
+  });
+
+  it("returns null for an unknown model", async () => {
+    listModelsMock.mockResolvedValue([createModel("gpt-4.1", "GPT-4.1")]);
+    getClientMock.mockReturnValue({ listModels: listModelsMock });
+
+    const { getModelReasoningInfo } = await import("./model-catalog.js");
+    const info = await getModelReasoningInfo("nonexistent-model");
+
+    expect(info).toBeNull();
   });
 });

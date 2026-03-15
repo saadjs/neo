@@ -1,6 +1,8 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { CopilotClient, CopilotSession, approveAll } from "@github/copilot-sdk";
+
+export type ReasoningEffort = "low" | "medium" | "high" | "xhigh";
 import { config } from "./config.js";
 import { allTools } from "./tools/index.js";
 import { buildSystemContext } from "./memory/index.js";
@@ -25,6 +27,12 @@ const activeSessionTurns = new Map<number, number>();
 const staleSessions = new Map<number, Set<CopilotSession>>();
 const abortedChats = new Set<number>();
 const SESSION_MODEL_OVERRIDES_FILE = join(config.paths.data, "session-model-overrides.json");
+const sessionReasoningEfforts = new Map<number, ReasoningEffort>();
+const SESSION_REASONING_OVERRIDES_FILE = join(
+  config.paths.data,
+  "session-reasoning-overrides.json",
+);
+const VALID_REASONING_EFFORTS = new Set<string>(["low", "medium", "high", "xhigh"]);
 
 async function loadSessionModelOverrides(): Promise<void> {
   try {
@@ -56,6 +64,40 @@ async function persistSessionModelOverrides(): Promise<void> {
   await writeFile(SESSION_MODEL_OVERRIDES_FILE, `${JSON.stringify(payload, null, 2)}\n`, "utf-8");
 }
 
+async function loadSessionReasoningOverrides(): Promise<void> {
+  try {
+    const raw = await readFile(SESSION_REASONING_OVERRIDES_FILE, "utf-8");
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return;
+    }
+
+    sessionReasoningEfforts.clear();
+    for (const [chatId, effort] of Object.entries(parsed as Record<string, unknown>)) {
+      if (typeof effort !== "string" || !VALID_REASONING_EFFORTS.has(effort)) continue;
+      const numericChatId = Number(chatId);
+      if (!Number.isInteger(numericChatId)) continue;
+      sessionReasoningEfforts.set(numericChatId, effort as ReasoningEffort);
+    }
+  } catch {
+    // no persisted overrides yet
+  }
+}
+
+async function persistSessionReasoningOverrides(): Promise<void> {
+  const payload: Record<string, string> = {};
+  for (const [chatId, effort] of sessionReasoningEfforts) {
+    payload[String(chatId)] = effort;
+  }
+
+  await mkdir(dirname(SESSION_REASONING_OVERRIDES_FILE), { recursive: true });
+  await writeFile(
+    SESSION_REASONING_OVERRIDES_FILE,
+    `${JSON.stringify(payload, null, 2)}\n`,
+    "utf-8",
+  );
+}
+
 export async function startAgent(): Promise<CopilotClient> {
   const log = getLogger();
   log.info("Starting Copilot SDK client...");
@@ -66,6 +108,7 @@ export async function startAgent(): Promise<CopilotClient> {
 
   await client.start();
   await loadSessionModelOverrides();
+  await loadSessionReasoningOverrides();
   log.info({ overrides: sessionModels.size }, "Copilot SDK client started");
   return client;
 }
@@ -309,6 +352,31 @@ export function getModelForChat(chatId: number): string {
   return sessionModels.get(chatId) ?? config.copilot.model;
 }
 
+export function getReasoningEffortForChat(chatId: number): ReasoningEffort | undefined {
+  return sessionReasoningEfforts.get(chatId);
+}
+
+export async function setReasoningEffort(chatId: number, effort: ReasoningEffort): Promise<void> {
+  sessionReasoningEfforts.set(chatId, effort);
+  try {
+    await persistSessionReasoningOverrides();
+  } catch (err) {
+    getLogger().warn({ chatId, err }, "Failed to persist reasoning effort overrides");
+  }
+  await refreshSessionContext(chatId);
+}
+
+export async function clearReasoningEffort(chatId: number): Promise<void> {
+  if (!sessionReasoningEfforts.has(chatId)) return;
+  sessionReasoningEfforts.delete(chatId);
+  try {
+    await persistSessionReasoningOverrides();
+  } catch (err) {
+    getLogger().warn({ chatId, err }, "Failed to persist reasoning effort overrides");
+  }
+  await refreshSessionContext(chatId);
+}
+
 export function beginSessionTurn(chatId: number): void {
   activeSessionTurns.set(chatId, (activeSessionTurns.get(chatId) ?? 0) + 1);
 }
@@ -379,10 +447,13 @@ async function buildSessionConfig(chatId: number) {
   const systemContext = await buildSystemContext(chatId);
   const model = sessionModels.get(chatId) ?? config.copilot.model;
 
+  const reasoningEffort = sessionReasoningEfforts.get(chatId);
+
   return {
     clientName: "neo",
     model,
     streaming: true,
+    ...(reasoningEffort && { reasoningEffort }),
     systemMessage: { mode: "replace" as const, content: systemContext },
     tools: allTools,
     skillDirectories: config.copilot.skillDirectories,

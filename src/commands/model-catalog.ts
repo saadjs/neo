@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { ModelInfo } from "@github/copilot-sdk";
+import type { ReasoningEffort } from "../agent.js";
 import { getClient } from "../agent.js";
 import { config } from "../config.js";
 
@@ -10,6 +11,9 @@ const MODEL_CATALOG_CACHE_FILE = join(config.paths.data, "copilot-models-cache.j
 export interface AvailableModel {
   id: string;
   label: string;
+  supportsReasoningEffort?: boolean;
+  supportedReasoningEfforts?: ReasoningEffort[];
+  defaultReasoningEffort?: ReasoningEffort;
 }
 
 interface ModelCatalogCache {
@@ -63,7 +67,17 @@ function normalizeModel(value: ModelInfo): AvailableModel | null {
   if (!id) return null;
 
   const label = value.name.trim() || id;
-  return { id, label };
+  const supportsReasoningEffort = value.capabilities?.supports?.reasoningEffort ?? false;
+
+  return {
+    id,
+    label,
+    ...(supportsReasoningEffort && {
+      supportsReasoningEffort: true,
+      supportedReasoningEfforts: value.supportedReasoningEfforts,
+      defaultReasoningEffort: value.defaultReasoningEffort,
+    }),
+  };
 }
 
 async function fetchModelCatalogFromCopilot(): Promise<ModelCatalogCache> {
@@ -125,5 +139,25 @@ export async function loadModelCatalog(options?: {
       };
     }
     throw error;
+  }
+}
+
+export async function getModelReasoningInfo(modelId: string): Promise<{
+  supported: boolean;
+  levels: ReasoningEffort[];
+  defaultLevel: ReasoningEffort | undefined;
+} | null> {
+  try {
+    const catalog = await loadModelCatalog();
+    const model = catalog.models.find((m) => m.id === modelId);
+    if (!model) return null;
+
+    return {
+      supported: model.supportsReasoningEffort ?? false,
+      levels: model.supportedReasoningEfforts ?? [],
+      defaultLevel: model.defaultReasoningEffort,
+    };
+  } catch {
+    return null;
   }
 }
