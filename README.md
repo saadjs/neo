@@ -1,13 +1,9 @@
 # Neo
 
-<p align="left">
-    <img src="./assets/neo.png" alt="Neo" width="100" style="vertical-align:middle; margin-right:10px;">
-    <span>
-        Personal AI agent powered by the GitHub Copilot SDK, accessible via Telegram.
-    </span>
-</p>
-
-> For a maintainer-focused breakdown of built-in Copilot CLI / SDK capabilities versus Neo-specific customizations, see [`copilot-cli-sdk-reference.md`](./copilot-cli-sdk-reference.md).
+<div style="display: flex; align-items: center; gap: 12px;">
+    <img src="./assets/neo.png" alt="Neo" width="50" />
+    <div>Personal AI agent powered by the GitHub Copilot SDK, accessible via Telegram.</div>
+</div>
 
 ## Setup
 
@@ -245,3 +241,7 @@ Safe autonomous config updates are limited to:
 - `NEO_CONTEXT_BUFFER_EXHAUSTION_THRESHOLD`
 
 Other managed settings remain approval-required. When a change requires a restart, Neo writes a structured restart marker and exits so the service supervisor can restart it cleanly.
+
+## Copilot SDK and Neo
+
+For a maintainer-focused breakdown of built-in Copilot CLI / SDK capabilities versus Neo-specific customizations, see [`copilot-cli-sdk-reference.md`](./copilot-cli-sdk-reference.md).
