@@ -1,9 +1,6 @@
-# Neo
+# <img src="./assets/neo.png" alt="Neo" width="50" /> Neo
 
-<div style="display: flex; align-items: center; gap: 12px;">
-    <img src="./assets/neo.png" alt="Neo" width="50" />
-    <div>Personal AI agent powered by the GitHub Copilot SDK, accessible via Telegram.</div>
-</div>
+Personal AI agent powered by the GitHub Copilot SDK, accessible via Telegram.
 
 ## Setup
 
