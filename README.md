@@ -151,6 +151,7 @@ Notes:
 | ---------------------------------- | ------------------------------------------------------------------------------- |
 | `/start`                           | Show all commands                                                               |
 | `/new`                             | Start a fresh conversation                                                      |
+| `/cancel`                          | Cancel the current task                                                         |
 | `/model [name]`                    | Open model picker, or switch directly by name                                   |
 | `/sessions`                        | List active sessions                                                            |
 | `/memory [query]`                  | View or search memory (`/memory #tag`, `/memory recent N`, or full-text search) |

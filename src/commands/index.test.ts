@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("./help.js", () => ({ handleHelp: vi.fn() }));
+vi.mock("./cancel.js", () => ({ handleCancel: vi.fn() }));
 vi.mock("./session.js", () => ({
   handleNewSession: vi.fn(),
   handleSessions: vi.fn(),

@@ -18,6 +18,10 @@ export const commandDefinitions = [
     description: "Start a fresh conversation",
   },
   {
+    command: "cancel",
+    description: "Cancel the current task",
+  },
+  {
     command: "model",
     description: "Switch the model for this chat only",
     usage: "[name]",

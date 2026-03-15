@@ -4,6 +4,7 @@ import type { SessionEvent, MessageOptions } from "@github/copilot-sdk";
 import { config } from "./config.js";
 import {
   beginSessionTurn,
+  consumeAbortFlag,
   discardSession,
   endSessionTurn,
   getClient,
@@ -492,6 +493,12 @@ async function handleMessage(
     await sendAndWaitForSessionIdle(chatId, session, async () => {
       await session.send({ prompt: text, attachments });
     });
+
+    if (consumeAbortFlag(chatId)) {
+      await clearLiveStatus();
+      return;
+    }
+
     const finalContent =
       (lastAssistantMessage?.data as { content?: string } | undefined)?.content ?? responseBuffer;
 

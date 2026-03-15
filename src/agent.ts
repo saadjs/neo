@@ -23,6 +23,7 @@ const sessions = new Map<number, CopilotSession>();
 const sessionModels = new Map<number, string>();
 const activeSessionTurns = new Map<number, number>();
 const staleSessions = new Map<number, Set<CopilotSession>>();
+const abortedChats = new Set<number>();
 const SESSION_MODEL_OVERRIDES_FILE = join(config.paths.data, "session-model-overrides.json");
 
 async function loadSessionModelOverrides(): Promise<void> {
@@ -286,6 +287,22 @@ export function getChatIdForSession(sessionId: string): number | undefined {
     }
   }
   return undefined;
+}
+
+export async function abortSession(
+  chatId: number,
+): Promise<"aborted" | "no-session" | "no-active-turn"> {
+  const session = sessions.get(chatId);
+  if (!session) return "no-session";
+  if ((activeSessionTurns.get(chatId) ?? 0) === 0) return "no-active-turn";
+
+  abortedChats.add(chatId);
+  await session.abort();
+  return "aborted";
+}
+
+export function consumeAbortFlag(chatId: number): boolean {
+  return abortedChats.delete(chatId);
 }
 
 export function getModelForChat(chatId: number): string {

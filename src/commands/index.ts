@@ -1,5 +1,6 @@
 import type { Context } from "grammy";
 import { handleNewSession } from "./session.js";
+import { handleCancel } from "./cancel.js";
 import { handleModel } from "./model.js";
 import { handleMemory } from "./memory.js";
 import { handleLogLevel } from "./log.js";
@@ -32,6 +33,7 @@ const commandHandlers = {
   start: handleHelp,
   help: handleHelp,
   new: handleNewSession,
+  cancel: handleCancel,
   model: handleModel,
   sessions: handleSessions,
   memory: handleMemory,

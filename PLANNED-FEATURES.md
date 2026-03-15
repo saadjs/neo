@@ -12,9 +12,9 @@ See [`copilot-cli-sdk-reference.md`](./copilot-cli-sdk-reference.md) for build-v
 
 SDK capabilities already available for Telegram integration.
 
-### - [ ] `/cancel` — `session.abort()`
+### - [x] `/cancel` — `session.abort()`
 
-No way to stop a long-running turn right now. Add a `/cancel` command that calls `abort()` on the active session. New handler in `src/commands/cancel.ts`, register in `definitions.ts`, expose abort via `src/agent.ts`. Handle the no-session and no-active-turn cases gracefully.
+Implemented. `/cancel` calls `abort()` on the active session to stop the in-flight turn without destroying the session. Partial responses are suppressed via an abort flag consumed by `handleMessage` in `bot.ts`. Handles no-session and no-active-turn cases gracefully.
 
 ### - [ ] Streaming responses
 
