@@ -20,9 +20,9 @@ Implemented. `/cancel` calls `abort()` on the active session to stop the in-flig
 
 Implemented. `streaming: true` is set in `buildSessionConfig()` in `agent.ts`. `bot.ts` subscribes to `assistant.message_delta` events, buffers deltas in a `streamBuffer`, and periodically edits the Telegram progress message with partial content. Edits are debounced at 1.5s to stay within Telegram rate limits. Raw text is shown during streaming (no `parse_mode`) to avoid broken partial markdown; the final formatted response with markdown is sent on completion. Long streaming content is truncated to show the tail (last 4000 chars) while streaming.
 
-### - [ ] Reasoning effort — `reasoningEffort`
+### - [x] Reasoning effort — `reasoningEffort`
 
-Per-chat `"low" | "medium" | "high" | "xhigh"` config. Quick questions do not need maximum reasoning. Expose via `/model` or a `/reasoning` command, persist alongside model overrides, pass to `buildSessionConfig()`. Not all models support it — check compatibility before applying.
+Implemented. `/reasoning` command exposes per-chat reasoning effort configuration. Shows an inline keyboard picker with supported levels for the current model, or accepts `/reasoning <level>` for direct switching and `/reasoning reset` to clear. Persisted to `session-reasoning-overrides.json` alongside model overrides. Passed to `buildSessionConfig()` as `reasoningEffort`. Models that don't support reasoning effort show an unsupported message. Switching to an incompatible model automatically clears the reasoning effort override. `/whichmodel` displays the active reasoning effort. Since the SDK has no `setReasoningEffort()` method, changes trigger a session refresh via `refreshSessionContext()`.
 
 ### - [ ] Session disk cleanup — `deleteSession()`
 

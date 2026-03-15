@@ -147,26 +147,16 @@ Notes:
 
 ## Commands
 
-| Command                            | Description                                                                     |
-| ---------------------------------- | ------------------------------------------------------------------------------- |
-| `/start`                           | Show all commands                                                               |
-| `/new`                             | Start a fresh conversation                                                      |
-| `/cancel`                          | Cancel the current task                                                         |
-| `/model [name]`                    | Open model picker, or switch directly by name                                   |
-| `/sessions`                        | List active sessions                                                            |
-| `/memory [query]`                  | View or search memory (`/memory #tag`, `/memory recent N`, or full-text search) |
-| `/loglevel <level>`                | Set log verbosity (error/warn/info/debug/trace)                                 |
-| `/soul`                            | Show current persona                                                            |
-| `/status`                          | Show runtime status, default model, and current chat model                      |
-| `/whichmodel`                      | Show default model and current chat model                                       |
-| `/usage`                           | Show remaining monthly GitHub Copilot usage                                     |
-| `/audit [week\|tool]`              | Tool usage statistics                                                           |
-| `/cost [week\|month]`              | Token usage and estimated costs                                                 |
-| `/channel [label\|topics] [value]` | Channel config (groups only)                                                    |
-| `/restart`                         | Restart Neo                                                                     |
-| `/help`                            | Show all commands                                                               |
+Send `/start` or `/help` in Telegram to see all available commands.
 
-`/model` opens a clickable picker sourced from the Copilot account's available models (cached daily). `/model <name>` still sets a chat-specific model override directly. `/whichmodel` reports the default model and this chat's current active model. `/new` starts a fresh session but keeps that chat-specific override if one exists; otherwise it uses Neo's default model from the managed runtime config in `NEO_DATA_DIR` (default: `$HOME/.neo/config.json`).
+Key commands:
+- `/new` — Start a fresh conversation
+- `/model` — Switch models with a clickable picker (cached daily)
+- `/cancel` — Stop the current task
+- `/memory` — View or search memory
+- `/reasoning` — Set reasoning effort level
+- `/sessions` — List active sessions
+- `/channel` — Configure group chat settings
 
 ## Tools
 

@@ -7,6 +7,11 @@ describe("progress message helpers", () => {
       true,
     );
     expect(isMissingProgressMessageError(new Error("Bad Request: MESSAGE_ID_INVALID"))).toBe(true);
+    expect(
+      isMissingProgressMessageError(
+        new Error("Call to 'editMessageText' failed! (400: Bad Request: not Found)"),
+      ),
+    ).toBe(true);
   });
 
   it("detects no-op edits separately", () => {
