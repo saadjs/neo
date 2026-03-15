@@ -1,8 +1,13 @@
 # Neo
 
-Personal AI agent powered by the GitHub Copilot SDK, accessible via Telegram.
+<p align="left">
+    <img src="./assets/neo.png" alt="Neo" width="100" style="vertical-align:middle; margin-right:10px;">
+    <span>
+        Personal AI agent powered by the GitHub Copilot SDK, accessible via Telegram.
+    </span>
+</p>
 
-For a maintainer-focused breakdown of built-in Copilot CLI / SDK capabilities versus Neo-specific customizations, see [`copilot-cli-sdk-reference.md`](./copilot-cli-sdk-reference.md).
+> For a maintainer-focused breakdown of built-in Copilot CLI / SDK capabilities versus Neo-specific customizations, see [`copilot-cli-sdk-reference.md`](./copilot-cli-sdk-reference.md).
 
 ## Setup
 
@@ -11,7 +16,7 @@ For a maintainer-focused breakdown of built-in Copilot CLI / SDK capabilities ve
 - Node.js v24.14.0
 - GitHub account with Copilot access
 - Telegram Bot Token (from [@BotFather](https://t.me/BotFather))
-- Your Telegram user ID (from [@userinfobot](https://t.me/userinfobot))
+- Telegram user ID (from [@userinfobot](https://t.me/userinfobot))
 - Playwright Chromium browser (`npx playwright install --with-deps chromium`)
 
 ### Install
@@ -21,7 +26,7 @@ git clone https://github.com/saadjs/neo.git neo && cd neo
 nvm use
 npm install
 cp .env.example .env
-# Edit .env with your tokens
+# Edit .env with tokens
 ```
 
 ### Run (dev)
@@ -32,7 +37,7 @@ npm run dev
 
 ### Telegram group chats
 
-If you want Neo to respond to regular messages in group chats without being tagged, disable the bot's privacy mode in [@BotFather](https://t.me/BotFather):
+To respond to regular messages in group chats without being tagged, disable the bot's privacy mode in [@BotFather](https://t.me/BotFather):
 
 ```text
 /setprivacy
@@ -40,7 +45,7 @@ If you want Neo to respond to regular messages in group chats without being tagg
 → Disable
 ```
 
-If you changed this after the bot was already in the group, remove the bot from the group and add it back so Telegram refreshes permissions. Otherwise Neo may still ignore normal group messages because Telegram never delivers them.
+If the privacy mode was changed after the bot was already in the group, remove the bot and add it back so Telegram refreshes permissions. Otherwise Neo may still ignore normal group messages because Telegram never delivers them.
 
 ### Build & Run (production)
 
@@ -53,7 +58,7 @@ node dist/index.js
 
 ```bash
 cp .env.example .env
-# Edit .env with your secrets
+# Edit .env with secrets
 docker compose up -d
 docker compose logs -f  # view logs
 ```
@@ -144,29 +149,30 @@ Notes:
 - The deploy setup now syncs code from the checkout's Git `origin` and current branch instead of copying files with `rsync`.
 - User-service installs must run as the same login user that will own the `systemd --user` unit.
 - User services run with the same filesystem permissions as the installing login user, so they can access files in that user's home directory such as shell dotfiles when needed.
-- `systemd` does not automatically source `.bashrc` or `.zshrc`; put required runtime settings in Neo's `.env` unless you explicitly load shell startup files yourself.
+- `systemd` does not automatically source `.bashrc` or `.zshrc`; put required runtime settings in Neo's `.env` unless explicitly loading shell startup files.
 - `sudo loginctl enable-linger "$USER"` keeps a user service running after logout.
+
 ## Commands
 
-| Command | Description |
-|---------|-------------|
-| `/start` | Show all commands |
-| `/new` | Start a fresh conversation |
-| `/model [name]` | Open model picker, or switch directly by name |
-| `/sessions` | List active sessions |
-| `/memory [query]` | View or search memory (`/memory #tag`, `/memory recent N`, or full-text search) |
-| `/loglevel <level>` | Set log verbosity (error/warn/info/debug/trace) |
-| `/soul` | Show current persona |
-| `/status` | Show runtime status, default model, and current chat model |
-| `/whichmodel` | Show default model and current chat model |
-| `/usage` | Show remaining monthly GitHub Copilot usage |
-| `/audit [week\|tool]` | Tool usage statistics |
-| `/cost [week\|month]` | Token usage and estimated costs |
-| `/channel [label\|topics] [value]` | Channel config (groups only) |
-| `/restart` | Restart Neo |
-| `/help` | Show all commands |
+| Command                            | Description                                                                     |
+| ---------------------------------- | ------------------------------------------------------------------------------- |
+| `/start`                           | Show all commands                                                               |
+| `/new`                             | Start a fresh conversation                                                      |
+| `/model [name]`                    | Open model picker, or switch directly by name                                   |
+| `/sessions`                        | List active sessions                                                            |
+| `/memory [query]`                  | View or search memory (`/memory #tag`, `/memory recent N`, or full-text search) |
+| `/loglevel <level>`                | Set log verbosity (error/warn/info/debug/trace)                                 |
+| `/soul`                            | Show current persona                                                            |
+| `/status`                          | Show runtime status, default model, and current chat model                      |
+| `/whichmodel`                      | Show default model and current chat model                                       |
+| `/usage`                           | Show remaining monthly GitHub Copilot usage                                     |
+| `/audit [week\|tool]`              | Tool usage statistics                                                           |
+| `/cost [week\|month]`              | Token usage and estimated costs                                                 |
+| `/channel [label\|topics] [value]` | Channel config (groups only)                                                    |
+| `/restart`                         | Restart Neo                                                                     |
+| `/help`                            | Show all commands                                                               |
 
-`/model` opens a clickable picker sourced from your Copilot account's available models (cached daily). `/model <name>` still sets a chat-specific model override directly. `/whichmodel` reports the default model and this chat's current active model. `/new` starts a fresh session but keeps that chat-specific override if one exists; otherwise it uses Neo's default model from the managed runtime config in `NEO_DATA_DIR` (default: `$HOME/.neo/config.json`).
+`/model` opens a clickable picker sourced from the Copilot account's available models (cached daily). `/model <name>` still sets a chat-specific model override directly. `/whichmodel` reports the default model and this chat's current active model. `/new` starts a fresh session but keeps that chat-specific override if one exists; otherwise it uses Neo's default model from the managed runtime config in `NEO_DATA_DIR` (default: `$HOME/.neo/config.json`).
 
 ## Tools
 
@@ -197,26 +203,26 @@ Send a voice message in Telegram and Neo will transcribe it via Deepgram and res
 
 See [`.env.example`](.env.example) for all options.
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `TELEGRAM_BOT_TOKEN` | Yes | From @BotFather |
-| `TELEGRAM_OWNER_ID` | Yes | Your Telegram user ID |
-| `GITHUB_TOKEN` | Yes | GitHub PAT with Copilot access |
-| `DEEPGRAM_API_KEY` | No | Enable voice transcription |
-| `NEO_BROWSER_HEADLESS` | No | Browser mode (default: `true`) |
-| `NEO_BROWSER_LAUNCH_ARGS` | No | Extra Chromium flags |
-| `NEO_BROWSER_CREDENTIALS_JSON` | No | Stored login credentials (JSON) |
-| `NEO_DATA_DIR` | No | Override runtime data dir |
-| `NEO_LOG_DIR` | No | Override runtime log dir |
-| `NEO_SYSTEMD_UNIT` | No | Service unit name exposed to status/restart logic |
-| `NEO_SYSTEMCTL_SCOPE` | No | `system` or `user` for status checks |
+| Variable                       | Required | Description                                       |
+| ------------------------------ | -------- | ------------------------------------------------- |
+| `TELEGRAM_BOT_TOKEN`           | Yes      | From @BotFather                                   |
+| `TELEGRAM_OWNER_ID`            | Yes      | Telegram user ID                                  |
+| `GITHUB_TOKEN`                 | Yes      | GitHub PAT with Copilot access                    |
+| `DEEPGRAM_API_KEY`             | No       | Enable voice transcription                        |
+| `NEO_BROWSER_HEADLESS`         | No       | Browser mode (default: `true`)                    |
+| `NEO_BROWSER_LAUNCH_ARGS`      | No       | Extra Chromium flags                              |
+| `NEO_BROWSER_CREDENTIALS_JSON` | No       | Stored login credentials (JSON)                   |
+| `NEO_DATA_DIR`                 | No       | Override runtime data dir                         |
+| `NEO_LOG_DIR`                  | No       | Override runtime log dir                          |
+| `NEO_SYSTEMD_UNIT`             | No       | Service unit name exposed to status/restart logic |
+| `NEO_SYSTEMCTL_SCOPE`          | No       | `system` or `user` for status checks              |
 
 `TELEGRAM_OWNER_ID` keeps direct messages owner-only. Group chat visibility is controlled by Telegram privacy mode, not by `.env`.
 
 Browser credentials format:
 
 ```json
-{"github":{"username":"neo@example.com","password":"super-secret"}}
+{ "github": { "username": "neo@example.com", "password": "super-secret" } }
 ```
 
 ## Observability
