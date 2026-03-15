@@ -24,9 +24,9 @@ Implemented. `streaming: true` is set in `buildSessionConfig()` in `agent.ts`. `
 
 Implemented. `/reasoning` command exposes per-chat reasoning effort configuration. Shows an inline keyboard picker with supported levels for the current model, or accepts `/reasoning <level>` for direct switching and `/reasoning reset` to clear. Persisted to `session-reasoning-overrides.json` alongside model overrides. Passed to `buildSessionConfig()` as `reasoningEffort`. Models that don't support reasoning effort show an unsupported message. Switching to an incompatible model automatically clears the reasoning effort override. `/whichmodel` displays the active reasoning effort. Since the SDK has no `setReasoningEffort()` method, changes trigger a session refresh via `refreshSessionContext()`.
 
-### - [ ] Session disk cleanup — `deleteSession()`
+### - [x] Session disk cleanup — `deleteSession()`
 
-`/new` currently calls `destroy()` which tears down the in-memory session but may leave artifacts on disk. Switch to `deleteSession()` in `src/commands/session.ts` and `src/agent.ts` for proper cleanup.
+Implemented. Session deletion is now explicit instead of coupled to every reset. `/new` and default `destroySession()` behavior disconnect the active in-memory session and clear the active pointer, but keep the persisted session on disk so it remains resumable from `/sessions`. Explicit delete flows call `client.deleteSession(sessionId)`: the `/sessions` picker includes per-session ✕ delete buttons and a "Delete All" option, deleting the active session tears it down first, and stale-session cleanup paths (`refreshSessionContext`, `endSessionTurn`, `stopAgent`) still remove superseded session artifacts from disk.
 
 ### - [ ] `onSessionStart` hook
 

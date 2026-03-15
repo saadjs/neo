@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const {
   createSessionMock,
   resumeSessionMock,
+  deleteSessionMock,
   clientStartMock,
   clientStopMock,
   buildSystemContextMock,
@@ -17,6 +18,7 @@ const {
 } = vi.hoisted(() => ({
   createSessionMock: vi.fn(),
   resumeSessionMock: vi.fn(),
+  deleteSessionMock: vi.fn(),
   clientStartMock: vi.fn(),
   clientStopMock: vi.fn(),
   buildSystemContextMock: vi.fn(),
@@ -37,6 +39,7 @@ vi.mock("@github/copilot-sdk", () => ({
     stop = clientStopMock;
     createSession = createSessionMock;
     resumeSession = resumeSessionMock;
+    deleteSession = deleteSessionMock;
   },
   CopilotSession: class {},
 }));
@@ -94,6 +97,7 @@ afterEach(async () => {
   vi.resetModules();
   createSessionMock.mockReset();
   resumeSessionMock.mockReset();
+  deleteSessionMock.mockReset();
   clientStartMock.mockReset();
   clientStopMock.mockReset();
   buildSystemContextMock.mockReset();
@@ -135,7 +139,7 @@ describe("refreshSessionContext", () => {
     });
   });
 
-  it("destroys an idle cached session immediately", async () => {
+  it("destroys an idle cached session immediately and deletes from disk", async () => {
     const session = {
       sessionId: "session-1",
       destroy: vi.fn().mockResolvedValue(undefined),
@@ -155,7 +159,8 @@ describe("refreshSessionContext", () => {
     await refreshSessionContext(-100123);
 
     expect(clearActiveSessionMock).toHaveBeenCalledWith(-100123);
-    expect(session.destroy).toHaveBeenCalledTimes(1);
+    expect(session.disconnect).toHaveBeenCalledTimes(1);
+    expect(deleteSessionMock).toHaveBeenCalledWith("session-1");
     expect(getSessionForChat(-100123)).toBeUndefined();
   });
 
@@ -192,7 +197,7 @@ describe("refreshSessionContext", () => {
     await refreshSessionContext(-100123);
 
     expect(clearActiveSessionMock).toHaveBeenCalledWith(-100123);
-    expect(staleSession.destroy).not.toHaveBeenCalled();
+    expect(staleSession.disconnect).toHaveBeenCalledTimes(0);
     expect(getSessionForChat(-100123)).toBeUndefined();
     expect(getChatIdForSession("session-2")).toBe(-100123);
     await expect(getOrCreateSession({ chatId: -100123 })).resolves.toBe(freshSession);
@@ -200,8 +205,9 @@ describe("refreshSessionContext", () => {
 
     await endSessionTurn(-100123);
 
-    expect(staleSession.destroy).toHaveBeenCalledTimes(1);
-    expect(freshSession.destroy).not.toHaveBeenCalled();
+    expect(staleSession.disconnect).toHaveBeenCalledTimes(1);
+    expect(deleteSessionMock).toHaveBeenCalledWith("session-2");
+    expect(freshSession.disconnect).not.toHaveBeenCalled();
     expect(getSessionForChat(-100123)).toBe(freshSession);
   });
 
@@ -251,13 +257,15 @@ describe("refreshSessionContext", () => {
     expect(getSessionForChat(-100123)).toBe(thirdSession);
 
     await endSessionTurn(-100123);
-    expect(firstSession.destroy).not.toHaveBeenCalled();
-    expect(secondSession.destroy).not.toHaveBeenCalled();
+    expect(firstSession.disconnect).not.toHaveBeenCalled();
+    expect(secondSession.disconnect).not.toHaveBeenCalled();
 
     await endSessionTurn(-100123);
-    expect(firstSession.destroy).toHaveBeenCalledTimes(1);
-    expect(secondSession.destroy).toHaveBeenCalledTimes(1);
-    expect(thirdSession.destroy).not.toHaveBeenCalled();
+    expect(firstSession.disconnect).toHaveBeenCalledTimes(1);
+    expect(secondSession.disconnect).toHaveBeenCalledTimes(1);
+    expect(deleteSessionMock).toHaveBeenCalledWith("session-1");
+    expect(deleteSessionMock).toHaveBeenCalledWith("session-2");
+    expect(thirdSession.disconnect).not.toHaveBeenCalled();
   });
 
   it("does not resume the previous persisted session after a context refresh", async () => {
@@ -328,13 +336,14 @@ describe("refreshSessionContext", () => {
     beginSessionTurn(-100123);
     await expect(getOrCreateSession({ chatId: -100123 })).rejects.toThrow("create failed");
 
-    expect(staleSession.destroy).not.toHaveBeenCalled();
+    expect(staleSession.disconnect).not.toHaveBeenCalled();
 
     await endSessionTurn(-100123);
-    expect(staleSession.destroy).not.toHaveBeenCalled();
+    expect(staleSession.disconnect).not.toHaveBeenCalled();
 
     await endSessionTurn(-100123);
-    expect(staleSession.destroy).toHaveBeenCalledTimes(1);
+    expect(staleSession.disconnect).toHaveBeenCalledTimes(1);
+    expect(deleteSessionMock).toHaveBeenCalledWith("session-stale");
   });
 });
 
@@ -441,5 +450,52 @@ describe("discardSession", () => {
 
     discardSession(-100123, staleSession as never);
     expect(hasTrackedSession(-100123, staleSession as never)).toBe(false);
+  });
+});
+
+describe("destroySession", () => {
+  it("disconnects the active session without deleting persisted history by default", async () => {
+    const session = {
+      sessionId: "session-active",
+      destroy: vi.fn().mockResolvedValue(undefined),
+      disconnect: vi.fn().mockResolvedValue(undefined),
+    };
+    createSessionMock.mockResolvedValue(session);
+    buildSystemContextMock.mockResolvedValue("context");
+    getActiveSessionIdMock.mockReturnValue(null);
+
+    const { createNewSession, destroySession, getSessionForChat, startAgent } =
+      await import("./agent.js");
+
+    await startAgent();
+    await createNewSession({ chatId: -100123 });
+
+    await destroySession(-100123);
+
+    expect(session.disconnect).toHaveBeenCalledTimes(1);
+    expect(deleteSessionMock).not.toHaveBeenCalled();
+    expect(clearActiveSessionMock).toHaveBeenCalledWith(-100123);
+    expect(getSessionForChat(-100123)).toBeUndefined();
+  });
+
+  it("deletes persisted history when explicitly requested", async () => {
+    const session = {
+      sessionId: "session-active",
+      destroy: vi.fn().mockResolvedValue(undefined),
+      disconnect: vi.fn().mockResolvedValue(undefined),
+    };
+    createSessionMock.mockResolvedValue(session);
+    buildSystemContextMock.mockResolvedValue("context");
+    getActiveSessionIdMock.mockReturnValue(null);
+
+    const { createNewSession, destroySession, startAgent } = await import("./agent.js");
+
+    await startAgent();
+    await createNewSession({ chatId: -100123 });
+
+    await destroySession(-100123, { deletePersisted: true });
+
+    expect(session.disconnect).toHaveBeenCalledTimes(1);
+    expect(deleteSessionMock).toHaveBeenCalledWith("session-active");
   });
 });

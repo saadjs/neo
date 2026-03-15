@@ -3,6 +3,7 @@ import { InlineKeyboard } from "grammy";
 import type { SessionMetadata } from "@github/copilot-sdk";
 import {
   createNewSession,
+  deletePersistedSession,
   destroySession,
   getSessionForChat,
   listPersistedSessions,
@@ -38,6 +39,7 @@ interface SessionPickerState {
   createdAt: number;
   sessions: SessionMetadata[];
   activeSessionId: string | undefined;
+  deleteMode: boolean;
 }
 
 const sessionPickers = new Map<string, SessionPickerState>();
@@ -85,8 +87,9 @@ function buildPickerText(
   activeSessionId: string | undefined,
   page: number,
   totalPages: number,
+  deleteMode: boolean,
 ): string {
-  const lines = ["Select a session to resume."];
+  const lines = [deleteMode ? "Tap a session to delete it." : "Select a session to resume."];
   if (activeSessionId) {
     lines.push(`Active: \`${activeSessionId.slice(0, 8)}…\``);
   }
@@ -106,13 +109,15 @@ function buildPickerMarkup(
   const start = safePage * SESSIONS_PER_PAGE;
   const pageSessions = picker.sessions.slice(start, start + SESSIONS_PER_PAGE);
   const keyboard = new InlineKeyboard();
+  const action = picker.deleteMode ? "delete" : "resume";
 
   for (let i = 0; i < pageSessions.length; i++) {
     const session = pageSessions[i];
     const index = start + i;
     const isActive = session.sessionId === picker.activeSessionId;
-    const label = isActive ? `● ${buildSessionLabel(session)}` : buildSessionLabel(session);
-    keyboard.text(label, `session:resume:${pickerId}:${index}`);
+    const prefix = picker.deleteMode ? "✕ " : isActive ? "● " : "";
+    const label = `${prefix}${buildSessionLabel(session)}`;
+    keyboard.text(label, `session:${action}:${pickerId}:${index}`);
     keyboard.row();
   }
 
@@ -126,6 +131,14 @@ function buildPickerMarkup(
     keyboard.row();
   }
 
+  if (picker.deleteMode) {
+    keyboard.text("Delete All", `session:deleteall:${pickerId}`);
+    keyboard.text("Done", `session:mode:${pickerId}`);
+  } else {
+    keyboard.text("Delete...", `session:mode:${pickerId}`);
+  }
+  keyboard.row();
+
   return keyboard;
 }
 
@@ -137,6 +150,9 @@ function parseSessionCallbackData(
   data: string,
 ):
   | { action: "resume"; pickerId: string; index: number }
+  | { action: "delete"; pickerId: string; index: number }
+  | { action: "deleteall"; pickerId: string }
+  | { action: "mode"; pickerId: string }
   | { action: "page"; pickerId: string; page: number }
   | null {
   const parts = data.split(":");
@@ -146,6 +162,20 @@ function parseSessionCallbackData(
     const index = Number(parts[3]);
     if (!Number.isInteger(index) || index < 0) return null;
     return { action: "resume", pickerId: parts[2], index };
+  }
+
+  if (parts[1] === "delete" && parts.length === 4) {
+    const index = Number(parts[3]);
+    if (!Number.isInteger(index) || index < 0) return null;
+    return { action: "delete", pickerId: parts[2], index };
+  }
+
+  if (parts[1] === "deleteall" && parts.length === 3) {
+    return { action: "deleteall", pickerId: parts[2] };
+  }
+
+  if (parts[1] === "mode" && parts.length === 3) {
+    return { action: "mode", pickerId: parts[2] };
   }
 
   if (parts[1] === "page" && parts.length === 4) {
@@ -176,10 +206,11 @@ export async function handleSessions(ctx: Context) {
       createdAt: Date.now(),
       sessions: persisted,
       activeSessionId: activeSession?.sessionId,
+      deleteMode: false,
     });
 
     const totalPages = Math.max(1, Math.ceil(persisted.length / SESSIONS_PER_PAGE));
-    const text = buildPickerText(activeSession?.sessionId, 0, totalPages);
+    const text = buildPickerText(activeSession?.sessionId, 0, totalPages, false);
     const markup = buildPickerMarkup(pickerId, sessionPickers.get(pickerId)!, 0);
 
     await ctx.reply(text, { reply_markup: markup, parse_mode: "Markdown" });
@@ -231,10 +262,82 @@ export async function handleSessionCallback(ctx: Context): Promise<boolean> {
       return true;
     }
 
+    if (parsed.action === "mode") {
+      picker.deleteMode = !picker.deleteMode;
+      const totalPages = Math.max(1, Math.ceil(picker.sessions.length / SESSIONS_PER_PAGE));
+      const text = buildPickerText(picker.activeSessionId, 0, totalPages, picker.deleteMode);
+      const markup = buildPickerMarkup(parsed.pickerId, picker, 0);
+      await ctx.api.editMessageText(ctx.chat.id, message.message_id, text, {
+        reply_markup: markup,
+        parse_mode: "Markdown",
+      });
+      await ctx.answerCallbackQuery();
+      return true;
+    }
+
+    if (parsed.action === "delete") {
+      const selected = picker.sessions[parsed.index];
+      if (!selected) {
+        await ctx.answerCallbackQuery({ text: "That session is no longer available." });
+        return true;
+      }
+
+      if (selected.sessionId === picker.activeSessionId) {
+        await destroySession(ctx.chat.id, { deletePersisted: true });
+        picker.activeSessionId = undefined;
+      } else {
+        await deletePersistedSession(selected.sessionId);
+      }
+
+      picker.sessions.splice(parsed.index, 1);
+
+      if (picker.sessions.length === 0) {
+        sessionPickers.delete(parsed.pickerId);
+        await ctx.api.editMessageText(ctx.chat.id, message.message_id, "All sessions deleted.");
+        await ctx.answerCallbackQuery({ text: "Session deleted" });
+        return true;
+      }
+
+      const totalPages = Math.max(1, Math.ceil(picker.sessions.length / SESSIONS_PER_PAGE));
+      const safePage = Math.min(Math.floor(parsed.index / SESSIONS_PER_PAGE), totalPages - 1);
+      const text = buildPickerText(picker.activeSessionId, safePage, totalPages, picker.deleteMode);
+      const markup = buildPickerMarkup(parsed.pickerId, picker, safePage);
+      await ctx.api.editMessageText(ctx.chat.id, message.message_id, text, {
+        reply_markup: markup,
+        parse_mode: "Markdown",
+      });
+      await ctx.answerCallbackQuery({ text: "Session deleted" });
+      return true;
+    }
+
+    if (parsed.action === "deleteall") {
+      const chatId = ctx.chat.id;
+
+      for (const session of picker.sessions) {
+        try {
+          if (session.sessionId === picker.activeSessionId) {
+            await destroySession(chatId, { deletePersisted: true });
+          } else {
+            await deletePersistedSession(session.sessionId);
+          }
+        } catch {
+          // best-effort
+        }
+      }
+
+      picker.sessions.length = 0;
+      picker.activeSessionId = undefined;
+      sessionPickers.delete(parsed.pickerId);
+
+      await ctx.api.editMessageText(ctx.chat.id, message.message_id, "All sessions deleted.");
+      await ctx.answerCallbackQuery({ text: "All sessions deleted" });
+      return true;
+    }
+
     // page action
     const totalPages = Math.max(1, Math.ceil(picker.sessions.length / SESSIONS_PER_PAGE));
     const safePage = Math.min(Math.max(parsed.page, 0), totalPages - 1);
-    const text = buildPickerText(picker.activeSessionId, safePage, totalPages);
+    const text = buildPickerText(picker.activeSessionId, safePage, totalPages, picker.deleteMode);
     const markup = buildPickerMarkup(parsed.pickerId, picker, safePage);
 
     await ctx.api.editMessageText(ctx.chat.id, message.message_id, text, {

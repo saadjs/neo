@@ -133,10 +133,16 @@ export async function stopAgent(): Promise<void> {
 
   for (const [chatId, sessionsForChat] of staleSessions) {
     for (const session of sessionsForChat) {
+      const staleId = session.sessionId;
       try {
-        await session.destroy();
+        await session.disconnect();
       } catch (err) {
-        log.warn({ chatId, err }, "Error destroying stale session");
+        log.warn({ chatId, err }, "Error disconnecting stale session");
+      }
+      try {
+        await client?.deleteSession(staleId);
+      } catch (err) {
+        log.warn({ chatId, err }, "Error deleting stale session from disk");
       }
     }
   }
@@ -152,6 +158,10 @@ export async function stopAgent(): Promise<void> {
 
 export interface CreateSessionOptions {
   chatId: number;
+}
+
+export interface DestroySessionOptions {
+  deletePersisted?: boolean;
 }
 
 export async function getOrCreateSession(opts: CreateSessionOptions): Promise<CopilotSession> {
@@ -191,11 +201,12 @@ export async function createNewSession(opts: CreateSessionOptions): Promise<Copi
   if (!client) throw new Error("Agent not started");
   const log = getLogger();
 
-  // Destroy existing session for this chat
+  // Replace any cached live session for this chat, but keep its persisted
+  // state so it remains resumable from /sessions.
   const existing = sessions.get(opts.chatId);
   if (existing) {
     try {
-      await existing.destroy();
+      await existing.disconnect();
     } catch {
       // ignore
     }
@@ -246,7 +257,12 @@ export async function switchDefaultModel(model: string): Promise<void> {
   }
 }
 
-export async function destroySession(chatId: number): Promise<void> {
+export async function destroySession(
+  chatId: number,
+  opts: DestroySessionOptions = {},
+): Promise<void> {
+  const { deletePersisted = false } = opts;
+
   await cancelPendingUserInput(chatId, "Pending question cancelled because the session was reset.");
 
   try {
@@ -257,10 +273,18 @@ export async function destroySession(chatId: number): Promise<void> {
 
   const session = sessions.get(chatId);
   if (session) {
+    const sessionId = session.sessionId;
     try {
-      await session.destroy();
+      await session.disconnect();
     } catch {
       // ignore
+    }
+    if (deletePersisted) {
+      try {
+        await client?.deleteSession(sessionId);
+      } catch {
+        // ignore
+      }
     }
     sessions.delete(chatId);
   }
@@ -268,10 +292,18 @@ export async function destroySession(chatId: number): Promise<void> {
   const staleSessionsForChat = staleSessions.get(chatId);
   if (staleSessionsForChat) {
     for (const staleSession of staleSessionsForChat) {
+      const staleId = staleSession.sessionId;
       try {
-        await staleSession.destroy();
+        await staleSession.disconnect();
       } catch {
         // ignore
+      }
+      if (deletePersisted) {
+        try {
+          await client?.deleteSession(staleId);
+        } catch {
+          // ignore
+        }
       }
     }
     staleSessions.delete(chatId);
@@ -397,8 +429,14 @@ export async function endSessionTurn(chatId: number): Promise<void> {
   staleSessions.delete(chatId);
 
   for (const staleSession of staleSessionsForChat) {
+    const staleId = staleSession.sessionId;
     try {
-      await staleSession.destroy();
+      await staleSession.disconnect();
+    } catch {
+      // ignore
+    }
+    try {
+      await client?.deleteSession(staleId);
     } catch {
       // ignore
     }
@@ -437,11 +475,22 @@ export async function refreshSessionContext(chatId: number): Promise<void> {
 
   sessions.delete(chatId);
 
+  const sessionId = session.sessionId;
   try {
-    await session.destroy();
+    await session.disconnect();
   } catch {
     // ignore
   }
+  try {
+    await client?.deleteSession(sessionId);
+  } catch {
+    // ignore
+  }
+}
+
+export async function deletePersistedSession(sessionId: string): Promise<void> {
+  if (!client) throw new Error("Agent not started");
+  await client.deleteSession(sessionId);
 }
 
 export async function listPersistedSessions(): Promise<SessionMetadata[]> {
