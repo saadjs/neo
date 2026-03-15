@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { CopilotClient, CopilotSession, approveAll } from "@github/copilot-sdk";
+import type { SessionMetadata } from "@github/copilot-sdk";
 
 export type ReasoningEffort = "low" | "medium" | "high" | "xhigh";
 import { config } from "./config.js";
@@ -441,6 +442,42 @@ export async function refreshSessionContext(chatId: number): Promise<void> {
   } catch {
     // ignore
   }
+}
+
+export async function listPersistedSessions(): Promise<SessionMetadata[]> {
+  if (!client) return [];
+  const sessions = await client.listSessions({ cwd: config.paths.root });
+  return sessions.sort((a, b) => b.modifiedTime.getTime() - a.modifiedTime.getTime());
+}
+
+export async function resumeSessionById(
+  chatId: number,
+  sessionId: string,
+): Promise<CopilotSession> {
+  if (!client) throw new Error("Agent not started");
+  const log = getLogger();
+
+  // Destroy the current session for this chat
+  const existing = sessions.get(chatId);
+  if (existing) {
+    try {
+      await existing.disconnect();
+    } catch {
+      // ignore
+    }
+    sessions.delete(chatId);
+  }
+
+  const resumed = await client.resumeSession(sessionId, await buildSessionConfig(chatId));
+
+  const desiredModel = sessionModels.get(chatId) ?? config.copilot.model;
+  await resumed.setModel(desiredModel);
+
+  sessions.set(chatId, resumed);
+  setActiveSession(chatId, resumed.sessionId);
+  log.info({ chatId, sessionId: resumed.sessionId }, "Resumed session via /sessions");
+
+  return resumed;
 }
 
 async function buildSessionConfig(chatId: number) {

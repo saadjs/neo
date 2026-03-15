@@ -24,6 +24,7 @@ import {
 import { registerCommands } from "./commands/index.js";
 import { handleModelCallback, isModelCallback } from "./commands/model.js";
 import { handleReasoningCallback, isReasoningCallback } from "./commands/reasoning.js";
+import { handleSessionCallback, isSessionCallback } from "./commands/session.js";
 import { downloadTelegramFile } from "./telegram/files.js";
 import { splitMessage } from "./telegram/messages.js";
 import { appendCompactionMemory } from "./memory/index.js";
@@ -145,6 +146,10 @@ export async function createBot(): Promise<BotHandle> {
     }
     if (isReasoningCallback(ctx.callbackQuery.data)) {
       await handleReasoningCallback(ctx);
+      return;
+    }
+    if (isSessionCallback(ctx.callbackQuery.data)) {
+      await handleSessionCallback(ctx);
       return;
     }
     if (!isModelCallback(ctx.callbackQuery.data)) return;

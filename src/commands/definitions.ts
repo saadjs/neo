@@ -33,7 +33,7 @@ export const commandDefinitions = [
   },
   {
     command: "sessions",
-    description: "List active sessions",
+    description: "List and resume sessions",
   },
   {
     command: "memory",
