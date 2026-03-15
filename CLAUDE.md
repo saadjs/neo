@@ -46,6 +46,7 @@ Telegram message → bot.ts (grammY middleware) → agent.ts (getOrCreateSession
 ### Copilot SDK Integration (agent.ts → buildSessionConfig)
 
 Sessions are created with:
+
 - **`systemMessage: { mode: "replace" }`** — Full system prompt replacement assembled from memory files (soul, human, preferences, daily memory, weekly summaries, channel config). This means Neo does NOT use the default CLI persona.
 - **`tools: allTools`** — Custom tools registered alongside CLI built-ins (see below).
 - **`onPermissionRequest: approveAll`** — All tool executions auto-approved.
@@ -88,6 +89,7 @@ export const myTool = defineTool("my_tool", {
 Then add it to `allTools` in `src/tools/index.ts`.
 
 **Key rules for custom tools:**
+
 - If you name a tool the same as a built-in, you must set `overridesBuiltInTool: true` — otherwise the SDK throws. Avoid this unless intentionally replacing built-in behavior.
 - Handler return: string or JSON-serializable object. For binary data (images), return `{ type: "binary", data: Buffer }`.
 - Use `createAuditTimer(invocation.sessionId, toolName, args)` from `src/logging/audit.ts` for execution timing.
@@ -107,6 +109,7 @@ Hook types are re-derived from `SessionConfig["hooks"]` in `src/hooks/types.ts` 
 ### Memory System (src/memory/)
 
 System prompt is built by `buildSystemContext(chatId)` which assembles:
+
 - `$NEO_DATA_DIR/SOUL.md` — Persona (editable by Neo)
 - `$NEO_DATA_DIR/HUMAN.md` — Facts about the user
 - `$NEO_DATA_DIR/PREFERENCES.md` — User preferences
@@ -137,6 +140,10 @@ Vitest, Node environment, picks up `src/**/*.test.ts`. Add or update tests for e
 ## Style
 
 Strict TypeScript ESM. Double quotes, semicolons. `camelCase` for variables/functions, `PascalCase` for types. Kebab-case filenames. Tests next to source as `*.test.ts`. Conventional commit prefixes (`feat:`, `fix:`, `chore:`, etc.).
+
+## Documentation
+
+- After adding new Telegram slash (`/`) commands, or features, make sure to update the @README.md or other documentation files as needed.
 
 ## PRs
 

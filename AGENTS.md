@@ -55,6 +55,10 @@ System prompt assembled by `buildSystemContext(chatId)` from: `SOUL.md`, `HUMAN.
 
 Strict TypeScript ESM with `rootDir` set to `src/`. Double quotes, semicolons, concise module-level functions. `camelCase` for variables/functions, `PascalCase` for types and classes, kebab-case filenames (e.g. `browser-runtime.ts`). Tests next to source. Run `npm run fmt` and `npm run lint:fix` before pushing.
 
+## Documentation
+
+- After adding new Telegram slash (`/`) commands, or features, make sure to update the @README.md or other documentation files as needed.
+
 ## Testing Guidelines
 
 Vitest is configured for the Node environment and only picks up `src/**/*.test.ts`. Add or update tests for every behavioral change, especially around command handlers, memory, scheduler logic, and tool integrations. No coverage threshold is enforced, so expect targeted regression tests instead. Prefer descriptive test names that state behavior, e.g. `it("persists restart history on success")`. Add regression tests when appropriate.
