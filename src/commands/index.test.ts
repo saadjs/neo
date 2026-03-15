@@ -7,6 +7,7 @@ vi.mock("./session.js", () => ({
   handleSessions: vi.fn(),
 }));
 vi.mock("./model.js", () => ({ handleModel: vi.fn() }));
+vi.mock("./reasoning.js", () => ({ handleReasoning: vi.fn() }));
 vi.mock("./memory.js", () => ({ handleMemory: vi.fn() }));
 vi.mock("./log.js", () => ({ handleLogLevel: vi.fn() }));
 vi.mock("./soul.js", () => ({ handleSoul: vi.fn() }));

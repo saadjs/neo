@@ -9,6 +9,7 @@ describe("getTelegramCommands", () => {
       { command: "new", description: "Start a fresh conversation" },
       { command: "cancel", description: "Cancel the current task" },
       { command: "model", description: "Switch the model for this chat only" },
+      { command: "reasoning", description: "Set reasoning effort for this chat" },
       { command: "sessions", description: "List active sessions" },
       { command: "memory", description: "View, search, or filter memory" },
       { command: "loglevel", description: "Set log verbosity" },
