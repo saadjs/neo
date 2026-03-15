@@ -23,6 +23,7 @@ import {
 } from "./logging/conversations.js";
 import { registerCommands } from "./commands/index.js";
 import { handleModelCallback, isModelCallback } from "./commands/model.js";
+import { handleReasoningCallback, isReasoningCallback } from "./commands/reasoning.js";
 import { downloadTelegramFile } from "./telegram/files.js";
 import { splitMessage } from "./telegram/messages.js";
 import { appendCompactionMemory } from "./memory/index.js";
@@ -140,6 +141,10 @@ export async function createBot(): Promise<BotHandle> {
   bot.on("callback_query:data", async (ctx) => {
     if (isUserInputCallback(ctx.callbackQuery.data)) {
       await handleUserInputCallback(ctx);
+      return;
+    }
+    if (isReasoningCallback(ctx.callbackQuery.data)) {
+      await handleReasoningCallback(ctx);
       return;
     }
     if (!isModelCallback(ctx.callbackQuery.data)) return;
@@ -371,9 +376,12 @@ async function handleMessage(
     stopTypingLoop();
     stopProgressLoop();
 
-    if (progressMessageId != null) {
+    const msgId = progressMessageId;
+    progressMessageId = null;
+
+    if (msgId != null) {
       try {
-        await ctx.api.deleteMessage(chatId, progressMessageId);
+        await ctx.api.deleteMessage(chatId, msgId);
       } catch {}
     }
   };

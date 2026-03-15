@@ -74,6 +74,11 @@ vi.mock("./commands/model.js", () => ({
   isModelCallback: vi.fn(() => false),
 }));
 
+vi.mock("./commands/reasoning.js", () => ({
+  handleReasoningCallback: vi.fn(),
+  isReasoningCallback: vi.fn(() => false),
+}));
+
 vi.mock("./telegram/files.js", () => ({
   downloadTelegramFile: vi.fn(),
 }));
