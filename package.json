@@ -28,7 +28,8 @@
   "engines": {
     "node": "24.14.0"
   },
-  "private": true,
+  "license": "MIT",
+  "private": false,
   "dependencies": {
     "@deepgram/sdk": "^5.0.0",
     "@github/copilot-sdk": "^0.1.32",
