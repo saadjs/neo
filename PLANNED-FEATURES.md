@@ -16,9 +16,9 @@ SDK capabilities already available for Telegram integration.
 
 Implemented. `/cancel` calls `abort()` on the active session to stop the in-flight turn without destroying the session. Partial responses are suppressed via an abort flag consumed by `handleMessage` in `bot.ts`. Handles no-session and no-active-turn cases gracefully.
 
-### - [ ] Streaming responses
+### - [x] Streaming responses
 
-Neo waits for `session.idle` before showing anything. Enable `streaming: true` in `buildSessionConfig()`, subscribe to `assistant.message_delta` events in `bot.ts`, buffer deltas, and periodically edit the Telegram progress message with partial content. Debounce edits aggressively — Telegram rate-limits `editMessageText`. Partial markdown will break mid-stream; send raw text while streaming, reformat on completion.
+Implemented. `streaming: true` is set in `buildSessionConfig()` in `agent.ts`. `bot.ts` subscribes to `assistant.message_delta` events, buffers deltas in a `streamBuffer`, and periodically edits the Telegram progress message with partial content. Edits are debounced at 1.5s to stay within Telegram rate limits. Raw text is shown during streaming (no `parse_mode`) to avoid broken partial markdown; the final formatted response with markdown is sent on completion. Long streaming content is truncated to show the tail (last 4000 chars) while streaming.
 
 ### - [ ] Reasoning effort — `reasoningEffort`
 

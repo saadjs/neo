@@ -38,6 +38,7 @@ vi.mock("./config.js", () => ({
 
 vi.mock("./agent.js", () => ({
   beginSessionTurn: vi.fn(),
+  consumeAbortFlag: vi.fn(() => false),
   discardSession: vi.fn(),
   endSessionTurn: vi.fn(),
   getClient: vi.fn(),

@@ -40,6 +40,10 @@ describe("buildProgressText", () => {
     expect(buildProgressText("thinking", "", startedAt)).toMatch(/Thinking…/);
   });
 
+  it("returns default thinking text for streaming phase", () => {
+    expect(buildProgressText("streaming", "", startedAt)).toMatch(/Thinking…/);
+  });
+
   it("includes elapsed seconds after threshold", () => {
     const oldStart = Date.now() - 15_000;
     expect(buildProgressText("thinking", "", oldStart)).toMatch(/\(15s\)/);

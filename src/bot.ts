@@ -270,6 +270,7 @@ async function handleMessage(
   let progressPhase: ProgressPhase = "thinking";
   let progressDetail = "";
   let lastProgressEditAt = 0;
+  let streamBuffer = "";
   let typingInterval: ReturnType<typeof setInterval> | null = null;
   let progressInterval: ReturnType<typeof setInterval> | null = null;
 
@@ -318,10 +319,41 @@ async function handleMessage(
     typingInterval = null;
   };
 
+  const updateStreamingMessage = async () => {
+    if (!streamBuffer || progressPhase !== "streaming") return;
+
+    const now = Date.now();
+    if (now - lastProgressEditAt < PROGRESS_EDIT_DEBOUNCE_MS) return;
+    lastProgressEditAt = now;
+
+    // Truncate to fit Telegram limit, showing the tail
+    const maxLen = 4000;
+    const display = streamBuffer.length > maxLen ? `…${streamBuffer.slice(-maxLen)}` : streamBuffer;
+
+    try {
+      if (progressMessageId == null) {
+        const message = await ctx.reply(display);
+        progressMessageId = message.message_id;
+        return;
+      }
+      await ctx.api.editMessageText(chatId, progressMessageId, display);
+    } catch (err) {
+      if (isMessageNotModifiedError(err)) return;
+      if (isMissingProgressMessageError(err)) {
+        progressMessageId = null;
+      }
+      log.debug({ err, chatId }, "Failed to update streaming message");
+    }
+  };
+
   const startProgressLoop = () => {
     if (progressInterval) return;
     progressInterval = setInterval(() => {
-      void setProgress(progressPhase, progressDetail, true);
+      if (progressPhase === "streaming") {
+        void updateStreamingMessage();
+      } else {
+        void setProgress(progressPhase, progressDetail, true);
+      }
     }, PROGRESS_REFRESH_MS);
   };
 
@@ -381,6 +413,16 @@ async function handleMessage(
     });
 
     const onEvent = async (event: SessionEvent) => {
+      if (event.type === "assistant.message_delta") {
+        const delta = (event.data as { deltaContent?: string }).deltaContent;
+        if (delta) {
+          streamBuffer += delta;
+          progressPhase = "streaming";
+          progressDetail = "";
+          void updateStreamingMessage();
+        }
+      }
+
       if (event.type === "assistant.message") {
         lastAssistantMessage = event;
         const content = (event.data as { content?: string }).content;

@@ -382,6 +382,7 @@ async function buildSessionConfig(chatId: number) {
   return {
     clientName: "neo",
     model,
+    streaming: true,
     systemMessage: { mode: "replace" as const, content: systemContext },
     tools: allTools,
     skillDirectories: config.copilot.skillDirectories,

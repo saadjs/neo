@@ -9,7 +9,8 @@ export type ProgressPhase =
   | "done-tool"
   | "skill"
   | "compacting"
-  | "waiting";
+  | "waiting"
+  | "streaming";
 
 export function formatProgressName(value?: string) {
   return String(value || "work")
