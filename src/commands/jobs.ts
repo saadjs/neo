@@ -5,9 +5,7 @@ import { getRunningJob, cancelRunningJob } from "../scheduler/job-runner.js";
 import { describeCron } from "../scheduler/cron.js";
 import { getLogger } from "../logging/index.js";
 import type { Job, JobRun } from "../scheduler/jobs-db.js";
-
-const PICKER_TTL_MS = 10 * 60 * 1000;
-const MAX_PICKERS = 50;
+import { ACTION_PICKER_TTL_MS, ACTION_PICKER_MAX, JOB_ERROR_MAX_CHARS } from "../constants.js";
 
 interface JobPickerState {
   createdAt: number;
@@ -18,11 +16,11 @@ const jobPickers = new Map<string, JobPickerState>();
 
 function pruneExpiredPickers(now = Date.now()): void {
   for (const [id, picker] of jobPickers) {
-    if (now - picker.createdAt > PICKER_TTL_MS) {
+    if (now - picker.createdAt > ACTION_PICKER_TTL_MS) {
       jobPickers.delete(id);
     }
   }
-  while (jobPickers.size > MAX_PICKERS) {
+  while (jobPickers.size > ACTION_PICKER_MAX) {
     const oldest = jobPickers.keys().next().value;
     if (!oldest) break;
     jobPickers.delete(oldest);
@@ -102,7 +100,7 @@ function buildJobHistoryText(job: Job, runs: JobRun[]): string {
     const time = run.started_at.replace("T", " ").slice(0, 16);
     lines.push(`${icon} ${run.status}${duration} — ${time}`);
     if (run.error) {
-      lines.push(`   Error: ${run.error.slice(0, 100)}`);
+      lines.push(`   Error: ${run.error.slice(0, JOB_ERROR_MAX_CHARS)}`);
     }
   }
 

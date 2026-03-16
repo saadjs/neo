@@ -6,7 +6,7 @@ import { executeJob } from "./job-runner.js";
 import { initJobsTable, getDueJobs, advanceNextRun } from "./jobs-db.js";
 import { runMemoryDecay } from "../memory/index.js";
 
-const HEARTBEAT_MS = 30_000;
+import { HEARTBEAT_MS } from "../constants.js";
 
 let intervalId: ReturnType<typeof setInterval> | null = null;
 const claimedWeeklyMemoryDecayRuns = new Set<string>();

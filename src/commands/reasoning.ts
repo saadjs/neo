@@ -9,9 +9,7 @@ import {
 } from "../agent.js";
 import { getModelReasoningInfo } from "./model-catalog.js";
 import { getCommandArgs } from "./command-text.js";
-
-const PICKER_TTL_MS = 24 * 60 * 60 * 1000;
-const MAX_PICKERS = 100;
+import { MODEL_PICKER_TTL_MS, MODEL_PICKER_MAX } from "../constants.js";
 
 interface ReasoningPickerState {
   createdAt: number;
@@ -23,12 +21,12 @@ const reasoningPickers = new Map<string, ReasoningPickerState>();
 
 function pruneExpiredPickers(now = Date.now()): void {
   for (const [pickerId, picker] of reasoningPickers) {
-    if (now - picker.createdAt > PICKER_TTL_MS) {
+    if (now - picker.createdAt > MODEL_PICKER_TTL_MS) {
       reasoningPickers.delete(pickerId);
     }
   }
 
-  while (reasoningPickers.size > MAX_PICKERS) {
+  while (reasoningPickers.size > MODEL_PICKER_MAX) {
     const oldestKey = reasoningPickers.keys().next().value;
     if (!oldestKey) break;
     reasoningPickers.delete(oldestKey);

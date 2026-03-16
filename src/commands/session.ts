@@ -11,6 +11,13 @@ import {
 } from "../agent.js";
 import { getLogger } from "../logging/index.js";
 import { getChatModelContext } from "./model-context.js";
+import {
+  SESSIONS_PER_PAGE,
+  ACTION_PICKER_TTL_MS,
+  ACTION_PICKER_MAX,
+  SESSION_LABEL_MAX_CHARS,
+  SESSION_SUMMARY_MAX_CHARS,
+} from "../constants.js";
 
 export async function handleNewSession(ctx: Context) {
   const chatId = ctx.chat!.id;
@@ -31,10 +38,6 @@ export async function handleNewSession(ctx: Context) {
 
 // --- Session picker ---
 
-const SESSIONS_PER_PAGE = 6;
-const PICKER_TTL_MS = 10 * 60 * 1000;
-const MAX_PICKERS = 50;
-
 interface SessionPickerState {
   createdAt: number;
   sessions: SessionMetadata[];
@@ -46,11 +49,11 @@ const sessionPickers = new Map<string, SessionPickerState>();
 
 function pruneExpiredPickers(now = Date.now()): void {
   for (const [id, picker] of sessionPickers) {
-    if (now - picker.createdAt > PICKER_TTL_MS) {
+    if (now - picker.createdAt > ACTION_PICKER_TTL_MS) {
       sessionPickers.delete(id);
     }
   }
-  while (sessionPickers.size > MAX_PICKERS) {
+  while (sessionPickers.size > ACTION_PICKER_MAX) {
     const oldest = sessionPickers.keys().next().value;
     if (!oldest) break;
     sessionPickers.delete(oldest);
@@ -79,7 +82,9 @@ function truncate(text: string, maxLength: number): string {
 
 function buildSessionLabel(session: SessionMetadata): string {
   const time = formatRelativeTime(session.modifiedTime);
-  const summary = session.summary ? truncate(session.summary, 28) : "No summary";
+  const summary = session.summary
+    ? truncate(session.summary, SESSION_LABEL_MAX_CHARS)
+    : "No summary";
   return `${summary} (${time})`;
 }
 
@@ -255,7 +260,7 @@ export async function handleSessionCallback(ctx: Context): Promise<boolean> {
       sessionPickers.delete(parsed.pickerId);
 
       const summary = selected.summary
-        ? truncate(selected.summary, 60)
+        ? truncate(selected.summary, SESSION_SUMMARY_MAX_CHARS)
         : selected.sessionId.slice(0, 8);
       await ctx.api.editMessageText(ctx.chat.id, message.message_id, `Resumed session: ${summary}`);
       await ctx.answerCallbackQuery({ text: "Session resumed" });

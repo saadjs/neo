@@ -15,6 +15,7 @@ import {
   requestUserInput,
 } from "./telegram/user-input.js";
 import { clearActiveSession, getActiveSessionId } from "./logging/conversations.js";
+import { VALID_REASONING_EFFORTS } from "./constants.js";
 
 let client: CopilotClient | null = null;
 const sessions = new Map<number, CopilotSession>();
@@ -28,8 +29,6 @@ const SESSION_REASONING_OVERRIDES_FILE = join(
   config.paths.data,
   "session-reasoning-overrides.json",
 );
-const VALID_REASONING_EFFORTS = new Set<string>(["low", "medium", "high", "xhigh"]);
-
 async function loadSessionModelOverrides(): Promise<void> {
   try {
     const raw = await readFile(SESSION_MODEL_OVERRIDES_FILE, "utf-8");

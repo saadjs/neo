@@ -1,4 +1,4 @@
-const TELEGRAM_MSG_LIMIT = 4096;
+import { TELEGRAM_MSG_LIMIT } from "../constants.js";
 
 export function splitMessage(text: string): string[] {
   if (text.length <= TELEGRAM_MSG_LIMIT) return [text];

@@ -13,10 +13,7 @@ import {
   type ModelCatalogResult,
 } from "./model-catalog.js";
 import { getCommandArgs } from "./command-text.js";
-
-const MODELS_PER_PAGE = 8;
-const PICKER_TTL_MS = 24 * 60 * 60 * 1000;
-const MAX_PICKERS = 100;
+import { MODELS_PER_PAGE, MODEL_PICKER_TTL_MS, MODEL_PICKER_MAX } from "../constants.js";
 
 interface ModelPickerState {
   createdAt: number;
@@ -30,12 +27,12 @@ const modelPickers = new Map<string, ModelPickerState>();
 
 function pruneExpiredPickers(now = Date.now()): void {
   for (const [pickerId, picker] of modelPickers) {
-    if (now - picker.createdAt > PICKER_TTL_MS) {
+    if (now - picker.createdAt > MODEL_PICKER_TTL_MS) {
       modelPickers.delete(pickerId);
     }
   }
 
-  while (modelPickers.size > MAX_PICKERS) {
+  while (modelPickers.size > MODEL_PICKER_MAX) {
     const oldestKey = modelPickers.keys().next().value;
     if (!oldestKey) break;
     modelPickers.delete(oldestKey);

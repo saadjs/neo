@@ -18,7 +18,7 @@ export interface RequestConfig {
   nowMs?: number;
 }
 
-const DEFAULT_FETCH_TIMEOUT_MS = 12_000;
+import { COPILOT_USAGE_FETCH_TIMEOUT_MS } from "../constants.js";
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
@@ -40,7 +40,7 @@ async function requestJson(
   config: RequestConfig = {},
 ): Promise<{ ok: true; data: unknown } | { ok: false; error: string }> {
   const fetchFn = config.fetchFn ?? fetch;
-  const timeoutMs = config.timeoutMs ?? DEFAULT_FETCH_TIMEOUT_MS;
+  const timeoutMs = config.timeoutMs ?? COPILOT_USAGE_FETCH_TIMEOUT_MS;
   const controller = new AbortController();
   const timeout = timeoutMs > 0 ? setTimeout(() => controller.abort(), timeoutMs) : null;
 

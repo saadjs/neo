@@ -1,5 +1,10 @@
 import type { DatabaseSync } from "node:sqlite";
 import { getConversationDb } from "./conversations.js";
+import {
+  ANOMALY_RECENT_CALLS,
+  ANOMALY_FAILURE_THRESHOLD,
+  ANOMALY_ERROR_MAX_CHARS,
+} from "../constants.js";
 
 export interface ToolAnomaly {
   tool_name: string;
@@ -31,7 +36,7 @@ export function detectToolAnomalies(db?: DatabaseSync): ToolAnomaly[] {
       .prepare(
         `SELECT success, result, created_at FROM tool_calls
          WHERE tool_name = ? AND success IS NOT NULL
-         ORDER BY created_at DESC LIMIT 5`,
+         ORDER BY created_at DESC LIMIT ${ANOMALY_RECENT_CALLS}`,
       )
       .all(tool_name) as unknown as Array<{
       success: number;
@@ -49,12 +54,12 @@ export function detectToolAnomalies(db?: DatabaseSync): ToolAnomaly[] {
       }
     }
 
-    if (consecutive >= 3) {
+    if (consecutive >= ANOMALY_FAILURE_THRESHOLD) {
       anomalies.push({
         tool_name,
         consecutive_failures: consecutive,
         last_failure_at: recent[0].created_at,
-        last_error: (recent[0].result ?? "unknown error").slice(0, 200),
+        last_error: (recent[0].result ?? "unknown error").slice(0, ANOMALY_ERROR_MAX_CHARS),
       });
     }
   }

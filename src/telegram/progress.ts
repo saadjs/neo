@@ -1,7 +1,3 @@
-export const TYPING_REFRESH_MS = 3000;
-export const PROGRESS_REFRESH_MS = 8000;
-export const PROGRESS_EDIT_DEBOUNCE_MS = 1500;
-
 export type ProgressPhase =
   | "thinking"
   | "reasoning"

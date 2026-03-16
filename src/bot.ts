@@ -32,14 +32,16 @@ import { appendCompactionMemory } from "./memory/index.js";
 import { recordCompactionTokens, recordMessageEstimate } from "./logging/cost.js";
 import { extractTags } from "./memory/tagging.js";
 import { isVoiceEnabled, transcribeFile } from "./voice/transcribe.js";
+import { type ProgressPhase, formatProgressName, buildProgressText } from "./telegram/progress.js";
 import {
+  SESSION_HEALTH_POLL_MS,
   TYPING_REFRESH_MS,
   PROGRESS_REFRESH_MS,
   PROGRESS_EDIT_DEBOUNCE_MS,
-  type ProgressPhase,
-  formatProgressName,
-  buildProgressText,
-} from "./telegram/progress.js";
+  STREAMING_MSG_MAX_LEN,
+  LOG_TRANSCRIPT_MAX_CHARS,
+  LOG_REASONING_MAX_CHARS,
+} from "./constants.js";
 import {
   isMessageNotModifiedError,
   isMissingProgressMessageError,
@@ -54,8 +56,6 @@ import {
 } from "./telegram/user-input.js";
 import { shouldSilenceSessionError } from "./telegram/session-errors.js";
 import { consumeSessionErrorNotified } from "./hooks/error-state.js";
-
-const SESSION_HEALTH_POLL_MS = 1000;
 
 async function sendAndWaitForSessionIdle(
   chatId: number,
@@ -242,7 +242,10 @@ export async function createBot(): Promise<BotHandle> {
         return;
       }
 
-      log.info({ chatId: ctx.chat!.id, transcript: transcript.slice(0, 100) }, "Voice transcribed");
+      log.info(
+        { chatId: ctx.chat!.id, transcript: transcript.slice(0, LOG_TRANSCRIPT_MAX_CHARS) },
+        "Voice transcribed",
+      );
       await handleMessage(ctx, transcript);
     } catch (err) {
       log.error({ err }, "Failed to process voice message");
@@ -342,7 +345,7 @@ async function handleMessage(
     lastProgressEditAt = now;
 
     // Truncate to fit Telegram limit, showing the tail
-    const maxLen = 4000;
+    const maxLen = STREAMING_MSG_MAX_LEN;
     const display = streamBuffer.length > maxLen ? `…${streamBuffer.slice(-maxLen)}` : streamBuffer;
 
     try {
@@ -450,7 +453,10 @@ async function handleMessage(
       if (event.type === "assistant.reasoning") {
         const reasoning = (event.data as { content?: string }).content;
         if (reasoning) {
-          log.debug({ chatId, reasoning: reasoning.slice(0, 100) }, "Agent reasoning");
+          log.debug(
+            { chatId, reasoning: reasoning.slice(0, LOG_REASONING_MAX_CHARS) },
+            "Agent reasoning",
+          );
         }
         await setProgress("reasoning");
       }

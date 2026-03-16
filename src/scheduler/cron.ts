@@ -1,3 +1,5 @@
+import { CRON_LOOKAHEAD_YEARS } from "../constants.js";
+
 /**
  * Minimal 5-field cron parser (min hour dom month dow).
  * Supports: *, ranges (1-5), steps (*(/)15), lists (1,3,5).
@@ -71,7 +73,7 @@ export function getNextCronTime(expression: string, after: Date): Date {
   cursor.setUTCMinutes(cursor.getUTCMinutes() + 1);
 
   const limit = new Date(after.getTime());
-  limit.setUTCFullYear(limit.getUTCFullYear() + 2);
+  limit.setUTCFullYear(limit.getUTCFullYear() + CRON_LOOKAHEAD_YEARS);
 
   while (cursor <= limit) {
     if (
@@ -88,7 +90,9 @@ export function getNextCronTime(expression: string, after: Date): Date {
     cursor.setUTCMinutes(cursor.getUTCMinutes() + 1);
   }
 
-  throw new Error(`No matching time found within 2 years for: "${expression}"`);
+  throw new Error(
+    `No matching time found within ${CRON_LOOKAHEAD_YEARS} years for: "${expression}"`,
+  );
 }
 
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];

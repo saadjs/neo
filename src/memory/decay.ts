@@ -4,6 +4,7 @@ import { config } from "../config.js";
 import { getLogger } from "../logging/index.js";
 import { getLastCompletedIsoWeekEnd, groupByWeek, summarizeWeek } from "./decay-utils.js";
 import type { DailyMemoryFile } from "./decay-utils.js";
+import { SUMMARIZED_MARKER } from "../constants.js";
 
 export {
   getIsoWeek,
@@ -11,8 +12,6 @@ export {
   groupByWeek,
   summarizeWeek,
 } from "./decay-utils.js";
-
-const SUMMARIZED_MARKER = "<!-- summarized -->";
 
 interface StoredDailyMemoryFile extends DailyMemoryFile {
   summarized: boolean;
