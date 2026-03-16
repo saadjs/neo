@@ -14,6 +14,7 @@ import {
 import { getConversationDb } from "../logging/conversations.js";
 import { isValidCron } from "../scheduler/cron.js";
 import { createAuditTimer } from "../logging/audit.js";
+import { cancelRunningJob } from "../scheduler/job-runner.js";
 
 function resolveJob(args: { id?: number; name?: string }) {
   if (args.id != null) return getJob(args.id);
@@ -36,6 +37,7 @@ export const jobTool = defineTool("job", {
         "disable",
         "history",
         "run_now",
+        "cancel",
       ])
       .describe("The job action to perform"),
     name: z
@@ -58,7 +60,19 @@ export const jobTool = defineTool("job", {
 
     try {
       initJobsTable();
-      const result = execute(args);
+
+      if (args.action === "cancel") {
+        const status = await cancelRunningJob();
+        const result =
+          status === "cancelled"
+            ? "Cancelling running job. Abort signal sent."
+            : "No job is currently running.";
+        audit.complete(result);
+        return result;
+      }
+
+      const { action, ...rest } = args;
+      const result = execute({ action, ...rest });
       audit.complete(result);
       return result;
     } catch (error) {
