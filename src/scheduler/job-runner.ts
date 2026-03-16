@@ -11,26 +11,60 @@ import { splitMessage } from "../telegram/messages.js";
 import { createJobRun, completeJobRun, failJobRun } from "./jobs-db.js";
 import type { Job } from "./jobs-db.js";
 
-const JOB_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
-
-let running = false;
+let runningJob: {
+  jobId: number;
+  jobName: string;
+  session: { abort(): Promise<void>; destroy(): Promise<void> };
+  responseBuffer: string;
+  cancelled: boolean;
+} | null = null;
 
 export function isJobRunning(): boolean {
-  return running;
+  return runningJob !== null;
+}
+
+export function getRunningJob(): { jobId: number; jobName: string } | null {
+  if (!runningJob) return null;
+  return { jobId: runningJob.jobId, jobName: runningJob.jobName };
+}
+
+export async function cancelRunningJob(): Promise<"cancelled" | "no-job-running"> {
+  if (!runningJob) return "no-job-running";
+  const log = getLogger();
+  log.info({ jobId: runningJob.jobId, jobName: runningJob.jobName }, "Cancelling running job");
+  runningJob.cancelled = true;
+  await runningJob.session.abort();
+  return "cancelled";
 }
 
 export async function executeJob(job: Job, api: Api): Promise<void> {
   const log = getLogger();
 
-  if (running) {
+  if (runningJob) {
     log.warn({ jobId: job.id, jobName: job.name }, "Skipping job — another job is already running");
     return;
   }
 
-  running = true;
+  // Mark as running before session creation so isJobRunning() is true
+  // when hooks fire during createSession. Session ref is set after.
+  const noop = async () => {};
+  runningJob = {
+    jobId: job.id,
+    jobName: job.name,
+    session: { abort: noop, destroy: noop },
+    responseBuffer: "",
+    cancelled: false,
+  };
+
   const runId = createJobRun(job.id);
   const startTime = Date.now();
-  let session: { destroy(): Promise<void>; sendAndWait: Function; on: Function } | null = null;
+  let session: {
+    destroy(): Promise<void>;
+    sendAndWait: Function;
+    on: Function;
+    abort(): Promise<void>;
+  } | null = null;
+  let responseBuffer = "";
 
   try {
     const client = getClient();
@@ -54,41 +88,26 @@ export async function executeJob(job: Job, api: Api): Promise<void> {
       workingDirectory: config.paths.root,
     });
 
-    let responseBuffer = "";
+    runningJob.session = session;
 
     const unsubscribe = session.on((event: SessionEvent) => {
       if (event.type === "assistant.message") {
         const content = (event.data as { content?: string }).content;
-        if (content) responseBuffer = content;
+        if (content) {
+          responseBuffer = content;
+          if (runningJob) runningJob.responseBuffer = content;
+        }
       }
     });
 
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      timeoutId = setTimeout(async () => {
-        if (session) {
-          try {
-            await session.destroy();
-          } catch {
-            // ignore cleanup failure during timeout handling
-          }
-        }
-        reject(new Error("Job timed out after 5 minutes"));
-      }, JOB_TIMEOUT_MS);
-    });
-
     try {
-      const result = await Promise.race([
-        session.sendAndWait({ prompt: job.prompt }),
-        timeoutPromise,
-      ]);
+      const result = await session.sendAndWait({ prompt: job.prompt });
       const finalContent =
         (result as { data?: { content?: string } })?.data?.content ?? responseBuffer;
 
       const durationMs = Date.now() - startTime;
       completeJobRun(runId, finalContent || "(no output)", durationMs);
 
-      // Notify owner
       const header = `📋 Job "${job.name}" completed (${Math.round(durationMs / 1000)}s):`;
       const output = finalContent || "(no output)";
       const chunks = splitMessage(`${header}\n\n${output}`);
@@ -100,16 +119,26 @@ export async function executeJob(job: Job, api: Api): Promise<void> {
         }
       }
 
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
       unsubscribe();
     } catch (err) {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
       unsubscribe();
-      throw err;
+
+      // Preserve partial results only on explicit cancellation
+      const durationMs = Date.now() - startTime;
+      if (runningJob?.cancelled && responseBuffer) {
+        completeJobRun(runId, `(cancelled — partial output)\n\n${responseBuffer}`, durationMs);
+        const header = `📋 Job "${job.name}" cancelled (${Math.round(durationMs / 1000)}s, partial output):`;
+        const chunks = splitMessage(`${header}\n\n${responseBuffer}`);
+        for (const chunk of chunks) {
+          try {
+            await api.sendMessage(config.telegram.ownerId, chunk);
+          } catch (sendErr) {
+            log.error({ err: sendErr, jobId: job.id }, "Failed to send job output");
+          }
+        }
+      } else {
+        throw err;
+      }
     }
   } catch (err) {
     const durationMs = Date.now() - startTime;
@@ -131,6 +160,6 @@ export async function executeJob(job: Job, api: Api): Promise<void> {
         // ignore
       }
     }
-    running = false;
+    runningJob = null;
   }
 }
