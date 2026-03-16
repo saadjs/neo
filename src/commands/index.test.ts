@@ -1,5 +1,37 @@
 import { describe, expect, it, vi } from "vitest";
 
+// Mock vscode-jsonrpc and Copilot SDK before other imports to prevent ESM resolution issues
+vi.mock("vscode-jsonrpc/node", () => ({
+  StreamMessageReader: class {},
+  StreamMessageWriter: class {},
+  MessageConnection: { listen: () => ({}) },
+}));
+
+vi.mock("@github/copilot-sdk", () => ({
+  CopilotClient: class {},
+  defineTool: () => ({}),
+}));
+
+vi.mock("../config.js", () => ({
+  config: {
+    telegram: { botToken: "test-token", ownerId: 1 },
+    paths: { data: "/tmp", logs: "/tmp" },
+  },
+}));
+
+vi.mock("../logging/index.js", () => ({
+  getLogger: () => ({
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  }),
+}));
+
+vi.mock("../logging/conversations.js", () => ({
+  searchSessionsByTag: vi.fn(() => []),
+}));
+
 vi.mock("./help.js", () => ({ handleHelp: vi.fn() }));
 vi.mock("./cancel.js", () => ({ handleCancel: vi.fn() }));
 vi.mock("./session.js", () => ({

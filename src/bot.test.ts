@@ -1,5 +1,17 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+// Mock vscode-jsonrpc and Copilot SDK before other imports to prevent ESM resolution issues
+vi.mock("vscode-jsonrpc/node", () => ({
+  StreamMessageReader: class {},
+  StreamMessageWriter: class {},
+  MessageConnection: { listen: () => ({}) },
+}));
+
+vi.mock("@github/copilot-sdk", () => ({
+  CopilotClient: class {},
+  defineTool: () => ({}),
+}));
+
 const { botHandlers, resolvePendingUserInputMock, getPendingUserInputMock, registerCommandsMock } =
   vi.hoisted(() => ({
     botHandlers: new Map<string, (ctx: any) => Promise<void>>(),
@@ -32,6 +44,10 @@ vi.mock("./config.js", () => ({
     telegram: {
       botToken: "token",
       ownerId: 1,
+    },
+    paths: {
+      data: "/tmp",
+      logs: "/tmp",
     },
   },
 }));
