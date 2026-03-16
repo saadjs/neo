@@ -139,11 +139,16 @@ Vitest, Node environment, picks up `src/**/*.test.ts`. Add or update tests for e
 
 ## Style
 
-Strict TypeScript ESM. Double quotes, semicolons. `camelCase` for variables/functions, `PascalCase` for types. Kebab-case filenames. Tests next to source as `*.test.ts`. Conventional commit prefixes (`feat:`, `fix:`, `chore:`, etc.).
+Strict TypeScript ESM. Double quotes, semicolons. `camelCase` for variables/functions, `PascalCase` for types. Kebab-case filenames. Tests next to source as `*.test.ts`.
 
 ## Documentation
 
 - After adding new Telegram slash (`/`) commands, or features, make sure to update the @README.md or other documentation files as needed.
+
+## Git Commit Guidelines
+
+- Use Atomic commits formats
+- Use Conventional Commit prefixes (`feat:`, `fix:`, `chore:`, etc.)
 
 ## PRs
 
