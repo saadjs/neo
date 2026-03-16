@@ -1,6 +1,7 @@
 import type { Context } from "grammy";
 import { getToolUsageSummary, getToolHistory, getSessionStats } from "../logging/audit-queries.js";
 import { formatSqliteUtcTimestamp, startOfUtcDay } from "./reporting-time.js";
+import { truncateTelegramMessage } from "../telegram/messages.js";
 
 function formatDuration(ms: number | null): string {
   if (ms == null) return "n/a";
@@ -34,9 +35,7 @@ function buildSummaryMessage(label: string, since: string): string {
   const table = [header, ...rows].join("\n");
   const footer = `Total: ${stats.total_tool_calls} calls across ${summary.length} tools`;
 
-  let msg = `📊 Tool Usage — ${label}\n\n\`\`\`\n${table}\n\`\`\`\n${footer}`;
-  if (msg.length > 4000) msg = msg.slice(0, 3997) + "…";
-  return msg;
+  return truncateTelegramMessage(`📊 Tool Usage — ${label}\n\n\`\`\`\n${table}\n\`\`\`\n${footer}`);
 }
 
 function buildToolHistoryMessage(toolName: string): string {
@@ -54,9 +53,9 @@ function buildToolHistoryMessage(toolName: string): string {
     return `${ts}  ${icon}  ${dur.padStart(6)}  ${args}`;
   });
 
-  let msg = `🔍 Recent: ${toolName} (last ${invocations.length})\n\n\`\`\`\n${lines.join("\n")}\n\`\`\``;
-  if (msg.length > 4000) msg = msg.slice(0, 3997) + "…";
-  return msg;
+  return truncateTelegramMessage(
+    `🔍 Recent: ${toolName} (last ${invocations.length})\n\n\`\`\`\n${lines.join("\n")}\n\`\`\``,
+  );
 }
 
 export function getAuditSummaryWindow(

@@ -2,6 +2,7 @@ import { DeepgramClient } from "@deepgram/sdk";
 import { readFile } from "node:fs/promises";
 import { config } from "../config.js";
 import { getLogger } from "../logging/index.js";
+import { LOG_TRANSCRIPT_MAX_CHARS } from "../constants.js";
 
 let client: DeepgramClient | null = null;
 
@@ -37,6 +38,9 @@ export async function transcribeFile(filePath: string): Promise<string> {
       ? (response.results?.channels?.[0]?.alternatives?.[0]?.transcript ?? "")
       : "";
 
-  log.debug({ transcript: transcript.slice(0, 100) }, "Transcription complete");
+  log.debug(
+    { transcript: transcript.slice(0, LOG_TRANSCRIPT_MAX_CHARS) },
+    "Transcription complete",
+  );
   return transcript;
 }

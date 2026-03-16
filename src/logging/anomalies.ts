@@ -14,8 +14,8 @@ export interface ToolAnomaly {
 }
 
 /**
- * Detect tools with 3+ consecutive recent failures.
- * Looks at the last 5 calls per tool and checks if the most recent ones are all failures.
+ * Detect tools with repeated recent failures.
+ * Looks at the configured recent-call window and checks whether the latest streak exceeds the threshold.
  */
 export function detectToolAnomalies(db?: DatabaseSync): ToolAnomaly[] {
   const conn = db ?? getConversationDb();
@@ -31,7 +31,7 @@ export function detectToolAnomalies(db?: DatabaseSync): ToolAnomaly[] {
   const anomalies: ToolAnomaly[] = [];
 
   for (const { tool_name } of tools) {
-    // Get the last 5 calls for this tool
+    // Get the most recent calls for this tool within the configured anomaly window.
     const recent = conn
       .prepare(
         `SELECT success, result, created_at FROM tool_calls

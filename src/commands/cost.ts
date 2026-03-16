@@ -1,6 +1,7 @@
 import type { Context } from "grammy";
 import { getTokenUsageSummary, getDailyTokenUsage, formatCostUsd } from "../logging/cost.js";
 import { formatSqliteUtcTimestamp, startOfUtcDay } from "./reporting-time.js";
+import { truncateTelegramMessage } from "../telegram/messages.js";
 
 function formatTokens(n: number): string {
   if (n >= 100_000) return `${(n / 1000).toFixed(1)}K`;
@@ -36,9 +37,9 @@ function buildTodayMessage(): string {
   const table = [header, ...rows].join("\n");
   const footer = `Total: ${formatTokens(totalIn)} in / ${formatTokens(totalOut)} out ≈ ${formatCostUsd(totalCost)}`;
 
-  let msg = `💰 Token Usage — ${window.label}\n\n\`\`\`\n${table}\n\`\`\`\n${footer}`;
-  if (msg.length > 4000) msg = msg.slice(0, 3997) + "…";
-  return msg;
+  return truncateTelegramMessage(
+    `💰 Token Usage — ${window.label}\n\n\`\`\`\n${table}\n\`\`\`\n${footer}`,
+  );
 }
 
 function buildWeekMessage(): string {
@@ -66,9 +67,9 @@ function buildWeekMessage(): string {
   const table = [header, ...rows].join("\n");
   const footer = `Total: ${formatTokens(totalIn)} in / ${formatTokens(totalOut)} out ≈ ${formatCostUsd(totalCost)}`;
 
-  let msg = `💰 Token Usage — Past 7 Days\n\n\`\`\`\n${table}\n\`\`\`\n${footer}`;
-  if (msg.length > 4000) msg = msg.slice(0, 3997) + "…";
-  return msg;
+  return truncateTelegramMessage(
+    `💰 Token Usage — Past 7 Days\n\n\`\`\`\n${table}\n\`\`\`\n${footer}`,
+  );
 }
 
 function buildMonthMessage(): string {
@@ -95,9 +96,9 @@ function buildMonthMessage(): string {
   const table = [header, ...rows].join("\n");
   const footer = `Total: ${formatTokens(totalIn)} in / ${formatTokens(totalOut)} out ≈ ${formatCostUsd(totalCost)}`;
 
-  let msg = `💰 Token Usage — Past 30 Days\n\n\`\`\`\n${table}\n\`\`\`\n${footer}`;
-  if (msg.length > 4000) msg = msg.slice(0, 3997) + "…";
-  return msg;
+  return truncateTelegramMessage(
+    `💰 Token Usage — Past 30 Days\n\n\`\`\`\n${table}\n\`\`\`\n${footer}`,
+  );
 }
 
 export async function handleCost(ctx: Context) {

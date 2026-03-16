@@ -7,6 +7,7 @@ import {
   listMemoryFiles,
 } from "../memory/index.js";
 import { searchSessionsByTag } from "../logging/conversations.js";
+import { truncateTelegramMessage } from "../telegram/messages.js";
 
 export async function handleMemory(ctx: Context) {
   const text = ctx.message?.text ?? "";
@@ -47,7 +48,8 @@ export async function handleMemory(ctx: Context) {
       const tags = s.tags ?? "";
       msg += `• ${date} — ${s.model ?? "unknown"} [${tags}]\n`;
     }
-    await ctx.reply(msg.slice(0, 4000)).catch(() => ctx.reply(msg.slice(0, 4000)));
+    const replyText = truncateTelegramMessage(msg);
+    await ctx.reply(replyText).catch(() => ctx.reply(replyText));
     return;
   }
 
@@ -75,15 +77,13 @@ export async function handleMemory(ctx: Context) {
       msg += "No memory entries found for this period.";
     }
 
-    await ctx
-      .reply(msg.slice(0, 4000), { parse_mode: "Markdown" })
-      .catch(() => ctx.reply(msg.slice(0, 4000)));
+    const replyText = truncateTelegramMessage(msg);
+    await ctx.reply(replyText, { parse_mode: "Markdown" }).catch(() => ctx.reply(replyText));
     return;
   }
 
   // FTS search
   const results = await searchMemory(arg, channelId);
-  await ctx
-    .reply(results.slice(0, 4000), { parse_mode: "Markdown" })
-    .catch(() => ctx.reply(results.slice(0, 4000)));
+  const replyText = truncateTelegramMessage(results);
+  await ctx.reply(replyText, { parse_mode: "Markdown" }).catch(() => ctx.reply(replyText));
 }
