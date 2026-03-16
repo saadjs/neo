@@ -32,10 +32,6 @@ Implemented. Session deletion is now explicit instead of coupled to every reset.
 
 Implemented. `sessionStart(chatId, getModel)` factory in `src/hooks/session-start.ts` handles two concerns: (1) session bookkeeping — `setActiveSession` on every start/resume, `logSession` for new sessions only — migrated from scattered calls in `agent.ts`; (2) dynamic context injection via `additionalContext` — today's memory, channel memory, runtime state, and anomaly alerts are now injected at session start instead of baked into the static system prompt. Static content (persona, preferences, human facts, weekly summaries) remains in `buildSystemContext()`.
 
-### - [ ] `onUserPromptSubmitted` hook
-
-Inject dynamic context (today's memory, channel state, anomalies) per-turn instead of baking everything into the system prompt at session creation. Keep static stuff (soul, human, preferences) in the system prompt, move the rest to this hook. Architectural shift — needs careful testing.
-
 ### - [ ] Graceful job cancellation
 
 Jobs currently hard-timeout at 5 minutes then force-destroy the session. Call `abort()` first in `src/scheduler/job-runner.ts` for clean cancellation with partial results preserved. Optionally add `/job cancel <name>`.
@@ -46,6 +42,7 @@ Jobs currently hard-timeout at 5 minutes then force-destroy the session. Call `a
 
 Revisit as needs evolve or the SDK stabilizes.
 
+- [ ] **`onUserPromptSubmitted`** — Per-turn dynamic context injection. Deferred because `onSessionStart` already covers the primary use case: daily memory is too expensive for per-turn injection (and the model can use the `memory` tool for live reads), while runtime state and anomalies rarely change mid-session. Revisit when a concrete per-turn need arises (smart model routing, multi-user permission context, prompt augmentation).
 - [ ] **BYOK / `ProviderConfig`** — Fall back to a self-hosted model when Copilot quota runs out. Needs quota detection.
 - [ ] **Telemetry / `TelemetryConfig`** — OTLP export for observability beyond SQLite audit logs.
 - [ ] **`cliUrl`** — Connect to a remote CLI server instead of managing the process locally.
@@ -102,6 +99,6 @@ Auto-select model based on task complexity instead of one static default. Quick 
 
 ## Cleanup
 
-- [ ] **`refreshSessionContext()`** — Destroys and recreates sessions to update the system prompt. Dynamic context (daily memory, anomalies, runtime state) is now injected via `onSessionStart`, but `refreshSessionContext` is still needed for reasoning effort changes. `onUserPromptSubmitted` hook would avoid the remaining churn.
+- [ ] **`refreshSessionContext()`** — Destroys and recreates sessions to update the system prompt. Dynamic context (daily memory, anomalies, runtime state) is now injected via `onSessionStart`, but `refreshSessionContext` is still needed for reasoning effort changes because `reasoningEffort` is a session-level config parameter — no hook's `additionalContext` can change it.
 - [ ] **`post-tool.ts`** — One log line for browser screenshots. Consolidate into audit logging or expand.
 - [ ] **Model override persistence** — Separate `session-model-overrides.json` could move to the managed config system.
