@@ -23,28 +23,23 @@ export { runMemoryDecay } from "./decay.js";
 import { loadSoul } from "./soul.js";
 import { loadPreferences } from "./preferences.js";
 import { loadHuman } from "./human.js";
-import { readDailyMemory, isChannelChat } from "./daily.js";
+import { isChannelChat } from "./daily.js";
 import { loadRecentSummaries } from "./decay.js";
 import { getChannelConfig } from "./db.js";
-import { getRuntimeContextSection } from "../runtime/state.js";
-import { formatAnomaliesForContext } from "../logging/anomalies.js";
 
 export async function buildSystemContext(chatId?: number): Promise<string> {
   const isChannel = chatId != null && isChannelChat(chatId);
   const channelConfig = isChannel ? getChannelConfig(chatId) : null;
 
-  const [soul, preferences, human, todayMemory, weeklySummaries] = await Promise.all([
+  const [soul, preferences, human, weeklySummaries] = await Promise.all([
     loadSoul(),
     loadPreferences(),
     loadHuman(),
-    readDailyMemory(),
     loadRecentSummaries(),
   ]);
 
-  // Also load channel-scoped memory when applicable
-  const [channelTodayMemory, channelWeeklySummaries] = isChannel
-    ? await Promise.all([readDailyMemory(undefined, chatId), loadRecentSummaries(4, chatId)])
-    : ["", ""];
+  // Channel-scoped weekly summaries (daily memory is injected via onSessionStart hook)
+  const channelWeeklySummaries = isChannel ? await loadRecentSummaries(4, chatId) : "";
 
   const parts = [soul];
 
@@ -73,15 +68,6 @@ export async function buildSystemContext(chatId?: number): Promise<string> {
     );
   }
 
-  if (todayMemory.trim()) {
-    parts.push(`\n---\n\n## Today's Memory\n\n${todayMemory}`);
-  }
-
-  // Channel today's memory
-  if (channelTodayMemory.trim()) {
-    parts.push(`\n---\n\n## Channel Memory (Today)\n\n${channelTodayMemory}`);
-  }
-
   if (weeklySummaries.trim()) {
     parts.push(`\n---\n\n## Recent Weekly Summaries\n\n${weeklySummaries}`);
   }
@@ -99,19 +85,9 @@ export async function buildSystemContext(chatId?: number): Promise<string> {
     );
   }
 
-  const runtimeContext = getRuntimeContextSection();
-  if (runtimeContext) {
-    parts.push(`\n---\n\n${runtimeContext}`);
-  }
-
   parts.push(
     `\n---\n\n## Timezone\n\nThe user's timezone is America/New_York. Always convert times to this timezone when displaying to the user, and convert from this timezone to UTC when storing times (e.g. for reminders).`,
   );
-
-  const anomalies = formatAnomaliesForContext();
-  if (anomalies) {
-    parts.push(`\n---\n\n${anomalies}`);
-  }
 
   return parts.join("\n");
 }

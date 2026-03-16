@@ -28,9 +28,9 @@ Implemented. `/reasoning` command exposes per-chat reasoning effort configuratio
 
 Implemented. Session deletion is now explicit instead of coupled to every reset. `/new` and default `destroySession()` behavior disconnect the active in-memory session and clear the active pointer, but keep the persisted session on disk so it remains resumable from `/sessions`. Explicit delete flows call `client.deleteSession(sessionId)`: the `/sessions` picker includes per-session ✕ delete buttons and a "Delete All" option, deleting the active session tears it down first, and stale-session cleanup paths (`refreshSessionContext`, `endSessionTurn`, `stopAgent`) still remove superseded session artifacts from disk.
 
-### - [ ] `onSessionStart` hook
+### - [x] `onSessionStart` hook
 
-SDK gives `source: "startup" | "resume" | "new"` context. Could replace some of the custom init logic in `getOrCreateSession()`. Extend `src/hooks/session-lifecycle.ts`.
+Implemented. `sessionStart(chatId, getModel)` factory in `src/hooks/session-start.ts` handles two concerns: (1) session bookkeeping — `setActiveSession` on every start/resume, `logSession` for new sessions only — migrated from scattered calls in `agent.ts`; (2) dynamic context injection via `additionalContext` — today's memory, channel memory, runtime state, and anomaly alerts are now injected at session start instead of baked into the static system prompt. Static content (persona, preferences, human facts, weekly summaries) remains in `buildSystemContext()`.
 
 ### - [ ] `onUserPromptSubmitted` hook
 
@@ -102,6 +102,6 @@ Auto-select model based on task complexity instead of one static default. Quick 
 
 ## Cleanup
 
-- [ ] **`refreshSessionContext()`** — Destroys and recreates sessions to update the system prompt. `onUserPromptSubmitted` hook would avoid this churn.
+- [ ] **`refreshSessionContext()`** — Destroys and recreates sessions to update the system prompt. Dynamic context (daily memory, anomalies, runtime state) is now injected via `onSessionStart`, but `refreshSessionContext` is still needed for reasoning effort changes. `onUserPromptSubmitted` hook would avoid the remaining churn.
 - [ ] **`post-tool.ts`** — One log line for browser screenshots. Consolidate into audit logging or expand.
 - [ ] **Model override persistence** — Separate `session-model-overrides.json` could move to the managed config system.

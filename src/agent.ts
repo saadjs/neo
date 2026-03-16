@@ -14,12 +14,7 @@ import {
   cancelPendingUserInput,
   requestUserInput,
 } from "./telegram/user-input.js";
-import {
-  clearActiveSession,
-  getActiveSessionId,
-  logSession,
-  setActiveSession,
-} from "./logging/conversations.js";
+import { clearActiveSession, getActiveSessionId } from "./logging/conversations.js";
 
 let client: CopilotClient | null = null;
 const sessions = new Map<number, CopilotSession>();
@@ -180,7 +175,6 @@ export async function getOrCreateSession(opts: CreateSessionOptions): Promise<Co
       await resumed.setModel(desiredModel);
 
       sessions.set(opts.chatId, resumed);
-      setActiveSession(opts.chatId, resumed.sessionId);
       getLogger().info(
         { chatId: opts.chatId, sessionId: resumed.sessionId, model: desiredModel },
         "Resumed Copilot session",
@@ -221,13 +215,6 @@ export async function createNewSession(opts: CreateSessionOptions): Promise<Copi
 
   sessions.set(opts.chatId, session);
   log.info({ chatId: opts.chatId, sessionId: session.sessionId }, "Session created");
-
-  try {
-    logSession(session.sessionId, opts.chatId, model);
-  } catch {}
-  try {
-    setActiveSession(opts.chatId, session.sessionId);
-  } catch {}
 
   return session;
 }
@@ -523,7 +510,6 @@ export async function resumeSessionById(
   await resumed.setModel(desiredModel);
 
   sessions.set(chatId, resumed);
-  setActiveSession(chatId, resumed.sessionId);
   log.info({ chatId, sessionId: resumed.sessionId }, "Resumed session via /sessions");
 
   return resumed;

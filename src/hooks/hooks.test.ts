@@ -1,8 +1,12 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
-const { cancelPendingUserInputForSessionMock } = vi.hoisted(() => ({
-  cancelPendingUserInputForSessionMock: vi.fn(),
-}));
+const { cancelPendingUserInputForSessionMock, setActiveSessionMock, logSessionMock } = vi.hoisted(
+  () => ({
+    cancelPendingUserInputForSessionMock: vi.fn(),
+    setActiveSessionMock: vi.fn(),
+    logSessionMock: vi.fn(),
+  }),
+);
 
 vi.mock("../logging/index.js", () => ({
   getLogger: () => ({
@@ -21,12 +25,34 @@ vi.mock("../telegram/user-input.js", () => ({
   cancelPendingUserInputForSession: cancelPendingUserInputForSessionMock,
 }));
 
+vi.mock("../logging/conversations.js", () => ({
+  setActiveSession: setActiveSessionMock,
+  logSession: logSessionMock,
+}));
+
+vi.mock("../memory/daily.js", () => ({
+  readDailyMemory: vi.fn().mockResolvedValue(""),
+  isChannelChat: vi.fn().mockReturnValue(false),
+}));
+
+vi.mock("../runtime/state.js", () => ({
+  getRuntimeContextSection: vi.fn().mockReturnValue(""),
+}));
+
+vi.mock("../logging/anomalies.js", () => ({
+  formatAnomaliesForContext: vi.fn().mockReturnValue(""),
+}));
+
 import { preToolUse } from "./pre-tool.js";
 import { postToolUse } from "./post-tool.js";
 import { errorOccurred } from "./error.js";
 import { sessionEnd } from "./session-lifecycle.js";
+import { sessionStart } from "./session-start.js";
 import { isJobRunning } from "../scheduler/job-runner.js";
 import { consumeSessionErrorNotified } from "./error-state.js";
+import { readDailyMemory, isChannelChat } from "../memory/daily.js";
+import { getRuntimeContextSection } from "../runtime/state.js";
+import { formatAnomaliesForContext } from "../logging/anomalies.js";
 
 const CHAT_ID = -100123;
 const INVOCATION = { sessionId: "test-session" };
@@ -171,5 +197,92 @@ describe("sessionEnd", () => {
       INVOCATION.sessionId,
       "The pending question was cancelled because the session ended.",
     );
+  });
+});
+
+describe("sessionStart", () => {
+  const getModel = () => "claude-sonnet-4";
+  const handler = sessionStart(CHAT_ID, getModel);
+
+  beforeEach(() => {
+    setActiveSessionMock.mockReset();
+    logSessionMock.mockReset();
+    vi.mocked(readDailyMemory).mockResolvedValue("");
+    vi.mocked(isChannelChat).mockReturnValue(false);
+    vi.mocked(getRuntimeContextSection).mockReturnValue("");
+    vi.mocked(formatAnomaliesForContext).mockReturnValue("");
+  });
+
+  it("calls setActiveSession for all source types", async () => {
+    for (const source of ["new", "resume", "startup"] as const) {
+      setActiveSessionMock.mockReset();
+      await handler(baseInput({ source }), INVOCATION);
+      expect(setActiveSessionMock).toHaveBeenCalledWith(CHAT_ID, INVOCATION.sessionId);
+    }
+  });
+
+  it("logs session entry only for new sessions", async () => {
+    await handler(baseInput({ source: "new" }), INVOCATION);
+    expect(logSessionMock).toHaveBeenCalledWith(INVOCATION.sessionId, CHAT_ID, "claude-sonnet-4");
+
+    logSessionMock.mockReset();
+    await handler(baseInput({ source: "resume" }), INVOCATION);
+    expect(logSessionMock).not.toHaveBeenCalled();
+
+    await handler(baseInput({ source: "startup" }), INVOCATION);
+    expect(logSessionMock).not.toHaveBeenCalled();
+  });
+
+  it("returns additionalContext with today's memory", async () => {
+    vi.mocked(readDailyMemory).mockResolvedValue("remembered something");
+
+    const result = await handler(baseInput({ source: "new" }), INVOCATION);
+
+    expect(result?.additionalContext).toContain("Today's Memory");
+    expect(result?.additionalContext).toContain("remembered something");
+  });
+
+  it("returns additionalContext with runtime context and anomalies", async () => {
+    vi.mocked(getRuntimeContextSection).mockReturnValue("## Runtime\n\njob running");
+    vi.mocked(formatAnomaliesForContext).mockReturnValue("## Anomalies\n\n3 failures");
+
+    const result = await handler(baseInput({ source: "new" }), INVOCATION);
+
+    expect(result?.additionalContext).toContain("job running");
+    expect(result?.additionalContext).toContain("3 failures");
+  });
+
+  it("includes channel memory for channel chats", async () => {
+    vi.mocked(isChannelChat).mockReturnValue(true);
+    vi.mocked(readDailyMemory)
+      .mockResolvedValueOnce("global memory")
+      .mockResolvedValueOnce("channel memory");
+
+    const result = await handler(baseInput({ source: "new" }), INVOCATION);
+
+    expect(result?.additionalContext).toContain("Channel Memory (Today)");
+    expect(result?.additionalContext).toContain("channel memory");
+  });
+
+  it("returns void when no dynamic context available", async () => {
+    const result = await handler(baseInput({ source: "new" }), INVOCATION);
+
+    expect(result).toBeUndefined();
+  });
+
+  it("returns void gracefully when dynamic context build fails", async () => {
+    vi.mocked(readDailyMemory).mockRejectedValue(new Error("disk error"));
+
+    const result = await handler(baseInput({ source: "new" }), INVOCATION);
+
+    expect(result).toBeUndefined();
+  });
+
+  it("does not throw if setActiveSession fails", async () => {
+    setActiveSessionMock.mockImplementation(() => {
+      throw new Error("db locked");
+    });
+
+    await expect(handler(baseInput({ source: "new" }), INVOCATION)).resolves.not.toThrow();
   });
 });
