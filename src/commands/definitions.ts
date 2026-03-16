@@ -72,6 +72,11 @@ export const commandDefinitions = [
     usage: "[week|month]",
   },
   {
+    command: "jobs",
+    description: "List and manage scheduled jobs",
+    usage: "[history <name>|cancel]",
+  },
+  {
     command: "channel",
     description: "Channel config (groups only)",
     usage: "[label|topics] [value]",

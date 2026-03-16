@@ -15,6 +15,7 @@ import { handleCost } from "./cost.js";
 import { handleChannel } from "./channel.js";
 import { handleUsage } from "./usage.js";
 import { handleReasoning } from "./reasoning.js";
+import { handleJobs } from "./jobs.js";
 import { commandDefinitions, getTelegramCommands } from "./definitions.js";
 
 type CommandHandler = (ctx: Context) => Promise<unknown> | unknown;
@@ -46,6 +47,7 @@ const commandHandlers = {
   audit: handleAudit,
   cost: handleCost,
   usage: handleUsage,
+  jobs: handleJobs,
   channel: handleChannel,
   restart: handleRestart,
 } satisfies Record<CommandName, CommandHandler>;

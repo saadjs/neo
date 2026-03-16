@@ -19,6 +19,7 @@ describe("getTelegramCommands", () => {
       { command: "usage", description: "Show Copilot monthly usage" },
       { command: "audit", description: "Tool usage stats" },
       { command: "cost", description: "Token usage & cost" },
+      { command: "jobs", description: "List and manage scheduled jobs" },
       { command: "channel", description: "Channel config (groups only)" },
       { command: "restart", description: "Restart Neo" },
     ]);
