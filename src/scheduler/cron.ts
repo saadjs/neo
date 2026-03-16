@@ -91,6 +91,95 @@ export function getNextCronTime(expression: string, after: Date): Date {
   throw new Error(`No matching time found within 2 years for: "${expression}"`);
 }
 
+const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+function formatTime(hour: number, minute: number): string {
+  const h = hour % 12 || 12;
+  const ampm = hour < 12 ? "AM" : "PM";
+  return minute === 0 ? `${h}:00 ${ampm}` : `${h}:${String(minute).padStart(2, "0")} ${ampm}`;
+}
+
+/**
+ * Converts a 5-field cron expression to a human-readable description.
+ * Handles common patterns; falls back to the raw expression for complex ones.
+ * All times are described as UTC.
+ */
+export function describeCron(expression: string): string {
+  const fields = expression.trim().split(/\s+/);
+  if (fields.length !== 5) return expression;
+
+  const [minField, hourField, domField, monField, dowField] = fields;
+
+  // every minute: * * * * *
+  if (
+    minField === "*" &&
+    hourField === "*" &&
+    domField === "*" &&
+    monField === "*" &&
+    dowField === "*"
+  ) {
+    return "every minute";
+  }
+
+  // every N minutes: */N * * * *
+  const minStep = minField.match(/^\*\/(\d+)$/);
+  if (minStep && hourField === "*" && domField === "*" && monField === "*" && dowField === "*") {
+    return `every ${minStep[1]} minutes`;
+  }
+
+  // every N hours: 0 */N * * *
+  const hourStep = hourField.match(/^\*\/(\d+)$/);
+  if (minField === "0" && hourStep && domField === "*" && monField === "*" && dowField === "*") {
+    return `every ${hourStep[1]} hours`;
+  }
+
+  // From here, we need specific minute and hour values
+  const min = parseInt(minField, 10);
+  const hour = parseInt(hourField, 10);
+  if (isNaN(min) || isNaN(hour)) return expression;
+
+  const time = formatTime(hour, min);
+
+  // daily: M H * * *
+  if (domField === "*" && monField === "*" && dowField === "*") {
+    return `every day at ${time} UTC`;
+  }
+
+  // specific weekday(s): M H * * DOW
+  if (domField === "*" && monField === "*" && dowField !== "*") {
+    // weekdays: M H * * 1-5
+    if (dowField === "1-5") {
+      return `weekdays at ${time} UTC`;
+    }
+    // single day: M H * * 0-6
+    const singleDow = parseInt(dowField, 10);
+    if (!isNaN(singleDow) && singleDow >= 0 && singleDow <= 6) {
+      return `every ${DAY_NAMES[singleDow]} at ${time} UTC`;
+    }
+    return expression;
+  }
+
+  // monthly: M H DOM * *
+  if (monField === "*" && dowField === "*") {
+    const dom = parseInt(domField, 10);
+    if (!isNaN(dom)) {
+      const mod10 = dom % 10;
+      const mod100 = dom % 100;
+      const suffix =
+        mod10 === 1 && mod100 !== 11
+          ? "st"
+          : mod10 === 2 && mod100 !== 12
+            ? "nd"
+            : mod10 === 3 && mod100 !== 13
+              ? "rd"
+              : "th";
+      return `${dom}${suffix} of every month at ${time} UTC`;
+    }
+  }
+
+  return expression;
+}
+
 /**
  * Returns true if the cron expression is syntactically valid.
  */
