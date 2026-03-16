@@ -18,7 +18,7 @@ export interface RequestConfig {
   nowMs?: number;
 }
 
-import { COPILOT_USAGE_FETCH_TIMEOUT_MS } from "../constants.js";
+import { COPILOT_USAGE_FETCH_TIMEOUT_MS } from "../constants";
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;

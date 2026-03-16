@@ -39,7 +39,7 @@ describe("handleReasoning", () => {
       defaultLevel: undefined,
     });
 
-    const { handleReasoning } = await import("./reasoning.js");
+    const { handleReasoning } = await import("./reasoning");
     const reply = vi.fn();
 
     await handleReasoning({
@@ -63,7 +63,7 @@ describe("handleReasoning", () => {
       defaultLevel: "medium",
     });
 
-    const { handleReasoning } = await import("./reasoning.js");
+    const { handleReasoning } = await import("./reasoning");
     const reply = vi.fn();
 
     await handleReasoning({
@@ -95,7 +95,7 @@ describe("handleReasoning", () => {
       defaultLevel: "medium",
     });
 
-    const { handleReasoning } = await import("./reasoning.js");
+    const { handleReasoning } = await import("./reasoning");
     const reply = vi.fn();
 
     await handleReasoning({
@@ -119,7 +119,7 @@ describe("handleReasoning", () => {
       defaultLevel: "medium",
     });
 
-    const { handleReasoning } = await import("./reasoning.js");
+    const { handleReasoning } = await import("./reasoning");
     const reply = vi.fn();
 
     await handleReasoning({
@@ -143,7 +143,7 @@ describe("handleReasoning", () => {
       defaultLevel: "medium",
     });
 
-    const { handleReasoning } = await import("./reasoning.js");
+    const { handleReasoning } = await import("./reasoning");
     const reply = vi.fn();
 
     await handleReasoning({
@@ -169,7 +169,7 @@ describe("handleReasoningCallback", () => {
       defaultLevel: "medium",
     });
 
-    const { handleReasoning, handleReasoningCallback } = await import("./reasoning.js");
+    const { handleReasoning, handleReasoningCallback } = await import("./reasoning");
     const reply = vi.fn();
 
     await handleReasoning({
@@ -210,7 +210,7 @@ describe("handleReasoningCallback", () => {
       defaultLevel: "medium",
     });
 
-    const { handleReasoning, handleReasoningCallback } = await import("./reasoning.js");
+    const { handleReasoning, handleReasoningCallback } = await import("./reasoning");
     const reply = vi.fn();
 
     await handleReasoning({
@@ -242,7 +242,7 @@ describe("handleReasoningCallback", () => {
   });
 
   it("returns false for non-reasoning callback data", async () => {
-    const { handleReasoningCallback } = await import("./reasoning.js");
+    const { handleReasoningCallback } = await import("./reasoning");
 
     const result = await handleReasoningCallback({
       callbackQuery: { data: "model:set:abc:0" },

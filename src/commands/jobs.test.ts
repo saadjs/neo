@@ -36,7 +36,7 @@ vi.mock("../logging/index.js", () => ({
   getLogger: () => ({ info: vi.fn(), warn: vi.fn() }),
 }));
 
-import { handleJobs, handleJobsCallback, isJobsCallback } from "./jobs.js";
+import { handleJobs, handleJobsCallback, isJobsCallback } from "./jobs";
 
 afterEach(() => {
   listJobsMock.mockReset();
@@ -214,7 +214,7 @@ describe("handleJobsCallback", () => {
     setJobEnabledMock.mockReturnValue(true);
 
     // Seed the picker state
-    const { handleJobs: handleJobsFresh } = await import("./jobs.js");
+    const { handleJobs: handleJobsFresh } = await import("./jobs");
     listJobsMock.mockReturnValue(jobs);
     const seedCtx = makeCtx();
     await handleJobsFresh(seedCtx);

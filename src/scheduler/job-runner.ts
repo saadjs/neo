@@ -1,15 +1,15 @@
 import type { Api } from "grammy";
 import type { SessionEvent } from "@github/copilot-sdk";
 import { approveAll } from "@github/copilot-sdk";
-import { getClient } from "../agent.js";
-import { config } from "../config.js";
-import { allTools } from "../tools/index.js";
-import { buildSystemContext } from "../memory/index.js";
-import { getLogger } from "../logging/index.js";
-import { preToolUse } from "../hooks/pre-tool.js";
-import { splitMessage } from "../telegram/messages.js";
-import { createJobRun, completeJobRun, failJobRun } from "./jobs-db.js";
-import type { Job } from "./jobs-db.js";
+import { getClient } from "../agent";
+import { config } from "../config";
+import { allTools } from "../tools/index";
+import { buildSystemContext } from "../memory/index";
+import { getLogger } from "../logging/index";
+import { preToolUse } from "../hooks/pre-tool";
+import { splitMessage } from "../telegram/messages";
+import { createJobRun, completeJobRun, failJobRun } from "./jobs-db";
+import type { Job } from "./jobs-db";
 
 let runningJob: {
   jobId: number;

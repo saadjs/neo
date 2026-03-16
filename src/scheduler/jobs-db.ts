@@ -1,6 +1,6 @@
 import type { SQLInputValue } from "node:sqlite";
-import { getConversationDb } from "../logging/conversations.js";
-import { getNextCronTime } from "./cron.js";
+import { getConversationDb } from "../logging/conversations";
+import { getNextCronTime } from "./cron";
 
 export interface Job {
   id: number;

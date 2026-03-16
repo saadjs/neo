@@ -1,17 +1,17 @@
-import { config, ensureDataDir } from "./config.js";
-import { createLogger } from "./logging/index.js";
-import { closeConversationDb } from "./logging/conversations.js";
-import { startAgent, stopAgent } from "./agent.js";
-import { createBot } from "./bot.js";
-import { startScheduler, stopScheduler } from "./scheduler/index.js";
-import { closeAllBrowserSessions } from "./tools/browser-runtime.js";
-import { setTelegramApi } from "./telegram/runtime.js";
+import { config, ensureDataDir } from "./config";
+import { createLogger } from "./logging/index";
+import { closeConversationDb } from "./logging/conversations";
+import { startAgent, stopAgent } from "./agent";
+import { createBot } from "./bot";
+import { startScheduler, stopScheduler } from "./scheduler/index";
+import { closeAllBrowserSessions } from "./tools/browser-runtime";
+import { setTelegramApi } from "./telegram/runtime";
 import {
   consumeRestartMarker,
   formatSystemStatusSummary,
   getSystemStatus,
   logAutonomyStartup,
-} from "./runtime/state.js";
+} from "./runtime/state";
 
 async function main() {
   // Initialize logger first

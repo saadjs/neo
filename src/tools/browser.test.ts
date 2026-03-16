@@ -79,7 +79,7 @@ describe("browserTool", () => {
       },
     });
 
-    const { browserTool } = await import("./browser.js");
+    const { browserTool } = await import("./browser");
     const result = await browserTool.handler(
       {
         action: "start_session",
@@ -112,7 +112,7 @@ describe("browserTool", () => {
     });
     getChatIdForSession.mockReturnValue(42);
 
-    const { browserTool } = await import("./browser.js");
+    const { browserTool } = await import("./browser");
     const result = await browserTool.handler(
       {
         action: "screenshot",
@@ -163,7 +163,7 @@ describe("browserTool", () => {
       password: "secret",
     });
 
-    const { browserTool } = await import("./browser.js");
+    const { browserTool } = await import("./browser");
     const result = await browserTool.handler(
       {
         action: "login",
@@ -192,7 +192,7 @@ describe("browserTool", () => {
       },
     });
 
-    const { browserTool } = await import("./browser.js");
+    const { browserTool } = await import("./browser");
     const result = await browserTool.handler(
       {
         action: "click",

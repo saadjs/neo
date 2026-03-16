@@ -8,16 +8,16 @@ import {
   getSessionForChat,
   listPersistedSessions,
   resumeSessionById,
-} from "../agent.js";
-import { getLogger } from "../logging/index.js";
-import { getChatModelContext } from "./model-context.js";
+} from "../agent";
+import { getLogger } from "../logging/index";
+import { getChatModelContext } from "./model-context";
 import {
   SESSIONS_PER_PAGE,
   ACTION_PICKER_TTL_MS,
   ACTION_PICKER_MAX,
   SESSION_LABEL_MAX_CHARS,
   SESSION_SUMMARY_MAX_CHARS,
-} from "../constants.js";
+} from "../constants";
 
 export async function handleNewSession(ctx: Context) {
   const chatId = ctx.chat!.id;

@@ -1,5 +1,5 @@
 import { InputFile, type Api } from "grammy";
-import { getLogger } from "../logging/index.js";
+import { getLogger } from "../logging/index";
 
 let telegramApi: Api | null = null;
 

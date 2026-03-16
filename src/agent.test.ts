@@ -92,7 +92,7 @@ vi.mock("./telegram/user-input.js", () => ({
 }));
 
 afterEach(async () => {
-  const { stopAgent } = await import("./agent.js");
+  const { stopAgent } = await import("./agent");
   await stopAgent();
   vi.resetModules();
   createSessionMock.mockReset();
@@ -123,7 +123,7 @@ describe("refreshSessionContext", () => {
     getActiveSessionIdMock.mockReturnValue(null);
     requestUserInputMock.mockResolvedValue({ answer: "yes", wasFreeform: true });
 
-    const { createNewSession, startAgent } = await import("./agent.js");
+    const { createNewSession, startAgent } = await import("./agent");
 
     await startAgent();
     await createNewSession({ chatId: -100123 });
@@ -150,7 +150,7 @@ describe("refreshSessionContext", () => {
     getActiveSessionIdMock.mockReturnValue(null);
 
     const { createNewSession, getSessionForChat, refreshSessionContext, startAgent } =
-      await import("./agent.js");
+      await import("./agent");
 
     await startAgent();
     await createNewSession({ chatId: -100123 });
@@ -188,7 +188,7 @@ describe("refreshSessionContext", () => {
       getSessionForChat,
       refreshSessionContext,
       startAgent,
-    } = await import("./agent.js");
+    } = await import("./agent");
 
     await startAgent();
     await createNewSession({ chatId: -100123 });
@@ -242,7 +242,7 @@ describe("refreshSessionContext", () => {
       getSessionForChat,
       refreshSessionContext,
       startAgent,
-    } = await import("./agent.js");
+    } = await import("./agent");
 
     await startAgent();
     await createNewSession({ chatId: -100123 });
@@ -287,7 +287,7 @@ describe("refreshSessionContext", () => {
     });
 
     const { createNewSession, getOrCreateSession, refreshSessionContext, startAgent } =
-      await import("./agent.js");
+      await import("./agent");
 
     await startAgent();
     await createNewSession({ chatId: -100123 });
@@ -325,7 +325,7 @@ describe("refreshSessionContext", () => {
       getOrCreateSession,
       refreshSessionContext,
       startAgent,
-    } = await import("./agent.js");
+    } = await import("./agent");
 
     await startAgent();
     await createNewSession({ chatId: -100123 });
@@ -359,7 +359,7 @@ describe("discardSession", () => {
     getActiveSessionIdMock.mockReturnValue(null);
 
     const { createNewSession, discardSession, getSessionForChat, startAgent } =
-      await import("./agent.js");
+      await import("./agent");
 
     await startAgent();
     await createNewSession({ chatId: -100123 });
@@ -395,7 +395,7 @@ describe("discardSession", () => {
       getSessionForChat,
       refreshSessionContext,
       startAgent,
-    } = await import("./agent.js");
+    } = await import("./agent");
 
     await startAgent();
     await createNewSession({ chatId: -100123 });
@@ -436,7 +436,7 @@ describe("discardSession", () => {
       hasTrackedSession,
       refreshSessionContext,
       startAgent,
-    } = await import("./agent.js");
+    } = await import("./agent");
 
     await startAgent();
     await createNewSession({ chatId: -100123 });
@@ -465,7 +465,7 @@ describe("destroySession", () => {
     getActiveSessionIdMock.mockReturnValue(null);
 
     const { createNewSession, destroySession, getSessionForChat, startAgent } =
-      await import("./agent.js");
+      await import("./agent");
 
     await startAgent();
     await createNewSession({ chatId: -100123 });
@@ -488,7 +488,7 @@ describe("destroySession", () => {
     buildSystemContextMock.mockResolvedValue("context");
     getActiveSessionIdMock.mockReturnValue(null);
 
-    const { createNewSession, destroySession, startAgent } = await import("./agent.js");
+    const { createNewSession, destroySession, startAgent } = await import("./agent");
 
     await startAgent();
     await createNewSession({ chatId: -100123 });

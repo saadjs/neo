@@ -1,6 +1,6 @@
 import { readFile, writeFile, appendFile } from "node:fs/promises";
-import { config } from "../config.js";
-import { insertMemoryEntry, replaceMemorySource } from "./db.js";
+import { config } from "../config";
+import { insertMemoryEntry, replaceMemorySource } from "./db";
 
 export async function loadPreferences(): Promise<string> {
   try {

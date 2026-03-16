@@ -1,6 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
-import { config } from "../config.js";
-import { replaceMemorySource } from "./db.js";
+import { config } from "../config";
+import { replaceMemorySource } from "./db";
 
 export async function loadSoul(): Promise<string> {
   try {

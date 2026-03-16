@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { extractTags } from "./tagging.js";
+import { extractTags } from "./tagging";
 
 describe("extractTags", () => {
   it("extracts coding tags from technical summary", () => {

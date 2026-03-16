@@ -12,9 +12,9 @@ import {
   type ManagedConfigKey,
   type ManagedConfigValues,
   writeManagedConfigFile,
-} from "../config.js";
-import { switchDefaultModel } from "../agent.js";
-import { getLogLevel, getLogger, setLogLevel } from "../logging/index.js";
+} from "../config";
+import { switchDefaultModel } from "../agent";
+import { getLogLevel, getLogger, setLogLevel } from "../logging/index";
 
 const execFileAsync = promisify(execFile);
 const RESTART_MARKER_FILE = ".restart-marker";

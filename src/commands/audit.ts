@@ -1,7 +1,7 @@
 import type { Context } from "grammy";
-import { getToolUsageSummary, getToolHistory, getSessionStats } from "../logging/audit-queries.js";
-import { formatSqliteUtcTimestamp, startOfUtcDay } from "./reporting-time.js";
-import { truncateTelegramMessage } from "../telegram/messages.js";
+import { getToolUsageSummary, getToolHistory, getSessionStats } from "../logging/audit-queries";
+import { formatSqliteUtcTimestamp, startOfUtcDay } from "./reporting-time";
+import { truncateTelegramMessage } from "../telegram/messages";
 
 function formatDuration(ms: number | null): string {
   if (ms == null) return "n/a";

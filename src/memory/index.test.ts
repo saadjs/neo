@@ -58,7 +58,7 @@ describe("buildSystemContext", () => {
     loadRecentSummariesMock.mockResolvedValue("");
     isChannelChatMock.mockReturnValue(false);
 
-    const { buildSystemContext } = await import("./index.js");
+    const { buildSystemContext } = await import("./index");
     const context = await buildSystemContext(123);
 
     expect(isChannelChatMock).toHaveBeenCalledWith(123);
@@ -81,7 +81,7 @@ describe("buildSystemContext", () => {
       topics: null,
     });
 
-    const { buildSystemContext } = await import("./index.js");
+    const { buildSystemContext } = await import("./index");
     const context = await buildSystemContext(-100123);
 
     expect(getChannelConfigMock).toHaveBeenCalledWith(-100123);
@@ -96,7 +96,7 @@ describe("buildSystemContext", () => {
     loadRecentSummariesMock.mockResolvedValue("");
     isChannelChatMock.mockReturnValue(false);
 
-    const { buildSystemContext } = await import("./index.js");
+    const { buildSystemContext } = await import("./index");
     const context = await buildSystemContext(123);
 
     expect(context).not.toContain("Today's Memory");

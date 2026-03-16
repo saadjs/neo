@@ -1,10 +1,10 @@
 import type { DatabaseSync } from "node:sqlite";
-import { getConversationDb } from "./conversations.js";
+import { getConversationDb } from "./conversations";
 import {
   ANOMALY_RECENT_CALLS,
   ANOMALY_FAILURE_THRESHOLD,
   ANOMALY_ERROR_MAX_CHARS,
-} from "../constants.js";
+} from "../constants";
 
 export interface ToolAnomaly {
   tool_name: string;

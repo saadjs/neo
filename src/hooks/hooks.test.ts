@@ -43,16 +43,16 @@ vi.mock("../logging/anomalies.js", () => ({
   formatAnomaliesForContext: vi.fn().mockReturnValue(""),
 }));
 
-import { preToolUse } from "./pre-tool.js";
-import { postToolUse } from "./post-tool.js";
-import { errorOccurred } from "./error.js";
-import { sessionEnd } from "./session-lifecycle.js";
-import { sessionStart } from "./session-start.js";
-import { isJobRunning } from "../scheduler/job-runner.js";
-import { consumeSessionErrorNotified } from "./error-state.js";
-import { readDailyMemory, isChannelChat } from "../memory/daily.js";
-import { getRuntimeContextSection } from "../runtime/state.js";
-import { formatAnomaliesForContext } from "../logging/anomalies.js";
+import { preToolUse } from "./pre-tool";
+import { postToolUse } from "./post-tool";
+import { errorOccurred } from "./error";
+import { sessionEnd } from "./session-lifecycle";
+import { sessionStart } from "./session-start";
+import { isJobRunning } from "../scheduler/job-runner";
+import { consumeSessionErrorNotified } from "./error-state";
+import { readDailyMemory, isChannelChat } from "../memory/daily";
+import { getRuntimeContextSection } from "../runtime/state";
+import { formatAnomaliesForContext } from "../logging/anomalies";
 
 const CHAT_ID = -100123;
 const INVOCATION = { sessionId: "test-session" };

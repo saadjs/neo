@@ -1,9 +1,9 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { ModelInfo } from "@github/copilot-sdk";
-import type { ReasoningEffort } from "../agent.js";
-import { getClient } from "../agent.js";
-import { config } from "../config.js";
+import type { ReasoningEffort } from "../agent";
+import { getClient } from "../agent";
+import { config } from "../config";
 
 const MODEL_CATALOG_TTL_MS = 24 * 60 * 60 * 1000;
 const MODEL_CATALOG_CACHE_FILE = join(config.paths.data, "copilot-models-cache.json");

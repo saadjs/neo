@@ -1,7 +1,7 @@
 import { Bot, type Context } from "grammy";
 import { run, type RunnerHandle } from "@grammyjs/runner";
 import type { SessionEvent, MessageOptions } from "@github/copilot-sdk";
-import { config } from "./config.js";
+import { config } from "./config";
 import {
   beginSessionTurn,
   consumeAbortFlag,
@@ -11,8 +11,8 @@ import {
   getModelForChat,
   getOrCreateSession,
   hasTrackedSession,
-} from "./agent.js";
-import { getLogger } from "./logging/index.js";
+} from "./agent";
+import { getLogger } from "./logging/index";
 import {
   logMessage,
   logToolCall,
@@ -20,19 +20,19 @@ import {
   getLastCompactionEventId,
   setLastCompactionEventId,
   setSessionTags,
-} from "./logging/conversations.js";
-import { registerCommands } from "./commands/index.js";
-import { handleModelCallback, isModelCallback } from "./commands/model.js";
-import { handleReasoningCallback, isReasoningCallback } from "./commands/reasoning.js";
-import { handleSessionCallback, isSessionCallback } from "./commands/session.js";
-import { handleJobsCallback, isJobsCallback } from "./commands/jobs.js";
-import { downloadTelegramFile } from "./telegram/files.js";
-import { splitMessage } from "./telegram/messages.js";
-import { appendCompactionMemory } from "./memory/index.js";
-import { recordCompactionTokens, recordMessageEstimate } from "./logging/cost.js";
-import { extractTags } from "./memory/tagging.js";
-import { isVoiceEnabled, transcribeFile } from "./voice/transcribe.js";
-import { type ProgressPhase, formatProgressName, buildProgressText } from "./telegram/progress.js";
+} from "./logging/conversations";
+import { registerCommands } from "./commands/index";
+import { handleModelCallback, isModelCallback } from "./commands/model";
+import { handleReasoningCallback, isReasoningCallback } from "./commands/reasoning";
+import { handleSessionCallback, isSessionCallback } from "./commands/session";
+import { handleJobsCallback, isJobsCallback } from "./commands/jobs";
+import { downloadTelegramFile } from "./telegram/files";
+import { splitMessage } from "./telegram/messages";
+import { appendCompactionMemory } from "./memory/index";
+import { recordCompactionTokens, recordMessageEstimate } from "./logging/cost";
+import { extractTags } from "./memory/tagging";
+import { isVoiceEnabled, transcribeFile } from "./voice/transcribe";
+import { type ProgressPhase, formatProgressName, buildProgressText } from "./telegram/progress";
 import {
   SESSION_HEALTH_POLL_MS,
   TYPING_REFRESH_MS,
@@ -41,11 +41,11 @@ import {
   STREAMING_MSG_MAX_LEN,
   LOG_TRANSCRIPT_MAX_CHARS,
   LOG_REASONING_MAX_CHARS,
-} from "./constants.js";
+} from "./constants";
 import {
   isMessageNotModifiedError,
   isMissingProgressMessageError,
-} from "./telegram/session-timeout.js";
+} from "./telegram/session-timeout";
 import {
   cancelPendingUserInputForSession,
   getPendingUserInput,
@@ -53,9 +53,9 @@ import {
   isUserInputCallback,
   resolvePendingUserInput,
   watchPendingUserInput,
-} from "./telegram/user-input.js";
-import { shouldSilenceSessionError } from "./telegram/session-errors.js";
-import { consumeSessionErrorNotified } from "./hooks/error-state.js";
+} from "./telegram/user-input";
+import { shouldSilenceSessionError } from "./telegram/session-errors";
+import { consumeSessionErrorNotified } from "./hooks/error-state";
 
 async function sendAndWaitForSessionIdle(
   chatId: number,

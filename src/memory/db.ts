@@ -1,8 +1,8 @@
 import { DatabaseSync } from "node:sqlite";
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
-import { config } from "../config.js";
-import { getLogger } from "../logging/index.js";
+import { config } from "../config";
+import { getLogger } from "../logging/index";
 
 let db: DatabaseSync | null = null;
 let initialized = false;

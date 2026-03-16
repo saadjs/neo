@@ -26,7 +26,7 @@ vi.mock("../logging/conversations.js", () => ({
   searchSessionsByTag: vi.fn(),
 }));
 
-import { handleMemory } from "./memory.js";
+import { handleMemory } from "./memory";
 
 describe("handleMemory", () => {
   beforeEach(() => {

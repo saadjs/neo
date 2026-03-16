@@ -2,8 +2,8 @@ import { writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import type { Api } from "grammy";
-import { config } from "../config.js";
-import { getLogger } from "../logging/index.js";
+import { config } from "../config";
+import { getLogger } from "../logging/index";
 
 const DOWNLOADS_DIR = join(config.paths.data, "downloads");
 

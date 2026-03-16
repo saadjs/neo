@@ -71,7 +71,7 @@ describe("loadModelCatalog", () => {
     ]);
     getClientMock.mockReturnValue({ listModels: listModelsMock });
 
-    const { loadModelCatalog } = await import("./model-catalog.js");
+    const { loadModelCatalog } = await import("./model-catalog");
     const result = await loadModelCatalog();
 
     expect(result.source).toBe("network");
@@ -96,7 +96,7 @@ describe("loadModelCatalog", () => {
 
     getClientMock.mockReturnValue({ listModels: listModelsMock });
 
-    const { loadModelCatalog } = await import("./model-catalog.js");
+    const { loadModelCatalog } = await import("./model-catalog");
     const result = await loadModelCatalog({ now: Date.parse("2026-03-13T12:00:00.000Z") });
 
     expect(result.source).toBe("cache");
@@ -118,7 +118,7 @@ describe("loadModelCatalog", () => {
     listModelsMock.mockResolvedValue([createModel("gpt-5.4", "GPT-5.4")]);
     getClientMock.mockReturnValue({ listModels: listModelsMock });
 
-    const { loadModelCatalog } = await import("./model-catalog.js");
+    const { loadModelCatalog } = await import("./model-catalog");
     const result = await loadModelCatalog({ now: Date.parse("2026-03-13T12:00:00.000Z") });
 
     expect(result.source).toBe("network");
@@ -141,7 +141,7 @@ describe("loadModelCatalog", () => {
     listModelsMock.mockRejectedValue(new Error("sdk down"));
     getClientMock.mockReturnValue({ listModels: listModelsMock });
 
-    const { loadModelCatalog } = await import("./model-catalog.js");
+    const { loadModelCatalog } = await import("./model-catalog");
     const result = await loadModelCatalog({ now: Date.parse("2026-03-13T12:00:00.000Z") });
 
     expect(result.source).toBe("stale-cache");
@@ -152,7 +152,7 @@ describe("loadModelCatalog", () => {
   it("throws when SDK refresh fails and no cache exists", async () => {
     getClientMock.mockReturnValue(null);
 
-    const { loadModelCatalog } = await import("./model-catalog.js");
+    const { loadModelCatalog } = await import("./model-catalog");
 
     await expect(loadModelCatalog()).rejects.toThrow("Copilot client is not started");
   });
@@ -168,7 +168,7 @@ describe("loadModelCatalog", () => {
     ]);
     getClientMock.mockReturnValue({ listModels: listModelsMock });
 
-    const { loadModelCatalog } = await import("./model-catalog.js");
+    const { loadModelCatalog } = await import("./model-catalog");
     const result = await loadModelCatalog();
 
     const sonnet = result.models.find((m) => m.id === "claude-sonnet-4")!;
@@ -193,7 +193,7 @@ describe("getModelReasoningInfo", () => {
     ]);
     getClientMock.mockReturnValue({ listModels: listModelsMock });
 
-    const { getModelReasoningInfo } = await import("./model-catalog.js");
+    const { getModelReasoningInfo } = await import("./model-catalog");
     const info = await getModelReasoningInfo("claude-sonnet-4");
 
     expect(info).toEqual({
@@ -207,7 +207,7 @@ describe("getModelReasoningInfo", () => {
     listModelsMock.mockResolvedValue([createModel("gpt-4.1", "GPT-4.1")]);
     getClientMock.mockReturnValue({ listModels: listModelsMock });
 
-    const { getModelReasoningInfo } = await import("./model-catalog.js");
+    const { getModelReasoningInfo } = await import("./model-catalog");
     const info = await getModelReasoningInfo("nonexistent-model");
 
     expect(info).toBeNull();

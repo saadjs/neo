@@ -1,17 +1,12 @@
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { config } from "../config.js";
-import { getLogger } from "../logging/index.js";
-import { getLastCompletedIsoWeekEnd, groupByWeek, summarizeWeek } from "./decay-utils.js";
-import type { DailyMemoryFile } from "./decay-utils.js";
-import { SUMMARIZED_MARKER } from "../constants.js";
+import { config } from "../config";
+import { getLogger } from "../logging/index";
+import { getLastCompletedIsoWeekEnd, groupByWeek, summarizeWeek } from "./decay-utils";
+import type { DailyMemoryFile } from "./decay-utils";
+import { SUMMARIZED_MARKER } from "../constants";
 
-export {
-  getIsoWeek,
-  getLastCompletedIsoWeekEnd,
-  groupByWeek,
-  summarizeWeek,
-} from "./decay-utils.js";
+export { getIsoWeek, getLastCompletedIsoWeekEnd, groupByWeek, summarizeWeek } from "./decay-utils";
 
 interface StoredDailyMemoryFile extends DailyMemoryFile {
   summarized: boolean;

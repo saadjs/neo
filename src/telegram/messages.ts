@@ -1,4 +1,4 @@
-import { TELEGRAM_MSG_LIMIT } from "../constants.js";
+import { TELEGRAM_MSG_LIMIT } from "../constants";
 
 export function truncateTelegramMessage(text: string, omission = "…"): string {
   if (text.length <= TELEGRAM_MSG_LIMIT) return text;

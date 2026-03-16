@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { describeCron, getNextCronTime, isValidCron } from "./cron.js";
+import { describeCron, getNextCronTime, isValidCron } from "./cron";
 
 describe("isValidCron", () => {
   it("accepts basic valid 5-field expressions", () => {

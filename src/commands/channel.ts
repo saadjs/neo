@@ -1,7 +1,7 @@
 import type { Context } from "grammy";
-import { config } from "../config.js";
-import { getChannelConfig, upsertChannelConfig } from "../memory/db.js";
-import { refreshSessionContext } from "../agent.js";
+import { config } from "../config";
+import { getChannelConfig, upsertChannelConfig } from "../memory/db";
+import { refreshSessionContext } from "../agent";
 
 export async function handleChannel(ctx: Context) {
   const chatId = ctx.chat!.id;

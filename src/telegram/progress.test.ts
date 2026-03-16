@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildProgressText, formatProgressName } from "./progress.js";
+import { buildProgressText, formatProgressName } from "./progress";
 
 describe("formatProgressName", () => {
   it("replaces underscores and hyphens with spaces", () => {

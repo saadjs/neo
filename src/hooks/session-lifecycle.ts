@@ -1,6 +1,6 @@
-import type { SessionEndHandler } from "./types.js";
-import { getLogger } from "../logging/index.js";
-import { cancelPendingUserInputForSession } from "../telegram/user-input.js";
+import type { SessionEndHandler } from "./types";
+import { getLogger } from "../logging/index";
+import { cancelPendingUserInputForSession } from "../telegram/user-input";
 
 export function sessionEnd(chatId: number): SessionEndHandler {
   return async (input, invocation) => {

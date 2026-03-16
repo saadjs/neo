@@ -1,10 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  getIsoWeek,
-  getLastCompletedIsoWeekEnd,
-  groupByWeek,
-  summarizeWeek,
-} from "./decay-utils.js";
+import { getIsoWeek, getLastCompletedIsoWeekEnd, groupByWeek, summarizeWeek } from "./decay-utils";
 
 const makeDailyFile = (date: string, content: string) => ({
   filename: `MEMORY-${date}.md`,

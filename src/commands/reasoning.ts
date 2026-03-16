@@ -6,10 +6,10 @@ import {
   getReasoningEffortForChat,
   setReasoningEffort,
   type ReasoningEffort,
-} from "../agent.js";
-import { getModelReasoningInfo } from "./model-catalog.js";
-import { getCommandArgs } from "./command-text.js";
-import { MODEL_PICKER_TTL_MS, MODEL_PICKER_MAX } from "../constants.js";
+} from "../agent";
+import { getModelReasoningInfo } from "./model-catalog";
+import { getCommandArgs } from "./command-text";
+import { MODEL_PICKER_TTL_MS, MODEL_PICKER_MAX } from "../constants";
 
 interface ReasoningPickerState {
   createdAt: number;

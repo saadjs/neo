@@ -35,7 +35,7 @@ vi.mock("../memory/index.js", () => ({
   runMemoryDecay: async () => 0,
 }));
 
-import { shouldRunWeeklyMemoryDecay, shouldStartWeeklyMemoryDecay } from "./index.js";
+import { shouldRunWeeklyMemoryDecay, shouldStartWeeklyMemoryDecay } from "./index";
 
 describe("shouldRunWeeklyMemoryDecay", () => {
   it("uses UTC for the weekly decay window", () => {

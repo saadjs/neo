@@ -1,17 +1,12 @@
 import { defineTool } from "@github/copilot-sdk";
 import { z } from "zod";
-import { loadSoul, saveSoul } from "../memory/soul.js";
-import { loadPreferences, savePreferences, appendPreference } from "../memory/preferences.js";
-import { loadHuman, saveHuman, appendHuman } from "../memory/human.js";
-import {
-  readDailyMemory,
-  appendDailyMemory,
-  listMemoryFiles,
-  searchMemory,
-} from "../memory/daily.js";
-import { getChannelConfig, upsertChannelConfig } from "../memory/db.js";
-import { refreshSessionContext } from "../agent.js";
-import { createAuditTimer } from "../logging/audit.js";
+import { loadSoul, saveSoul } from "../memory/soul";
+import { loadPreferences, savePreferences, appendPreference } from "../memory/preferences";
+import { loadHuman, saveHuman, appendHuman } from "../memory/human";
+import { readDailyMemory, appendDailyMemory, listMemoryFiles, searchMemory } from "../memory/daily";
+import { getChannelConfig, upsertChannelConfig } from "../memory/db";
+import { refreshSessionContext } from "../agent";
+import { createAuditTimer } from "../logging/audit";
 
 const parameters = z.object({
   operation: z.enum(["read", "write", "append", "search", "list"]),

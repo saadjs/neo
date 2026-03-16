@@ -5,9 +5,9 @@ import {
   readDailyMemory,
   searchMemory,
   listMemoryFiles,
-} from "../memory/index.js";
-import { searchSessionsByTag } from "../logging/conversations.js";
-import { truncateTelegramMessage } from "../telegram/messages.js";
+} from "../memory/index";
+import { searchSessionsByTag } from "../logging/conversations";
+import { truncateTelegramMessage } from "../telegram/messages";
 
 export async function handleMemory(ctx: Context) {
   const text = ctx.message?.text ?? "";

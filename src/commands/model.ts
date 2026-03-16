@@ -5,15 +5,15 @@ import {
   getModelForChat,
   getReasoningEffortForChat,
   switchModel,
-} from "../agent.js";
+} from "../agent";
 import {
   getModelReasoningInfo,
   loadModelCatalog,
   type AvailableModel,
   type ModelCatalogResult,
-} from "./model-catalog.js";
-import { getCommandArgs } from "./command-text.js";
-import { MODELS_PER_PAGE, MODEL_PICKER_TTL_MS, MODEL_PICKER_MAX } from "../constants.js";
+} from "./model-catalog";
+import { getCommandArgs } from "./command-text";
+import { MODELS_PER_PAGE, MODEL_PICKER_TTL_MS, MODEL_PICKER_MAX } from "../constants";
 
 interface ModelPickerState {
   createdAt: number;

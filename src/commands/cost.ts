@@ -1,7 +1,7 @@
 import type { Context } from "grammy";
-import { getTokenUsageSummary, getDailyTokenUsage, formatCostUsd } from "../logging/cost.js";
-import { formatSqliteUtcTimestamp, startOfUtcDay } from "./reporting-time.js";
-import { truncateTelegramMessage } from "../telegram/messages.js";
+import { getTokenUsageSummary, getDailyTokenUsage, formatCostUsd } from "../logging/cost";
+import { formatSqliteUtcTimestamp, startOfUtcDay } from "./reporting-time";
+import { truncateTelegramMessage } from "../telegram/messages";
 
 function formatTokens(n: number): string {
   if (n >= 100_000) return `${(n / 1000).toFixed(1)}K`;

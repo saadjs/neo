@@ -60,7 +60,7 @@ describe("runMemoryDecay", () => {
       "# Weekly Summary — 2026-W10\n> 2026-03-02 to 2026-03-03 (2 days)\n\n- Fixed login bug\n- Shipped audit fix\n",
     );
 
-    const { runMemoryDecay } = await import("./decay.js");
+    const { runMemoryDecay } = await import("./decay");
     const processed = await runMemoryDecay();
 
     expect(processed).toBe(1);
@@ -83,7 +83,7 @@ describe("runMemoryDecay", () => {
       "# Memory — 2026-03-02\n- Channel discussion\n",
     );
 
-    const { runMemoryDecay } = await import("./decay.js");
+    const { runMemoryDecay } = await import("./decay");
     const processed = await runMemoryDecay();
 
     expect(processed).toBe(2);
@@ -112,7 +112,7 @@ describe("runMemoryDecay", () => {
       "# Weekly Summary — 2026-W10\n- Channel stuff\n",
     );
 
-    const { loadRecentSummaries } = await import("./decay.js");
+    const { loadRecentSummaries } = await import("./decay");
 
     const globalSummaries = await loadRecentSummaries(4);
     expect(globalSummaries).toContain("- Global stuff");

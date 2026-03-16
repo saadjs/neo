@@ -6,7 +6,7 @@ vi.mock("../logging/cost.js", () => ({
   formatCostUsd: (amount: number) => `$${amount.toFixed(2)}`,
 }));
 
-import { getCostSummaryWindow } from "./cost.js";
+import { getCostSummaryWindow } from "./cost";
 
 describe("getCostSummaryWindow", () => {
   it('starts "Today" at midnight UTC instead of a rolling 24-hour window', () => {

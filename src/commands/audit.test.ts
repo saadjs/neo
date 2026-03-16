@@ -8,7 +8,7 @@ vi.mock("../logging/audit-queries.js", () => ({
   }),
 }));
 
-import { getAuditSummaryWindow } from "./audit.js";
+import { getAuditSummaryWindow } from "./audit";
 
 describe("getAuditSummaryWindow", () => {
   it('starts "Today" at midnight UTC instead of a rolling 24-hour window', () => {

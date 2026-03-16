@@ -1,11 +1,11 @@
 import type { Context } from "grammy";
 import { InlineKeyboard } from "grammy";
-import { listJobs, getJobRuns, setJobEnabled, deleteJob } from "../scheduler/jobs-db.js";
-import { getRunningJob, cancelRunningJob } from "../scheduler/job-runner.js";
-import { describeCron } from "../scheduler/cron.js";
-import { getLogger } from "../logging/index.js";
-import type { Job, JobRun } from "../scheduler/jobs-db.js";
-import { ACTION_PICKER_TTL_MS, ACTION_PICKER_MAX, JOB_ERROR_MAX_CHARS } from "../constants.js";
+import { listJobs, getJobRuns, setJobEnabled, deleteJob } from "../scheduler/jobs-db";
+import { getRunningJob, cancelRunningJob } from "../scheduler/job-runner";
+import { describeCron } from "../scheduler/cron";
+import { getLogger } from "../logging/index";
+import type { Job, JobRun } from "../scheduler/jobs-db";
+import { ACTION_PICKER_TTL_MS, ACTION_PICKER_MAX, JOB_ERROR_MAX_CHARS } from "../constants";
 
 interface JobPickerState {
   createdAt: number;

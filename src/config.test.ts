@@ -65,7 +65,7 @@ describe("parseBrowserCredentials", () => {
       }),
     );
 
-    const { config } = await import("./config.js");
+    const { config } = await import("./config");
 
     expect(config.browser.credentials.github).toEqual({
       username: "neo@example.com",
@@ -86,7 +86,7 @@ describe("parseBrowserCredentials", () => {
     vi.stubEnv("NEO_LOG_DIR", logDir);
     vi.stubEnv("HOME", homeDir);
 
-    const { config } = await import("./config.js");
+    const { config } = await import("./config");
 
     expect(config.copilot.skillDirectories).toEqual([]);
 
@@ -113,7 +113,7 @@ describe("parseBrowserCredentials", () => {
     vi.stubEnv("NEO_LOG_DIR", logDir);
     vi.stubEnv("HOME", homeDir);
 
-    const { config } = await import("./config.js");
+    const { config } = await import("./config");
 
     expect(config.copilot.skillDirectories).toEqual([userSkillsDir]);
 
@@ -152,7 +152,7 @@ describe("parseBrowserCredentials", () => {
     vi.stubEnv("NEO_DATA_DIR", dataDir);
     vi.stubEnv("NEO_LOG_DIR", logDir);
 
-    const { config } = await import("./config.js");
+    const { config } = await import("./config");
 
     expect(config.copilot.skillDirectories).toEqual([skillsDir]);
   });
@@ -170,7 +170,7 @@ describe("parseBrowserCredentials", () => {
     vi.stubEnv("INVOCATION_ID", "test-invocation");
     vi.stubEnv("XDG_RUNTIME_DIR", `/run/user/${currentUid()}`);
 
-    const { config } = await import("./config.js");
+    const { config } = await import("./config");
 
     expect(config.service.systemctlScope).toBe("user");
   });
@@ -189,7 +189,7 @@ describe("parseBrowserCredentials", () => {
     vi.stubEnv("XDG_RUNTIME_DIR", `/run/user/${currentUid()}`);
     vi.stubEnv("NEO_SYSTEMCTL_SCOPE", "system");
 
-    const { config } = await import("./config.js");
+    const { config } = await import("./config");
 
     expect(config.service.systemctlScope).toBe("system");
   });

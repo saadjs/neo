@@ -35,7 +35,7 @@ describe("handleStatus", () => {
       overrideActive: true,
     });
 
-    const { handleStatus } = await import("./status.js");
+    const { handleStatus } = await import("./status");
 
     const reply = vi.fn();
     await handleStatus({ chat: { id: 99 }, reply } as unknown as Parameters<
@@ -53,7 +53,7 @@ describe("handleStatus", () => {
     getSystemStatusMock.mockResolvedValue({});
     formatSystemStatusSummaryMock.mockReturnValue("runtime summary");
 
-    const { handleStatus } = await import("./status.js");
+    const { handleStatus } = await import("./status");
 
     const reply = vi.fn();
     await handleStatus({ reply } as unknown as Parameters<typeof handleStatus>[0]);

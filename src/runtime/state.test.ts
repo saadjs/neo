@@ -122,7 +122,7 @@ describe("restartService", () => {
 
     const exitMock = vi.spyOn(process, "exit").mockImplementation((() => undefined) as never);
 
-    const { restartService } = await import("./state.js");
+    const { restartService } = await import("./state");
 
     await expect(
       restartService({

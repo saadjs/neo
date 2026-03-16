@@ -1,8 +1,8 @@
 import { defineTool } from "@github/copilot-sdk";
 import { z } from "zod";
 import * as os from "node:os";
-import { createAuditTimer } from "../logging/audit.js";
-import { getManagedConfigDefinition, isManagedConfigKey } from "../config.js";
+import { createAuditTimer } from "../logging/audit";
+import { getManagedConfigDefinition, isManagedConfigKey } from "../config";
 import {
   applyConfigChange,
   explainSetting,
@@ -12,7 +12,7 @@ import {
   getSystemStatus,
   planConfigChange,
   restartService,
-} from "../runtime/state.js";
+} from "../runtime/state";
 
 function formatUptime(seconds: number): string {
   const days = Math.floor(seconds / 86400);

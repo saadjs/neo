@@ -5,8 +5,8 @@ import {
   listActiveReminders,
   cancelReminder,
   initRemindersTable,
-} from "../scheduler/db.js";
-import { createAuditTimer } from "../logging/audit.js";
+} from "../scheduler/db";
+import { createAuditTimer } from "../logging/audit";
 
 const RECURRENCE_VALUES = ["once", "daily", "weekly", "monthly", "weekdays"] as const;
 

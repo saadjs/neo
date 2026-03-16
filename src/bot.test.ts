@@ -159,7 +159,7 @@ afterEach(() => {
 
 describe("createBot", () => {
   it("accepts slash-prefixed replies while user input is pending", async () => {
-    const { createBot } = await import("./bot.js");
+    const { createBot } = await import("./bot");
     await createBot();
 
     const textHandler = botHandlers.get("message:text");

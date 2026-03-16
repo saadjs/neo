@@ -1,8 +1,8 @@
 import { readFile, writeFile, appendFile, readdir, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { existsSync } from "node:fs";
-import { config } from "../config.js";
-import { insertMemoryEntry, searchMemoryFts } from "./db.js";
+import { config } from "../config";
+import { insertMemoryEntry, searchMemoryFts } from "./db";
 
 function todayDateString(): string {
   const d = new Date();

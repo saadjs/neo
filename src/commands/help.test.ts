@@ -27,7 +27,7 @@ describe("handleHelp", () => {
       overrideActive: true,
     });
 
-    const { handleHelp } = await import("./help.js");
+    const { handleHelp } = await import("./help");
 
     const reply = vi.fn();
     await handleHelp({ chat: { id: 7 }, reply } as unknown as Parameters<typeof handleHelp>[0]);
@@ -42,7 +42,7 @@ describe("handleHelp", () => {
   it("keeps plain help output for missing chat context", async () => {
     buildHelpTextMock.mockReturnValue("HELP");
 
-    const { handleHelp } = await import("./help.js");
+    const { handleHelp } = await import("./help");
 
     const reply = vi.fn();
     await handleHelp({ reply } as unknown as Parameters<typeof handleHelp>[0]);

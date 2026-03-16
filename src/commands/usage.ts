@@ -1,11 +1,11 @@
 import type { Context } from "grammy";
-import { getModelForChat } from "../agent.js";
-import { config } from "../config.js";
+import { getModelForChat } from "../agent";
+import { config } from "../config";
 import {
   fetchCopilotUsage,
   type CopilotQuotaSnapshot,
   type CopilotUsageSnapshot,
-} from "./usage-core.js";
+} from "./usage-core";
 
 function formatPercent(value: number): string {
   return `${value.toFixed(1).replace(/\.0$/, "")}%`;

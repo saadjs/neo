@@ -101,7 +101,7 @@ describe("executeJob", () => {
       };
     });
 
-    const { executeJob } = await import("./job-runner.js");
+    const { executeJob } = await import("./job-runner");
 
     await executeJob(
       {
@@ -141,7 +141,7 @@ describe("executeJob", () => {
       sendAndWait: sendAndWaitMock,
     });
 
-    const { executeJob } = await import("./job-runner.js");
+    const { executeJob } = await import("./job-runner");
     const sendMessage = vi.fn().mockResolvedValue(undefined);
 
     await executeJob(
@@ -184,7 +184,7 @@ describe("executeJob", () => {
       sendAndWait: sendAndWaitMock,
     });
 
-    const { executeJob, getRunningJob, cancelRunningJob } = await import("./job-runner.js");
+    const { executeJob, getRunningJob, cancelRunningJob } = await import("./job-runner");
 
     expect(getRunningJob()).toBeNull();
 
@@ -219,7 +219,7 @@ describe("executeJob", () => {
   });
 
   it("returns no-job-running when cancelling with nothing running", async () => {
-    const { cancelRunningJob } = await import("./job-runner.js");
+    const { cancelRunningJob } = await import("./job-runner");
     const status = await cancelRunningJob();
     expect(status).toBe("no-job-running");
   });

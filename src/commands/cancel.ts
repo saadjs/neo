@@ -1,6 +1,6 @@
 import type { Context } from "grammy";
-import { abortSession } from "../agent.js";
-import { getLogger } from "../logging/index.js";
+import { abortSession } from "../agent";
+import { getLogger } from "../logging/index";
 
 export async function handleCancel(ctx: Context) {
   const chatId = ctx.chat!.id;

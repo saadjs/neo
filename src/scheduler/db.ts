@@ -1,4 +1,4 @@
-import { getConversationDb } from "../logging/conversations.js";
+import { getConversationDb } from "../logging/conversations";
 
 export interface Reminder {
   id: number;

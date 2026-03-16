@@ -40,7 +40,7 @@ describe("browser runtime", () => {
   });
 
   it("resolves configured credentials and rejects missing keys", async () => {
-    const runtime = await import("./browser-runtime.js");
+    const runtime = await import("./browser-runtime");
 
     expect(runtime.resolveBrowserCredential("github")).toEqual({
       username: "neo@example.com",
@@ -63,7 +63,7 @@ describe("browser runtime", () => {
       close,
     });
 
-    const runtime = await import("./browser-runtime.js");
+    const runtime = await import("./browser-runtime");
     const session = await runtime.startBrowserSession("session-1", "main", {
       credentialKey: "github",
     });
@@ -112,7 +112,7 @@ describe("browser runtime", () => {
         close,
       });
 
-    const runtime = await import("./browser-runtime.js");
+    const runtime = await import("./browser-runtime");
     await runtime.startBrowserSession("session-1", "main");
     await runtime.startBrowserSession("session-2", "main");
 
@@ -142,7 +142,7 @@ describe("browser runtime", () => {
         close,
       });
 
-    const runtime = await import("./browser-runtime.js");
+    const runtime = await import("./browser-runtime");
     await runtime.startBrowserSession("scope", "foo/bar");
     await runtime.startBrowserSession("scope", "foo~2Fbar");
 

@@ -12,7 +12,7 @@ vi.mock("../logging/index.js", () => ({
   getLogger: () => ({ info: vi.fn() }),
 }));
 
-import { handleCancel } from "./cancel.js";
+import { handleCancel } from "./cancel";
 
 afterEach(() => {
   abortSessionMock.mockReset();

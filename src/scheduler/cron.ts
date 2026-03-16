@@ -1,4 +1,4 @@
-import { CRON_LOOKAHEAD_YEARS } from "../constants.js";
+import { CRON_LOOKAHEAD_YEARS } from "../constants";
 
 /**
  * Minimal 5-field cron parser (min hour dom month dow).

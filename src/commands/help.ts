@@ -1,6 +1,6 @@
 import type { Context } from "grammy";
-import { buildHelpText } from "./definitions.js";
-import { getChatModelContext } from "./model-context.js";
+import { buildHelpText } from "./definitions";
+import { getChatModelContext } from "./model-context";
 
 export async function handleHelp(ctx: Context) {
   if (!ctx.chat) {

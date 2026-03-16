@@ -1,9 +1,9 @@
-import { browserTool } from "./browser.js";
-import { memoryTool } from "./memory-tool.js";
-import { systemTool } from "./system.js";
-import { reminderTool } from "./reminder.js";
-import { conversationTool } from "./conversation.js";
-import { jobTool } from "./job.js";
+import { browserTool } from "./browser";
+import { memoryTool } from "./memory-tool";
+import { systemTool } from "./system";
+import { reminderTool } from "./reminder";
+import { conversationTool } from "./conversation";
+import { jobTool } from "./job";
 
 export const allTools = [
   browserTool,

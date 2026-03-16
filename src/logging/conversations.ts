@@ -1,8 +1,8 @@
 import { DatabaseSync } from "node:sqlite";
 import { join } from "node:path";
-import { config } from "../config.js";
-import { getLogger } from "./index.js";
-import { initTokenUsageTable } from "./cost.js";
+import { config } from "../config";
+import { getLogger } from "./index";
+import { initTokenUsageTable } from "./cost";
 
 let db: DatabaseSync | null = null;
 

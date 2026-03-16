@@ -1,9 +1,9 @@
-import type { SessionStartHandler } from "./types.js";
-import { getLogger } from "../logging/index.js";
-import { logSession, setActiveSession } from "../logging/conversations.js";
-import { readDailyMemory, isChannelChat } from "../memory/daily.js";
-import { getRuntimeContextSection } from "../runtime/state.js";
-import { formatAnomaliesForContext } from "../logging/anomalies.js";
+import type { SessionStartHandler } from "./types";
+import { getLogger } from "../logging/index";
+import { logSession, setActiveSession } from "../logging/conversations";
+import { readDailyMemory, isChannelChat } from "../memory/daily";
+import { getRuntimeContextSection } from "../runtime/state";
+import { formatAnomaliesForContext } from "../logging/anomalies";
 
 export function sessionStart(chatId: number, getModel: () => string): SessionStartHandler {
   return async (input, invocation) => {

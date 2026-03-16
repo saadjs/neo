@@ -1,5 +1,5 @@
-import type { PostToolUseHandler } from "./types.js";
-import { getLogger } from "../logging/index.js";
+import type { PostToolUseHandler } from "./types";
+import { getLogger } from "../logging/index";
 
 export function postToolUse(chatId: number): PostToolUseHandler {
   return (input) => {

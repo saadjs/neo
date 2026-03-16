@@ -22,7 +22,7 @@ vi.mock("../logging/index.js", () => ({
 }));
 
 afterEach(async () => {
-  const { cancelAllPendingUserInputs } = await import("./user-input.js");
+  const { cancelAllPendingUserInputs } = await import("./user-input");
   await cancelAllPendingUserInputs("test cleanup");
   sendMessageMock.mockReset();
   editMessageReplyMarkupMock.mockReset();
@@ -36,7 +36,7 @@ describe("user input bridge", () => {
     sendMessageMock.mockResolvedValue({ message_id: 42 });
 
     const { getPendingUserInput, requestUserInput, resolvePendingUserInput } =
-      await import("./user-input.js");
+      await import("./user-input");
 
     const pendingResponse = requestUserInput(-100123, "session-1", {
       question: "Deploy now?",
@@ -80,7 +80,7 @@ describe("user input bridge", () => {
     editMessageReplyMarkupMock.mockResolvedValue(undefined);
 
     const { PendingUserInputCancelledError, cancelPendingUserInput, requestUserInput } =
-      await import("./user-input.js");
+      await import("./user-input");
 
     const pendingResponse = requestUserInput(-100123, "session-1", {
       question: "Need approval?",
@@ -105,7 +105,7 @@ describe("user input bridge", () => {
       cancelPendingUserInputForSession,
       getPendingUserInput,
       requestUserInput,
-    } = await import("./user-input.js");
+    } = await import("./user-input");
 
     const pendingResponse = requestUserInput(-100123, "session-1", {
       question: "Need approval?",
@@ -128,7 +128,7 @@ describe("user input bridge", () => {
   it("returns a deterministic fallback when another question is already pending", async () => {
     sendMessageMock.mockResolvedValue({ message_id: 5 });
 
-    const { requestUserInput, resolvePendingUserInput } = await import("./user-input.js");
+    const { requestUserInput, resolvePendingUserInput } = await import("./user-input");
 
     const first = requestUserInput(-100123, "session-1", {
       question: "First question?",
@@ -163,7 +163,7 @@ describe("user input bridge", () => {
     );
 
     const { getPendingUserInput, requestUserInput, resolvePendingUserInput } =
-      await import("./user-input.js");
+      await import("./user-input");
 
     const first = requestUserInput(-100123, "session-1", {
       question: "First question?",
@@ -200,7 +200,7 @@ describe("user input bridge", () => {
     sendMessageMock.mockResolvedValue({ message_id: 7 });
 
     const { getPendingUserInput, requestUserInput, resolvePendingUserInput } =
-      await import("./user-input.js");
+      await import("./user-input");
 
     const pendingResponse = requestUserInput(-100123, "session-1", {
       question: "Choose one",
@@ -230,7 +230,7 @@ describe("user input bridge", () => {
     sendMessageMock.mockResolvedValue({ message_id: 13 });
     editMessageReplyMarkupMock.mockResolvedValue(undefined);
 
-    const { handleUserInputCallback, requestUserInput } = await import("./user-input.js");
+    const { handleUserInputCallback, requestUserInput } = await import("./user-input");
 
     const pendingResponse = requestUserInput(-100123, "session-1", {
       question: "Pick one",
@@ -282,7 +282,7 @@ describe("user input bridge", () => {
     );
     editMessageReplyMarkupMock.mockResolvedValue(undefined);
 
-    const { handleUserInputCallback, requestUserInput } = await import("./user-input.js");
+    const { handleUserInputCallback, requestUserInput } = await import("./user-input");
 
     const pendingResponse = requestUserInput(-100123, "session-1", {
       question: "Pick one",

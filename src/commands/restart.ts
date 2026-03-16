@@ -1,6 +1,6 @@
 import type { Context } from "grammy";
-import { getLogger } from "../logging/index.js";
-import { restartService } from "../runtime/state.js";
+import { getLogger } from "../logging/index";
+import { restartService } from "../runtime/state";
 
 export async function handleRestart(ctx: Context) {
   const log = getLogger();

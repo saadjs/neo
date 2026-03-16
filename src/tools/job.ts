@@ -10,11 +10,11 @@ import {
   deleteJob,
   setJobEnabled,
   getJobRuns,
-} from "../scheduler/jobs-db.js";
-import { getConversationDb } from "../logging/conversations.js";
-import { isValidCron } from "../scheduler/cron.js";
-import { createAuditTimer } from "../logging/audit.js";
-import { cancelRunningJob } from "../scheduler/job-runner.js";
+} from "../scheduler/jobs-db";
+import { getConversationDb } from "../logging/conversations";
+import { isValidCron } from "../scheduler/cron";
+import { createAuditTimer } from "../logging/audit";
+import { cancelRunningJob } from "../scheduler/job-runner";
 
 function resolveJob(args: { id?: number; name?: string }) {
   if (args.id != null) return getJob(args.id);

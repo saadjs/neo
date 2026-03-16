@@ -1,7 +1,7 @@
-import { getLogger } from "./index.js";
+import { getLogger } from "./index";
 import { appendFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { config } from "../config.js";
+import { config } from "../config";
 
 const auditPath = join(config.paths.logs, "audit.log");
 mkdirSync(config.paths.logs, { recursive: true });

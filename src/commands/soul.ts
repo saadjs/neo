@@ -1,6 +1,6 @@
 import type { Context } from "grammy";
-import { loadSoul } from "../memory/index.js";
-import { truncateTelegramMessage } from "../telegram/messages.js";
+import { loadSoul } from "../memory/index";
+import { truncateTelegramMessage } from "../telegram/messages";
 
 export async function handleSoul(ctx: Context) {
   const soul = await loadSoul();

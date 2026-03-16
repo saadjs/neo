@@ -25,7 +25,7 @@ vi.mock("../agent.js", () => ({
   refreshSessionContext: refreshSessionContextMock,
 }));
 
-import { handleChannel } from "./channel.js";
+import { handleChannel } from "./channel";
 
 describe("handleChannel", () => {
   beforeEach(() => {

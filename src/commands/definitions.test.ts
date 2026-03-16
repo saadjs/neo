@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildHelpText, getTelegramCommands } from "./definitions.js";
+import { buildHelpText, getTelegramCommands } from "./definitions";
 
 describe("getTelegramCommands", () => {
   it("includes the visible slash commands Telegram should suggest", () => {

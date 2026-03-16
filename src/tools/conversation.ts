@@ -1,7 +1,7 @@
 import { defineTool } from "@github/copilot-sdk";
 import { z } from "zod";
-import { searchMessages, getRecentHistory } from "../logging/conversations.js";
-import { createAuditTimer } from "../logging/audit.js";
+import { searchMessages, getRecentHistory } from "../logging/conversations";
+import { createAuditTimer } from "../logging/audit";
 
 export const conversationTool = defineTool("conversation", {
   description:

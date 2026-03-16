@@ -1,6 +1,6 @@
 import type { Context } from "grammy";
-import { formatSystemStatusSummary, getSystemStatus } from "../runtime/state.js";
-import { getChatModelContext } from "./model-context.js";
+import { formatSystemStatusSummary, getSystemStatus } from "../runtime/state";
+import { getChatModelContext } from "./model-context";
 
 function buildStatusWithGroupedModels(summary: string, currentLine: string): string {
   const lines = summary.split("\n");

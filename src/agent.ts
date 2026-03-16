@@ -4,18 +4,18 @@ import { CopilotClient, CopilotSession, approveAll } from "@github/copilot-sdk";
 import type { SessionMetadata } from "@github/copilot-sdk";
 
 export type ReasoningEffort = "low" | "medium" | "high" | "xhigh";
-import { config } from "./config.js";
-import { allTools } from "./tools/index.js";
-import { buildSystemContext } from "./memory/index.js";
-import { getLogger } from "./logging/index.js";
-import { buildSessionHooks } from "./hooks/index.js";
+import { config } from "./config";
+import { allTools } from "./tools/index";
+import { buildSystemContext } from "./memory/index";
+import { getLogger } from "./logging/index";
+import { buildSessionHooks } from "./hooks/index";
 import {
   cancelAllPendingUserInputs,
   cancelPendingUserInput,
   requestUserInput,
-} from "./telegram/user-input.js";
-import { clearActiveSession, getActiveSessionId } from "./logging/conversations.js";
-import { VALID_REASONING_EFFORTS } from "./constants.js";
+} from "./telegram/user-input";
+import { clearActiveSession, getActiveSessionId } from "./logging/conversations";
+import { VALID_REASONING_EFFORTS } from "./constants";
 
 let client: CopilotClient | null = null;
 const sessions = new Map<number, CopilotSession>();

@@ -7,7 +7,7 @@ interface DailyMemoryFile {
 
 export type { DailyMemoryFile };
 
-import { SUMMARIZED_MARKER } from "../constants.js";
+import { SUMMARIZED_MARKER } from "../constants";
 
 /**
  * Get the ISO week string for a date: YYYY-WNN

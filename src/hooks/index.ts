@@ -1,10 +1,10 @@
-import type { SessionHooks } from "./types.js";
-import { sessionStart } from "./session-start.js";
-import { preToolUse } from "./pre-tool.js";
-import { postToolUse } from "./post-tool.js";
-import { errorOccurred } from "./error.js";
-import { sessionEnd } from "./session-lifecycle.js";
-import { getModelForChat } from "../agent.js";
+import type { SessionHooks } from "./types";
+import { sessionStart } from "./session-start";
+import { preToolUse } from "./pre-tool";
+import { postToolUse } from "./post-tool";
+import { errorOccurred } from "./error";
+import { sessionEnd } from "./session-lifecycle";
+import { getModelForChat } from "../agent";
 
 export function buildSessionHooks(chatId: number): SessionHooks {
   return {

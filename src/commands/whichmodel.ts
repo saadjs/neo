@@ -1,5 +1,5 @@
 import type { Context } from "grammy";
-import { formatChatModelContextMarkdown, getChatModelContext } from "./model-context.js";
+import { formatChatModelContextMarkdown, getChatModelContext } from "./model-context";
 
 export async function handleWhichModel(ctx: Context) {
   if (!ctx.chat) {

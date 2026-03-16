@@ -1,12 +1,12 @@
 import type { Api } from "grammy";
-import { getLogger } from "../logging/index.js";
-import { config } from "../config.js";
-import { initRemindersTable, getDueReminders, markFired } from "./db.js";
-import { executeJob } from "./job-runner.js";
-import { initJobsTable, getDueJobs, advanceNextRun } from "./jobs-db.js";
-import { runMemoryDecay } from "../memory/index.js";
+import { getLogger } from "../logging/index";
+import { config } from "../config";
+import { initRemindersTable, getDueReminders, markFired } from "./db";
+import { executeJob } from "./job-runner";
+import { initJobsTable, getDueJobs, advanceNextRun } from "./jobs-db";
+import { runMemoryDecay } from "../memory/index";
 
-import { HEARTBEAT_MS } from "../constants.js";
+import { HEARTBEAT_MS } from "../constants";
 
 let intervalId: ReturnType<typeof setInterval> | null = null;
 const claimedWeeklyMemoryDecayRuns = new Set<string>();

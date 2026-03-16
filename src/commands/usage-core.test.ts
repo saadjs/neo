@@ -12,8 +12,8 @@ vi.mock("../config.js", () => ({
   },
 }));
 
-import { buildUsageMessage } from "./usage.js";
-import { fetchCopilotUsage, formatDuration, parseCopilotUsageSnapshot } from "./usage-core.js";
+import { buildUsageMessage } from "./usage";
+import { fetchCopilotUsage, formatDuration, parseCopilotUsageSnapshot } from "./usage-core";
 
 describe("usage-core", () => {
   it("formats reset countdowns", () => {

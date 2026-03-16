@@ -1,5 +1,5 @@
-import { getModelForChat, getReasoningEffortForChat, type ReasoningEffort } from "../agent.js";
-import { config } from "../config.js";
+import { getModelForChat, getReasoningEffortForChat, type ReasoningEffort } from "../agent";
+import { config } from "../config";
 
 export type ChatModelContext = {
   defaultModel: string;

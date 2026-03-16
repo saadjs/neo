@@ -26,7 +26,7 @@ describe("handleWhichModel", () => {
       "Default model: `gpt-5.4`\nCurrent chat model: `claude-haiku-4.5` (override active)",
     );
 
-    const { handleWhichModel } = await import("./whichmodel.js");
+    const { handleWhichModel } = await import("./whichmodel");
 
     const reply = vi.fn();
     await handleWhichModel({ chat: { id: 42 }, reply } as unknown as Parameters<
@@ -41,7 +41,7 @@ describe("handleWhichModel", () => {
   });
 
   it("handles missing chat context gracefully", async () => {
-    const { handleWhichModel } = await import("./whichmodel.js");
+    const { handleWhichModel } = await import("./whichmodel");
 
     const reply = vi.fn();
     await handleWhichModel({ reply } as unknown as Parameters<typeof handleWhichModel>[0]);

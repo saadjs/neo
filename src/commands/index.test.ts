@@ -51,8 +51,8 @@ vi.mock("./audit.js", () => ({ handleAudit: vi.fn() }));
 vi.mock("./cost.js", () => ({ handleCost: vi.fn() }));
 vi.mock("./channel.js", () => ({ handleChannel: vi.fn() }));
 
-import { registerCommands } from "./index.js";
-import { getTelegramCommands } from "./definitions.js";
+import { registerCommands } from "./index";
+import { getTelegramCommands } from "./definitions";
 
 describe("registerCommands", () => {
   it("publishes Telegram command metadata and registers each handler", async () => {

@@ -1,6 +1,6 @@
-export { loadSoul, saveSoul } from "./soul.js";
-export { loadPreferences, savePreferences, appendPreference } from "./preferences.js";
-export { loadHuman, saveHuman, appendHuman } from "./human.js";
+export { loadSoul, saveSoul } from "./soul";
+export { loadPreferences, savePreferences, appendPreference } from "./preferences";
+export { loadHuman, saveHuman, appendHuman } from "./human";
 export {
   readDailyMemory,
   appendDailyMemory,
@@ -9,23 +9,23 @@ export {
   searchMemory,
   ensureMemoryDir,
   isChannelChat,
-} from "./daily.js";
+} from "./daily";
 export {
   initMemoryTable,
   searchMemoryFts,
   getChannelConfig,
   upsertChannelConfig,
   listChannelConfigs,
-} from "./db.js";
-export type { ChannelConfig } from "./db.js";
-export { runMemoryDecay } from "./decay.js";
+} from "./db";
+export type { ChannelConfig } from "./db";
+export { runMemoryDecay } from "./decay";
 
-import { loadSoul } from "./soul.js";
-import { loadPreferences } from "./preferences.js";
-import { loadHuman } from "./human.js";
-import { isChannelChat } from "./daily.js";
-import { loadRecentSummaries } from "./decay.js";
-import { getChannelConfig } from "./db.js";
+import { loadSoul } from "./soul";
+import { loadPreferences } from "./preferences";
+import { loadHuman } from "./human";
+import { isChannelChat } from "./daily";
+import { loadRecentSummaries } from "./decay";
+import { getChannelConfig } from "./db";
 
 export async function buildSystemContext(chatId?: number): Promise<string> {
   const isChannel = chatId != null && isChannelChat(chatId);

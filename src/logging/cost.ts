@@ -1,4 +1,4 @@
-import { getConversationDb } from "./conversations.js";
+import { getConversationDb } from "./conversations";
 
 const MODEL_PRICING: Record<string, { input: number; output: number }> = {
   "gpt-4.1": { input: 2.0, output: 8.0 },

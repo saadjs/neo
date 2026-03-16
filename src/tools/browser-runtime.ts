@@ -2,8 +2,8 @@ import { mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { chromium, type BrowserContext, type Page } from "playwright";
-import { config, type BrowserCredential } from "../config.js";
-import { getLogger } from "../logging/index.js";
+import { config, type BrowserCredential } from "../config";
+import { getLogger } from "../logging/index";
 
 export interface BrowserSession {
   scopeId: string;

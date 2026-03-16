@@ -92,7 +92,7 @@ describe("memoryTool", () => {
   });
 
   it("rejects channel-scoped human writes", async () => {
-    const { memoryTool } = await import("./memory-tool.js");
+    const { memoryTool } = await import("./memory-tool");
     const result = (await memoryTool.handler(
       {
         operation: "write",
@@ -109,7 +109,7 @@ describe("memoryTool", () => {
   });
 
   it("rejects channel-scoped human appends", async () => {
-    const { memoryTool } = await import("./memory-tool.js");
+    const { memoryTool } = await import("./memory-tool");
     const result = (await memoryTool.handler(
       {
         operation: "append",

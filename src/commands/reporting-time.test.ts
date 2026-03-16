@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { formatSqliteUtcTimestamp, startOfUtcDay } from "./reporting-time.js";
+import { formatSqliteUtcTimestamp, startOfUtcDay } from "./reporting-time";
 
 describe("reporting time helpers", () => {
   it("formats UTC timestamps to match SQLite datetime('now') text", () => {

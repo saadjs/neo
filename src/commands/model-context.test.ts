@@ -11,7 +11,7 @@ vi.mock("../config.js", () => ({
 
 describe("formatChatModelContextMarkdown", () => {
   it("shows reasoning effort override when set", async () => {
-    const { formatChatModelContextMarkdown } = await import("./model-context.js");
+    const { formatChatModelContextMarkdown } = await import("./model-context");
 
     const result = formatChatModelContextMarkdown({
       defaultModel: "gpt-4.1",
@@ -24,7 +24,7 @@ describe("formatChatModelContextMarkdown", () => {
   });
 
   it("shows model default when no reasoning effort override", async () => {
-    const { formatChatModelContextMarkdown } = await import("./model-context.js");
+    const { formatChatModelContextMarkdown } = await import("./model-context");
 
     const result = formatChatModelContextMarkdown({
       defaultModel: "gpt-4.1",

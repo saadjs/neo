@@ -1,7 +1,7 @@
 import type { Context } from "grammy";
 import { InlineKeyboard } from "grammy";
-import { getLogger } from "../logging/index.js";
-import { getTelegramApi } from "./runtime.js";
+import { getLogger } from "../logging/index";
+import { getTelegramApi } from "./runtime";
 
 interface UserInputRequest {
   question: string;

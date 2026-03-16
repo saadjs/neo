@@ -41,7 +41,7 @@ describe("handleModel", () => {
       defaultLevel: "medium",
     });
 
-    const { handleModel } = await import("./model.js");
+    const { handleModel } = await import("./model");
     const reply = vi.fn();
 
     await handleModel({
@@ -59,7 +59,7 @@ describe("handleModel", () => {
   it("ignores the bot mention in group-chat commands", async () => {
     getModelReasoningInfoMock.mockResolvedValue(null);
 
-    const { handleModel } = await import("./model.js");
+    const { handleModel } = await import("./model");
     const reply = vi.fn();
 
     await handleModel({
@@ -86,7 +86,7 @@ describe("handleModel", () => {
       source: "cache",
     });
 
-    const { handleModel } = await import("./model.js");
+    const { handleModel } = await import("./model");
     const reply = vi.fn();
 
     await handleModel({
@@ -118,7 +118,7 @@ describe("handleModel", () => {
       source: "cache",
     });
 
-    const { handleModel } = await import("./model.js");
+    const { handleModel } = await import("./model");
     const reply = vi.fn();
 
     await handleModel({
@@ -151,7 +151,7 @@ describe("handleModelCallback", () => {
       source: "cache",
     });
 
-    const { handleModel, handleModelCallback } = await import("./model.js");
+    const { handleModel, handleModelCallback } = await import("./model");
     const reply = vi.fn();
 
     await handleModel({
@@ -197,7 +197,7 @@ describe("handleModelCallback", () => {
         source: "network",
       });
 
-    const { handleModel, handleModelCallback } = await import("./model.js");
+    const { handleModel, handleModelCallback } = await import("./model");
     const reply = vi.fn();
 
     await handleModel({

@@ -1,4 +1,4 @@
-import { getConversationDb } from "./conversations.js";
+import { getConversationDb } from "./conversations";
 
 export interface ToolUsageSummary {
   tool_name: string;

@@ -1,6 +1,6 @@
-import type { PreToolUseHandler } from "./types.js";
-import { getLogger } from "../logging/index.js";
-import { isJobRunning } from "../scheduler/job-runner.js";
+import type { PreToolUseHandler } from "./types";
+import { getLogger } from "../logging/index";
+import { isJobRunning } from "../scheduler/job-runner";
 
 export function preToolUse(chatId: number): PreToolUseHandler {
   return (input) => {

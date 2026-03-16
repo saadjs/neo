@@ -25,7 +25,7 @@ vi.mock("node:fs/promises", async () => {
   };
 });
 
-import { isChannelChat, listMemoryFiles } from "./daily.js";
+import { isChannelChat, listMemoryFiles } from "./daily";
 
 describe("daily memory helpers", () => {
   afterEach(() => {

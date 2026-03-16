@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isMessageNotModifiedError, isMissingProgressMessageError } from "./session-timeout.js";
+import { isMessageNotModifiedError, isMissingProgressMessageError } from "./session-timeout";
 
 describe("progress message helpers", () => {
   it("detects missing Telegram progress messages", () => {

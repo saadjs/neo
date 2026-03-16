@@ -1,6 +1,6 @@
 import type { Context } from "grammy";
-import { getLogLevel, type LogLevel } from "../logging/index.js";
-import { applyConfigChange } from "../runtime/state.js";
+import { getLogLevel, type LogLevel } from "../logging/index";
+import { applyConfigChange } from "../runtime/state";
 
 const VALID_LEVELS: LogLevel[] = ["error", "warn", "info", "debug", "trace"];
 

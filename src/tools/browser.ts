@@ -3,10 +3,10 @@ import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { defineTool } from "@github/copilot-sdk";
 import { z } from "zod";
-import { getChatIdForSession } from "../agent.js";
-import { config } from "../config.js";
-import { createAuditTimer } from "../logging/audit.js";
-import { sendPhotoFromPath } from "../telegram/runtime.js";
+import { getChatIdForSession } from "../agent";
+import { config } from "../config";
+import { createAuditTimer } from "../logging/audit";
+import { sendPhotoFromPath } from "../telegram/runtime";
 import {
   closeAllBrowserSessions,
   closeBrowserSession,
@@ -14,7 +14,7 @@ import {
   listBrowserSessions,
   resolveBrowserCredential,
   startBrowserSession,
-} from "./browser-runtime.js";
+} from "./browser-runtime";
 
 const WAIT_UNTIL_VALUES = ["load", "domcontentloaded", "networkidle"] as const;
 

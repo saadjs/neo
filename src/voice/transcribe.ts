@@ -1,8 +1,8 @@
 import { DeepgramClient } from "@deepgram/sdk";
 import { readFile } from "node:fs/promises";
-import { config } from "../config.js";
-import { getLogger } from "../logging/index.js";
-import { LOG_TRANSCRIPT_MAX_CHARS } from "../constants.js";
+import { config } from "../config";
+import { getLogger } from "../logging/index";
+import { LOG_TRANSCRIPT_MAX_CHARS } from "../constants";
 
 let client: DeepgramClient | null = null;
 

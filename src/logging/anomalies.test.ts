@@ -7,7 +7,7 @@ vi.mock("./conversations.js", () => ({
   },
 }));
 
-import { detectToolAnomalies, formatAnomaliesForContext } from "./anomalies.js";
+import { detectToolAnomalies, formatAnomaliesForContext } from "./anomalies";
 
 const SCHEMA = `
   CREATE TABLE IF NOT EXISTS tool_calls (
