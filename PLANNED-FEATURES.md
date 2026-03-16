@@ -32,9 +32,9 @@ Implemented. Session deletion is now explicit instead of coupled to every reset.
 
 Implemented. `sessionStart(chatId, getModel)` factory in `src/hooks/session-start.ts` handles two concerns: (1) session bookkeeping — `setActiveSession` on every start/resume, `logSession` for new sessions only — migrated from scattered calls in `agent.ts`; (2) dynamic context injection via `additionalContext` — today's memory, channel memory, runtime state, and anomaly alerts are now injected at session start instead of baked into the static system prompt. Static content (persona, preferences, human facts, weekly summaries) remains in `buildSystemContext()`.
 
-### - [ ] Graceful job cancellation
+### - [x] Graceful job cancellation
 
-Jobs currently hard-timeout at 5 minutes then force-destroy the session. Call `abort()` first in `src/scheduler/job-runner.ts` for clean cancellation with partial results preserved. Optionally add `/job cancel <name>`.
+Implemented. Removed the 5-minute hard timeout — jobs now run to completion, letting the model decide when it's done. Added explicit cancellation via `cancelRunningJob()` which calls `session.abort()` for graceful shutdown. The `job` tool exposes a `cancel` action (no parameters needed — only one job runs at a time). Partial results from `responseBuffer` are preserved on cancellation and sent to the owner. `getRunningJob()` exposes metadata about the currently executing job.
 
 ---
 
