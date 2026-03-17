@@ -6,75 +6,13 @@ export type CommandDefinition = {
 
 export const commandDefinitions = [
   {
-    command: "start",
-    description: "Show available commands",
-  },
-  {
-    command: "help",
-    description: "Show available commands",
-  },
-  {
-    command: "new",
-    description: "Start a fresh conversation",
-  },
-  {
-    command: "cancel",
-    description: "Cancel the current task",
-  },
-  {
-    command: "model",
-    description: "Switch the model for this chat only",
-    usage: "[name]",
-  },
-  {
-    command: "reasoning",
-    description: "Set reasoning effort for this chat",
-    usage: "[level|reset]",
-  },
-  {
-    command: "sessions",
-    description: "List and resume sessions",
-  },
-  {
-    command: "memory",
-    description: "View, search, or filter memory",
-    usage: "[query]",
-  },
-  {
-    command: "loglevel",
-    description: "Set log verbosity",
-    usage: "<level>",
-  },
-  {
-    command: "soul",
-    description: "Show current persona",
-  },
-  {
-    command: "status",
-    description: "Show runtime status",
-  },
-  {
-    command: "whichmodel",
-    description: "Show default and current chat model",
-  },
-  {
-    command: "usage",
-    description: "Show Copilot monthly usage",
-  },
-  {
     command: "audit",
     description: "Tool usage stats",
     usage: "[week|tool]",
   },
   {
-    command: "cost",
-    description: "Token usage & cost",
-    usage: "[week|month]",
-  },
-  {
-    command: "jobs",
-    description: "List and manage scheduled jobs",
-    usage: "[history <name>|cancel]",
+    command: "cancel",
+    description: "Cancel the current task",
   },
   {
     command: "channel",
@@ -82,8 +20,70 @@ export const commandDefinitions = [
     usage: "[label|topics] [value]",
   },
   {
+    command: "cost",
+    description: "Token usage & cost",
+    usage: "[week|month]",
+  },
+  {
+    command: "help",
+    description: "Show available commands",
+  },
+  {
+    command: "jobs",
+    description: "List and manage scheduled jobs",
+    usage: "[history <name>|cancel]",
+  },
+  {
+    command: "loglevel",
+    description: "Set log verbosity",
+    usage: "<level>",
+  },
+  {
+    command: "memory",
+    description: "View, search, or filter memory",
+    usage: "[query]",
+  },
+  {
+    command: "model",
+    description: "Switch the model for this chat only",
+    usage: "[name]",
+  },
+  {
+    command: "new",
+    description: "Start a fresh conversation",
+  },
+  {
+    command: "reasoning",
+    description: "Set reasoning effort for this chat",
+    usage: "[level|reset]",
+  },
+  {
     command: "restart",
     description: "Restart Neo",
+  },
+  {
+    command: "sessions",
+    description: "List and resume sessions",
+  },
+  {
+    command: "soul",
+    description: "Show current persona",
+  },
+  {
+    command: "start",
+    description: "Show available commands",
+  },
+  {
+    command: "status",
+    description: "Show runtime status",
+  },
+  {
+    command: "usage",
+    description: "Show Copilot monthly usage",
+  },
+  {
+    command: "whichmodel",
+    description: "Show default and current chat model",
   },
 ] as const satisfies readonly CommandDefinition[];
 
