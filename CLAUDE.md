@@ -144,6 +144,7 @@ Strict TypeScript ESM. Double quotes, semicolons. `camelCase` for variables/func
 ## Documentation
 
 - After adding new Telegram slash (`/`) commands, or features, make sure to update the @README.md or other documentation files as needed.
+- Keep slash commands in alphabetical order in `src/commands/definitions.ts` (the `commandDefinitions` array) and `src/commands/index.ts` (the `commandHandlers` object).
 
 ## Git Commit Guidelines
 
