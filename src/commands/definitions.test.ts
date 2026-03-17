@@ -7,6 +7,7 @@ describe("getTelegramCommands", () => {
       { command: "audit", description: "Tool usage stats" },
       { command: "cancel", description: "Cancel the current task" },
       { command: "channel", description: "Channel config (groups only)" },
+      { command: "context", description: "Show session context summary" },
       { command: "cost", description: "Token usage & cost" },
       { command: "help", description: "Show available commands" },
       { command: "jobs", description: "List and manage scheduled jobs" },
