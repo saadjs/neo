@@ -20,6 +20,10 @@ export const commandDefinitions = [
     usage: "[label|topics] [value]",
   },
   {
+    command: "context",
+    description: "Show session context summary",
+  },
+  {
     command: "cost",
     description: "Token usage & cost",
     usage: "[week|month]",

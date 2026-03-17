@@ -13,6 +13,7 @@ import { handleWhichModel } from "./whichmodel";
 import { handleAudit } from "./audit";
 import { handleCost } from "./cost";
 import { handleChannel } from "./channel";
+import { handleContext } from "./context";
 import { handleUsage } from "./usage";
 import { handleReasoning } from "./reasoning";
 import { handleJobs } from "./jobs";
@@ -35,6 +36,7 @@ const commandHandlers = {
   audit: handleAudit,
   cancel: handleCancel,
   channel: handleChannel,
+  context: handleContext,
   cost: handleCost,
   help: handleHelp,
   jobs: handleJobs,
