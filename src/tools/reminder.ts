@@ -7,12 +7,12 @@ import {
   initRemindersTable,
 } from "../scheduler/db";
 import { createAuditTimer } from "../logging/audit";
+import { USER_TIMEZONE } from "../constants";
 
 const RECURRENCE_VALUES = ["once", "daily", "weekly", "monthly", "weekdays"] as const;
 
 export const reminderTool = defineTool("reminder", {
-  description:
-    "Manage scheduled reminders: create timed reminders, list active reminders, or cancel existing ones. All times must be ISO 8601 UTC strings. The user's timezone is America/New_York — convert their local times to UTC for fire_at, and convert UTC back to America/New_York when displaying times. For recurring reminders, use recurrence to specify the interval.",
+  description: `Manage scheduled reminders: create timed reminders, list active reminders, or cancel existing ones. All times must be ISO 8601 UTC strings. The user's timezone is ${USER_TIMEZONE} — convert their local times to UTC for fire_at, and convert UTC back to ${USER_TIMEZONE} when displaying times. For recurring reminders, use recurrence to specify the interval.`,
   parameters: z.object({
     action: z.enum(["create", "list", "cancel"]).describe("The reminder action to perform"),
     label: z.string().optional().describe("Short label for the reminder (required for create)"),

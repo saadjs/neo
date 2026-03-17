@@ -10,7 +10,7 @@ import {
 import { loadRecentSummaries } from "../memory/decay";
 import { getRuntimeContextSection } from "../runtime/state";
 import { formatAnomaliesForContext } from "../logging/anomalies";
-import { USER_TIMEZONE } from "../config";
+import { USER_TIMEZONE } from "../constants";
 
 type Section = { name: string; content: string; display?: string };
 

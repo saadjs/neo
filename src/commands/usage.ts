@@ -1,6 +1,7 @@
 import type { Context } from "grammy";
 import { getModelForChat } from "../agent";
 import { config } from "../config";
+import { USER_TIMEZONE } from "../constants";
 import {
   fetchCopilotUsage,
   type CopilotQuotaSnapshot,
@@ -67,7 +68,7 @@ export function buildUsageMessage(model: string, usage: CopilotUsageSnapshot): s
 
   lines.push(`Resets in: ${usage.resetsIn}`);
   if (usage.resetAt) {
-    lines.push(`Reset time: ${formatResetTime(usage.resetAt, "America/New_York")}`);
+    lines.push(`Reset time: ${formatResetTime(usage.resetAt, USER_TIMEZONE)}`);
   }
 
   return lines.join("\n");

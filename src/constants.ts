@@ -37,6 +37,9 @@ export const ANOMALY_RECENT_CALLS = 5;
 export const ANOMALY_FAILURE_THRESHOLD = 3;
 export const ANOMALY_ERROR_MAX_CHARS = 200;
 
+// User
+export const USER_TIMEZONE = "America/New_York";
+
 // Agent
 export const VALID_REASONING_EFFORTS = new Set<string>(["low", "medium", "high", "xhigh"]);
 

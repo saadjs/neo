@@ -26,6 +26,7 @@ import { loadHuman } from "./human";
 import { isChannelChat } from "./daily";
 import { loadRecentSummaries } from "./decay";
 import { getChannelConfig } from "./db";
+import { USER_TIMEZONE } from "../constants";
 
 export async function buildSystemContext(chatId?: number): Promise<string> {
   const isChannel = chatId != null && isChannelChat(chatId);
@@ -86,7 +87,7 @@ export async function buildSystemContext(chatId?: number): Promise<string> {
   }
 
   parts.push(
-    `\n---\n\n## Timezone\n\nThe user's timezone is America/New_York. Always convert times to this timezone when displaying to the user, and convert from this timezone to UTC when storing times (e.g. for reminders).`,
+    `\n---\n\n## Timezone\n\nThe user's timezone is ${USER_TIMEZONE}. Always convert times to this timezone when displaying to the user, and convert from this timezone to UTC when storing times (e.g. for reminders).`,
   );
 
   return parts.join("\n");
