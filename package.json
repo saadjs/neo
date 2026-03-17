@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "tsx --watch src/index.ts",
     "dev:pretty": "tsx --watch src/index.ts | pino-pretty",
-    "build": "esbuild src/index.ts --bundle --platform=node --target=node24 --format=esm --outfile=dist/index.js --packages=external",
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node24 --format=esm --outfile=dist/index.js --packages=external --define:__GIT_COMMIT__=\\\"$(git rev-parse --short HEAD)\\\" --define:__GIT_COMMIT_DATE__=\\\"$(git log -1 --format=%cI)\\\"",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint src vitest.config.ts --tsconfig tsconfig.json --deny-warnings --import-plugin --promise-plugin --vitest-plugin",

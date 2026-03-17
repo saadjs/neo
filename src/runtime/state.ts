@@ -15,6 +15,7 @@ import {
 } from "../config";
 import { switchDefaultModel } from "../agent";
 import { getLogLevel, getLogger, setLogLevel } from "../logging/index";
+import { GIT_COMMIT, GIT_COMMIT_DATE } from "../version";
 
 const execFileAsync = promisify(execFile);
 const RESTART_MARKER_FILE = ".restart-marker";
@@ -537,11 +538,22 @@ export async function getSystemStatus() {
 }
 
 export function formatSystemStatusSummary(status: Awaited<ReturnType<typeof getSystemStatus>>) {
+  const formattedDate = GIT_COMMIT_DATE
+    ? new Date(GIT_COMMIT_DATE).toLocaleString("en-US", {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        timeZoneName: "short",
+      })
+    : "";
+  const commitInfo = formattedDate ? `${GIT_COMMIT} (${formattedDate})` : GIT_COMMIT;
   const lines = [
     `Service: ${status.service.unit} (${status.service.activeState})`,
     `Supervisor available: ${status.service.systemdAvailable ? "yes" : "no"}`,
     `Managed config: ${status.managedConfig.path}`,
     `Restart required: ${status.restart.required ? "yes" : "no"}`,
+    `Commit: \`${commitInfo}\``,
     `Default model: ${String(status.effectiveConfig.COPILOT_MODEL)}`,
     `Log level: ${String(status.effectiveConfig.NEO_LOG_LEVEL)}`,
   ];
