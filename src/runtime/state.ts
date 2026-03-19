@@ -40,7 +40,7 @@ export interface RestartRecord {
   actor: string;
   source: "tool" | "command" | "startup";
   reason: string;
-  chatId?: number;
+  chatId?: string;
   mode: "process-exit" | "startup-detected";
   status: "requested" | "completed";
   detail?: string;
@@ -51,7 +51,7 @@ export interface RestartMarker {
   actor: string;
   source: "tool" | "command" | "startup";
   reason: string;
-  chatId?: number;
+  chatId?: string;
   changes?: Array<{
     key: ManagedConfigKey;
     before: unknown;
@@ -410,7 +410,7 @@ export async function restartService(params: {
   actor: string;
   source: RestartRecord["source"];
   reason: string;
-  chatId?: number;
+  chatId?: string;
   changes?: RestartMarker["changes"];
 }) {
   const marker: RestartMarker = {

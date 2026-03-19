@@ -18,7 +18,7 @@ export function getConversationDb(): DatabaseSync {
   db.exec(`
     CREATE TABLE IF NOT EXISTS sessions (
       id TEXT PRIMARY KEY,
-      chat_id INTEGER NOT NULL,
+      chat_id TEXT NOT NULL,
       model TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
@@ -45,7 +45,7 @@ export function getConversationDb(): DatabaseSync {
     );
 
     CREATE TABLE IF NOT EXISTS chat_session_state (
-      chat_id INTEGER PRIMARY KEY,
+      chat_id TEXT PRIMARY KEY,
       current_session_id TEXT NOT NULL,
       last_compaction_event_id TEXT,
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -85,13 +85,13 @@ export function getConversationDb(): DatabaseSync {
   return db;
 }
 
-export function logSession(sessionId: string, chatId: number, model: string): void {
+export function logSession(sessionId: string, chatId: string, model: string): void {
   getConversationDb()
     .prepare("INSERT OR IGNORE INTO sessions (id, chat_id, model) VALUES (?, ?, ?)")
     .run(sessionId, chatId, model);
 }
 
-export function setActiveSession(chatId: number, sessionId: string): void {
+export function setActiveSession(chatId: string, sessionId: string): void {
   getConversationDb()
     .prepare(
       `INSERT INTO chat_session_state (chat_id, current_session_id, updated_at)
@@ -103,14 +103,14 @@ export function setActiveSession(chatId: number, sessionId: string): void {
     .run(chatId, sessionId);
 }
 
-export function getActiveSessionId(chatId: number): string | undefined {
+export function getActiveSessionId(chatId: string): string | undefined {
   const row = getConversationDb()
     .prepare("SELECT current_session_id FROM chat_session_state WHERE chat_id = ?")
     .get(chatId) as { current_session_id?: string } | undefined;
   return row?.current_session_id || undefined;
 }
 
-export function clearActiveSession(chatId: number): void {
+export function clearActiveSession(chatId: string): void {
   getConversationDb()
     .prepare(
       `INSERT INTO chat_session_state (chat_id, current_session_id, updated_at)
@@ -122,14 +122,14 @@ export function clearActiveSession(chatId: number): void {
     .run(chatId);
 }
 
-export function getLastCompactionEventId(chatId: number): string | undefined {
+export function getLastCompactionEventId(chatId: string): string | undefined {
   const row = getConversationDb()
     .prepare("SELECT last_compaction_event_id FROM chat_session_state WHERE chat_id = ?")
     .get(chatId) as { last_compaction_event_id?: string | null } | undefined;
   return row?.last_compaction_event_id ?? undefined;
 }
 
-export function setLastCompactionEventId(chatId: number, eventId: string): void {
+export function setLastCompactionEventId(chatId: string, eventId: string): void {
   getConversationDb()
     .prepare(
       `UPDATE chat_session_state
@@ -207,7 +207,7 @@ export interface HistoryMessage {
   session_id: string;
 }
 
-export function getRecentHistory(chatId: number, limit = 20): HistoryMessage[] {
+export function getRecentHistory(chatId: string, limit = 20): HistoryMessage[] {
   return getConversationDb()
     .prepare(
       `SELECT m.role, m.content, m.created_at, m.session_id
@@ -240,7 +240,7 @@ export function getSessionTags(sessionId: string): string[] {
 export function searchSessionsByTag(
   tag: string,
   limit = 20,
-): Array<{ id: string; chat_id: number; model: string; tags: string; created_at: string }> {
+): Array<{ id: string; chat_id: string; model: string; tags: string; created_at: string }> {
   return getConversationDb()
     .prepare(
       `SELECT id, chat_id, model, tags, created_at FROM sessions
@@ -248,7 +248,7 @@ export function searchSessionsByTag(
     )
     .all(`%${tag}%`, limit) as unknown as Array<{
     id: string;
-    chat_id: number;
+    chat_id: string;
     model: string;
     tags: string;
     created_at: string;

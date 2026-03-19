@@ -9,22 +9,19 @@ import { allTools } from "./tools/index";
 import { buildSystemContext } from "./memory/index";
 import { getLogger } from "./logging/index";
 import { buildSessionHooks } from "./hooks/index";
-import {
-  cancelAllPendingUserInputs,
-  cancelPendingUserInput,
-  requestUserInput,
-} from "./telegram/user-input";
+import { cancelAllPendingUserInputs } from "./transport/user-input";
+import { cancelPendingUserInput, requestUserInput } from "./telegram/user-input";
 import { clearActiveSession, getActiveSessionId } from "./logging/conversations";
 import { VALID_REASONING_EFFORTS } from "./constants";
 
 let client: CopilotClient | null = null;
-const sessions = new Map<number, CopilotSession>();
-const sessionModels = new Map<number, string>();
-const activeSessionTurns = new Map<number, number>();
-const staleSessions = new Map<number, Set<CopilotSession>>();
-const abortedChats = new Set<number>();
+const sessions = new Map<string, CopilotSession>();
+const sessionModels = new Map<string, string>();
+const activeSessionTurns = new Map<string, number>();
+const staleSessions = new Map<string, Set<CopilotSession>>();
+const abortedChats = new Set<string>();
 const SESSION_MODEL_OVERRIDES_FILE = join(config.paths.data, "session-model-overrides.json");
-const sessionReasoningEfforts = new Map<number, ReasoningEffort>();
+const sessionReasoningEfforts = new Map<string, ReasoningEffort>();
 const SESSION_REASONING_OVERRIDES_FILE = join(
   config.paths.data,
   "session-reasoning-overrides.json",
@@ -40,9 +37,7 @@ async function loadSessionModelOverrides(): Promise<void> {
     sessionModels.clear();
     for (const [chatId, model] of Object.entries(parsed as Record<string, unknown>)) {
       if (typeof model !== "string" || !model.trim()) continue;
-      const numericChatId = Number(chatId);
-      if (!Number.isInteger(numericChatId)) continue;
-      sessionModels.set(numericChatId, model.trim());
+      sessionModels.set(chatId, model.trim());
     }
   } catch {
     // no persisted overrides yet
@@ -52,7 +47,7 @@ async function loadSessionModelOverrides(): Promise<void> {
 async function persistSessionModelOverrides(): Promise<void> {
   const payload: Record<string, string> = {};
   for (const [chatId, model] of sessionModels) {
-    payload[String(chatId)] = model;
+    payload[chatId] = model;
   }
 
   await mkdir(dirname(SESSION_MODEL_OVERRIDES_FILE), { recursive: true });
@@ -70,9 +65,7 @@ async function loadSessionReasoningOverrides(): Promise<void> {
     sessionReasoningEfforts.clear();
     for (const [chatId, effort] of Object.entries(parsed as Record<string, unknown>)) {
       if (typeof effort !== "string" || !VALID_REASONING_EFFORTS.has(effort)) continue;
-      const numericChatId = Number(chatId);
-      if (!Number.isInteger(numericChatId)) continue;
-      sessionReasoningEfforts.set(numericChatId, effort as ReasoningEffort);
+      sessionReasoningEfforts.set(chatId, effort as ReasoningEffort);
     }
   } catch {
     // no persisted overrides yet
@@ -82,7 +75,7 @@ async function loadSessionReasoningOverrides(): Promise<void> {
 async function persistSessionReasoningOverrides(): Promise<void> {
   const payload: Record<string, string> = {};
   for (const [chatId, effort] of sessionReasoningEfforts) {
-    payload[String(chatId)] = effort;
+    payload[chatId] = effort;
   }
 
   await mkdir(dirname(SESSION_REASONING_OVERRIDES_FILE), { recursive: true });
@@ -151,7 +144,7 @@ export async function stopAgent(): Promise<void> {
 }
 
 export interface CreateSessionOptions {
-  chatId: number;
+  chatId: string;
 }
 
 export interface DestroySessionOptions {
@@ -218,7 +211,7 @@ export async function createNewSession(opts: CreateSessionOptions): Promise<Copi
   return session;
 }
 
-export async function switchModel(chatId: number, model: string): Promise<void> {
+export async function switchModel(chatId: string, model: string): Promise<void> {
   sessionModels.set(chatId, model);
   try {
     await persistSessionModelOverrides();
@@ -244,7 +237,7 @@ export async function switchDefaultModel(model: string): Promise<void> {
 }
 
 export async function destroySession(
-  chatId: number,
+  chatId: string,
   opts: DestroySessionOptions = {},
 ): Promise<void> {
   const { deletePersisted = false } = opts;
@@ -296,11 +289,11 @@ export async function destroySession(
   }
 }
 
-export function getSessionForChat(chatId: number): CopilotSession | undefined {
+export function getSessionForChat(chatId: string): CopilotSession | undefined {
   return sessions.get(chatId);
 }
 
-export function hasTrackedSession(chatId: number, session: CopilotSession): boolean {
+export function hasTrackedSession(chatId: string, session: CopilotSession): boolean {
   if (sessions.get(chatId) === session) {
     return true;
   }
@@ -308,7 +301,7 @@ export function hasTrackedSession(chatId: number, session: CopilotSession): bool
   return staleSessions.get(chatId)?.has(session) ?? false;
 }
 
-export function discardSession(chatId: number, session: CopilotSession): void {
+export function discardSession(chatId: string, session: CopilotSession): void {
   const activeSession = sessions.get(chatId);
   if (activeSession === session) {
     sessions.delete(chatId);
@@ -328,7 +321,7 @@ export function discardSession(chatId: number, session: CopilotSession): void {
   }
 }
 
-export function listActiveSessions(): { chatId: number; sessionId: string }[] {
+export function listActiveSessions(): { chatId: string; sessionId: string }[] {
   return Array.from(sessions.entries()).map(([chatId, session]) => ({
     chatId,
     sessionId: session.sessionId,
@@ -339,7 +332,7 @@ export function getClient(): CopilotClient | null {
   return client;
 }
 
-export function getChatIdForSession(sessionId: string): number | undefined {
+export function getChatIdForSession(sessionId: string): string | undefined {
   for (const [chatId, session] of sessions) {
     if (session.sessionId === sessionId) return chatId;
   }
@@ -352,7 +345,7 @@ export function getChatIdForSession(sessionId: string): number | undefined {
 }
 
 export async function abortSession(
-  chatId: number,
+  chatId: string,
 ): Promise<"aborted" | "no-session" | "no-active-turn"> {
   const session = sessions.get(chatId);
   if (!session) return "no-session";
@@ -363,19 +356,19 @@ export async function abortSession(
   return "aborted";
 }
 
-export function consumeAbortFlag(chatId: number): boolean {
+export function consumeAbortFlag(chatId: string): boolean {
   return abortedChats.delete(chatId);
 }
 
-export function getModelForChat(chatId: number): string {
+export function getModelForChat(chatId: string): string {
   return sessionModels.get(chatId) ?? config.copilot.model;
 }
 
-export function getReasoningEffortForChat(chatId: number): ReasoningEffort | undefined {
+export function getReasoningEffortForChat(chatId: string): ReasoningEffort | undefined {
   return sessionReasoningEfforts.get(chatId);
 }
 
-export async function setReasoningEffort(chatId: number, effort: ReasoningEffort): Promise<void> {
+export async function setReasoningEffort(chatId: string, effort: ReasoningEffort): Promise<void> {
   sessionReasoningEfforts.set(chatId, effort);
   try {
     await persistSessionReasoningOverrides();
@@ -385,7 +378,7 @@ export async function setReasoningEffort(chatId: number, effort: ReasoningEffort
   await refreshSessionContext(chatId);
 }
 
-export async function clearReasoningEffort(chatId: number): Promise<void> {
+export async function clearReasoningEffort(chatId: string): Promise<void> {
   if (!sessionReasoningEfforts.has(chatId)) return;
   sessionReasoningEfforts.delete(chatId);
   try {
@@ -396,11 +389,11 @@ export async function clearReasoningEffort(chatId: number): Promise<void> {
   await refreshSessionContext(chatId);
 }
 
-export function beginSessionTurn(chatId: number): void {
+export function beginSessionTurn(chatId: string): void {
   activeSessionTurns.set(chatId, (activeSessionTurns.get(chatId) ?? 0) + 1);
 }
 
-export async function endSessionTurn(chatId: number): Promise<void> {
+export async function endSessionTurn(chatId: string): Promise<void> {
   const nextCount = (activeSessionTurns.get(chatId) ?? 0) - 1;
   if (nextCount > 0) {
     activeSessionTurns.set(chatId, nextCount);
@@ -436,7 +429,7 @@ export async function endSessionTurn(chatId: number): Promise<void> {
  * destroy the active session here — doing so mid-turn would kill the
  * in-flight sendAndWait call in handleMessage.
  */
-export async function refreshSessionContext(chatId: number): Promise<void> {
+export async function refreshSessionContext(chatId: string): Promise<void> {
   await cancelPendingUserInput(
     chatId,
     "Pending question cancelled because the session context changed. Please ask again.",
@@ -486,7 +479,7 @@ export async function listPersistedSessions(): Promise<SessionMetadata[]> {
 }
 
 export async function resumeSessionById(
-  chatId: number,
+  chatId: string,
   sessionId: string,
 ): Promise<CopilotSession> {
   if (!client) throw new Error("Agent not started");
@@ -514,7 +507,7 @@ export async function resumeSessionById(
   return resumed;
 }
 
-async function buildSessionConfig(chatId: number) {
+async function buildSessionConfig(chatId: string) {
   const systemContext = await buildSystemContext(chatId);
   const model = sessionModels.get(chatId) ?? config.copilot.model;
 

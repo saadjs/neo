@@ -23,7 +23,7 @@ export async function handleStatus(ctx: Context) {
     return;
   }
 
-  const modelContext = getChatModelContext(ctx.chat.id);
+  const modelContext = getChatModelContext(String(ctx.chat.id));
   const currentLine = modelContext.overrideActive
     ? `Current chat model: \`${modelContext.currentModel}\` (override active)`
     : `Current chat model: \`${modelContext.currentModel}\` (using default)`;

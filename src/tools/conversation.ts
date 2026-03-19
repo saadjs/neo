@@ -11,7 +11,7 @@ export const conversationTool = defineTool("conversation", {
       .enum(["search", "history"])
       .describe("'search' to find messages by keyword, 'history' to get recent messages"),
     query: z.string().optional().describe("Search query (required for search action)"),
-    chat_id: z.number().optional().describe("Chat ID (required for history action)"),
+    chat_id: z.string().optional().describe("Chat ID (required for history action)"),
     limit: z.number().optional().describe("Max results to return (default 20)"),
     offset: z.number().optional().describe("Offset for pagination (default 0, search only)"),
   }),
@@ -41,7 +41,7 @@ function formatTimestamp(ts: string): string {
 function execute(args: {
   action: "search" | "history";
   query?: string;
-  chat_id?: number;
+  chat_id?: string;
   limit?: number;
   offset?: number;
 }): string {

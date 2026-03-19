@@ -8,7 +8,7 @@ export async function handleHelp(ctx: Context) {
     return;
   }
 
-  const context = getChatModelContext(ctx.chat.id);
+  const context = getChatModelContext(String(ctx.chat.id));
   const intro = context.overrideActive
     ? `Hey — default model is \`${context.defaultModel}\`, but this chat is using \`${context.currentModel}\`.\n\n`
     : `Hey — default model is \`${context.defaultModel}\`, and this chat is using it.\n\n`;

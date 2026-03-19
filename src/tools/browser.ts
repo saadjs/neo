@@ -6,7 +6,8 @@ import { z } from "zod";
 import { getChatIdForSession } from "../agent";
 import { config } from "../config";
 import { createAuditTimer } from "../logging/audit";
-import { sendPhotoFromPath } from "../telegram/runtime";
+import { notifyPhoto } from "../transport/notifier";
+import { createTelegramConversationRef } from "../transport/telegram-utils";
 import {
   closeAllBrowserSessions,
   closeBrowserSession,
@@ -310,7 +311,11 @@ async function execute(args: BrowserArgs, invocationSessionId: string): Promise<
       let deliveryError: string | undefined;
       if (chatId != null) {
         try {
-          await sendPhotoFromPath(chatId, path, `Browser screenshot: ${session.page.url()}`);
+          await notifyPhoto(
+            { conversation: createTelegramConversationRef({ id: Number(chatId) }) },
+            path,
+            `Browser screenshot: ${session.page.url()}`,
+          );
           deliveredToTelegram = true;
         } catch (error) {
           deliveryError = error instanceof Error ? error.message : String(error);

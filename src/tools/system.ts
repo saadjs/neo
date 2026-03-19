@@ -48,7 +48,7 @@ export const systemTool = defineTool("system", {
     key: z.string().optional().describe("Managed config key for explain/plan/apply actions"),
     value: z.string().optional().describe("Desired config value for plan/apply actions"),
     reason: z.string().optional().describe("Why Neo should make the change or restart"),
-    chat_id: z.number().optional().describe("Telegram chat ID to notify after restart"),
+    chat_id: z.string().optional().describe("Chat ID to notify after restart"),
     allow_approval_required: z
       .boolean()
       .optional()

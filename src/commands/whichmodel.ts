@@ -7,6 +7,6 @@ export async function handleWhichModel(ctx: Context) {
     return;
   }
 
-  const context = getChatModelContext(ctx.chat.id);
+  const context = getChatModelContext(String(ctx.chat.id));
   await ctx.reply(formatChatModelContextMarkdown(context), { parse_mode: "Markdown" });
 }

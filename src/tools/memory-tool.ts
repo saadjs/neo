@@ -18,7 +18,7 @@ const parameters = z.object({
     .optional()
     .describe("Date in yyyy-mm-dd format for reading a specific daily memory"),
   channel: z
-    .number()
+    .string()
     .optional()
     .describe("Chat ID to scope operation to a specific channel. Omit for global scope."),
 });
@@ -86,7 +86,7 @@ async function execute(args: z.infer<typeof parameters>): Promise<string> {
 async function readTarget(
   target: "soul" | "preferences" | "human" | "daily" | "topics",
   date?: string,
-  channel?: number,
+  channel?: string,
 ): Promise<string> {
   if (channel != null) {
     const cfg = getChannelConfig(channel);
@@ -126,7 +126,7 @@ async function readTarget(
 async function writeTarget(
   target: "soul" | "preferences" | "human" | "daily" | "topics",
   content: string,
-  channel?: number,
+  channel?: string,
 ): Promise<string> {
   if (channel != null) {
     switch (target) {
@@ -171,7 +171,7 @@ async function writeTarget(
 async function appendTarget(
   target: "soul" | "preferences" | "human" | "daily" | "topics",
   content: string,
-  channel?: number,
+  channel?: string,
 ): Promise<string> {
   if (channel != null) {
     switch (target) {

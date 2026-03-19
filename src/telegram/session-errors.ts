@@ -1,4 +1,4 @@
-import { PendingUserInputCancelledError } from "./user-input";
+import { PendingUserInputCancelledError } from "../transport/user-input";
 
 export function shouldSilenceSessionError(
   err: unknown,

@@ -5,7 +5,7 @@ import { readDailyMemory, isChannelChat } from "../memory/daily";
 import { getRuntimeContextSection } from "../runtime/state";
 import { formatAnomaliesForContext } from "../logging/anomalies";
 
-export function sessionStart(chatId: number, getModel: () => string): SessionStartHandler {
+export function sessionStart(chatId: string, getModel: () => string): SessionStartHandler {
   return async (input, invocation) => {
     const log = getLogger();
     log.info(

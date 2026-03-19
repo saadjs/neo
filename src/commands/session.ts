@@ -20,7 +20,7 @@ import {
 } from "../constants";
 
 export async function handleNewSession(ctx: Context) {
-  const chatId = ctx.chat!.id;
+  const chatId = String(ctx.chat!.id);
   const log = getLogger();
 
   await destroySession(chatId);
@@ -193,7 +193,7 @@ function parseSessionCallbackData(
 }
 
 export async function handleSessions(ctx: Context) {
-  const chatId = ctx.chat!.id;
+  const chatId = String(ctx.chat!.id);
 
   try {
     const persisted = await listPersistedSessions();
@@ -256,7 +256,7 @@ export async function handleSessionCallback(ctx: Context): Promise<boolean> {
         return true;
       }
 
-      await resumeSessionById(ctx.chat.id, selected.sessionId);
+      await resumeSessionById(String(ctx.chat.id), selected.sessionId);
       sessionPickers.delete(parsed.pickerId);
 
       const summary = selected.summary
@@ -288,7 +288,7 @@ export async function handleSessionCallback(ctx: Context): Promise<boolean> {
       }
 
       if (selected.sessionId === picker.activeSessionId) {
-        await destroySession(ctx.chat.id, { deletePersisted: true });
+        await destroySession(String(ctx.chat.id), { deletePersisted: true });
         picker.activeSessionId = undefined;
       } else {
         await deletePersistedSession(selected.sessionId);
@@ -316,7 +316,7 @@ export async function handleSessionCallback(ctx: Context): Promise<boolean> {
     }
 
     if (parsed.action === "deleteall") {
-      const chatId = ctx.chat.id;
+      const chatId = String(ctx.chat.id);
 
       for (const session of picker.sessions) {
         try {

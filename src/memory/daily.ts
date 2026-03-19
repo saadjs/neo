@@ -12,7 +12,7 @@ function todayDateString(): string {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-function dailyFileName(date?: string, chatId?: number): string {
+function dailyFileName(date?: string, chatId?: string): string {
   const d = date ?? todayDateString();
   return chatId ? `MEMORY-${chatId}-${d}.md` : `MEMORY-${d}.md`;
 }
@@ -21,15 +21,16 @@ function memoryFilePath(filename?: string): string {
   return join(config.paths.memoryDir, filename ?? dailyFileName());
 }
 
-export function isChannelChat(chatId: number): boolean {
-  return chatId < 0;
+// Telegram-specific: group/channel chat IDs are negative (start with "-")
+export function isChannelChat(chatId: string): boolean {
+  return chatId.startsWith("-");
 }
 
 export async function ensureMemoryDir() {
   await mkdir(config.paths.memoryDir, { recursive: true });
 }
 
-async function ensureDailyMemoryFile(chatId?: number): Promise<string> {
+async function ensureDailyMemoryFile(chatId?: string): Promise<string> {
   await ensureMemoryDir();
   const path = memoryFilePath(dailyFileName(undefined, chatId));
   if (!existsSync(path)) {
@@ -40,12 +41,12 @@ async function ensureDailyMemoryFile(chatId?: number): Promise<string> {
   return path;
 }
 
-async function appendRawDailyMemory(content: string, chatId?: number): Promise<void> {
+async function appendRawDailyMemory(content: string, chatId?: string): Promise<void> {
   const path = await ensureDailyMemoryFile(chatId);
   await appendFile(path, content, "utf-8");
 }
 
-export async function readDailyMemory(date?: string, chatId?: number): Promise<string> {
+export async function readDailyMemory(date?: string, chatId?: string): Promise<string> {
   const filename = dailyFileName(date, chatId);
   try {
     return await readFile(memoryFilePath(filename), "utf-8");
@@ -54,14 +55,14 @@ export async function readDailyMemory(date?: string, chatId?: number): Promise<s
   }
 }
 
-export async function appendDailyMemory(content: string, chatId?: number): Promise<void> {
+export async function appendDailyMemory(content: string, chatId?: string): Promise<void> {
   await appendRawDailyMemory(`- ${content}\n`, chatId);
   insertMemoryEntry("daily", content, todayDateString(), chatId);
 }
 
 export interface CompactionMemoryEntry {
   timestamp: string;
-  chatId: number;
+  chatId: string;
   sessionId: string;
   model?: string;
   preCompactionTokens?: number;
@@ -102,7 +103,7 @@ export async function appendCompactionMemory(entry: CompactionMemoryEntry): Prom
   insertMemoryEntry("daily", formatted, todayDateString(), channelChatId);
 }
 
-export async function listMemoryFiles(chatId?: number): Promise<string[]> {
+export async function listMemoryFiles(chatId?: string): Promise<string[]> {
   await ensureMemoryDir();
   try {
     const files = await readdir(config.paths.memoryDir);
@@ -121,7 +122,7 @@ export async function listMemoryFiles(chatId?: number): Promise<string[]> {
   }
 }
 
-export async function searchMemory(query: string, chatId?: number): Promise<string> {
+export async function searchMemory(query: string, chatId?: string): Promise<string> {
   const results = searchMemoryFts(query, 20, chatId);
   if (results.length === 0) return "No matches found.";
   return results

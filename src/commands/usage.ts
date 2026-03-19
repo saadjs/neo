@@ -75,7 +75,7 @@ export function buildUsageMessage(model: string, usage: CopilotUsageSnapshot): s
 }
 
 export async function handleUsage(ctx: Context) {
-  const model = getModelForChat(ctx.chat!.id);
+  const model = getModelForChat(String(ctx.chat!.id));
   const result = await fetchCopilotUsage(config.github.token);
 
   if (!result.ok) {

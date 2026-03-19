@@ -8,7 +8,7 @@ export type ChatModelContext = {
   reasoningEffort: ReasoningEffort | undefined;
 };
 
-export function getChatModelContext(chatId: number): ChatModelContext {
+export function getChatModelContext(chatId: string): ChatModelContext {
   const defaultModel = config.copilot.model;
   const currentModel = getModelForChat(chatId);
 

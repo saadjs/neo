@@ -19,7 +19,7 @@ function lineCount(text: string): number {
 }
 
 export async function handleContext(ctx: Context) {
-  const chatId = ctx.chat!.id;
+  const chatId = String(ctx.chat!.id);
   const isChannel = isChannelChat(chatId);
   const channelConfig = isChannel ? getChannelConfig(chatId) : null;
 

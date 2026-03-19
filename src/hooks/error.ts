@@ -2,7 +2,7 @@ import type { ErrorOccurredHandler } from "./types";
 import { getLogger } from "../logging/index";
 import { markSessionErrorNotified } from "./error-state";
 
-export function errorOccurred(chatId: number): ErrorOccurredHandler {
+export function errorOccurred(chatId: string): ErrorOccurredHandler {
   return async (input, invocation) => {
     const log = getLogger();
     log.warn(

@@ -6,7 +6,7 @@ import { errorOccurred } from "./error";
 import { sessionEnd } from "./session-lifecycle";
 import { getModelForChat } from "../agent";
 
-export function buildSessionHooks(chatId: number): SessionHooks {
+export function buildSessionHooks(chatId: string): SessionHooks {
   return {
     onSessionStart: sessionStart(chatId, () => getModelForChat(chatId)),
     onPreToolUse: preToolUse(chatId),

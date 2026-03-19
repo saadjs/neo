@@ -168,7 +168,7 @@ export function isModelCallback(data: string | undefined): boolean {
   return typeof data === "string" && data.startsWith("model:");
 }
 
-async function buildReasoningNote(chatId: number, newModelId: string): Promise<string> {
+async function buildReasoningNote(chatId: string, newModelId: string): Promise<string> {
   let info: Awaited<ReturnType<typeof getModelReasoningInfo>> = null;
   try {
     info = await getModelReasoningInfo(newModelId);
@@ -203,7 +203,8 @@ export async function handleModel(ctx: Context) {
 
   if (!model) {
     try {
-      const currentModel = getModelForChat(ctx.chat!.id);
+      const chatId = String(ctx.chat!.id);
+      const currentModel = getModelForChat(chatId);
       const catalog = await loadModelCatalog();
       const pickerId = registerModelPicker(catalog, currentModel);
       const message = getModelPickerMessage(pickerId, 0);
@@ -221,9 +222,10 @@ export async function handleModel(ctx: Context) {
   }
 
   try {
-    await switchModel(ctx.chat!.id, model);
+    const chatId = String(ctx.chat!.id);
+    await switchModel(chatId, model);
     let reply = `Session model switched to \`${model}\` for this chat only.`;
-    reply += await buildReasoningNote(ctx.chat!.id, model);
+    reply += await buildReasoningNote(chatId, model);
     await ctx.reply(reply, { parse_mode: "Markdown" });
   } catch (err) {
     await ctx.reply(`Failed to switch model: ${err}`);
@@ -259,12 +261,13 @@ export async function handleModelCallback(ctx: Context): Promise<boolean> {
         return true;
       }
 
-      await switchModel(ctx.chat.id, selected.id);
+      const chatId = String(ctx.chat.id);
+      await switchModel(chatId, selected.id);
       picker.currentModel = selected.id;
       modelPickers.delete(parsed.pickerId);
 
       let confirmText = `✅ Session model switched to ${selected.id} for this chat.`;
-      confirmText += await buildReasoningNote(ctx.chat.id, selected.id);
+      confirmText += await buildReasoningNote(chatId, selected.id);
 
       await ctx.api.editMessageText(ctx.chat.id, message.message_id, confirmText);
       await ctx.answerCallbackQuery({ text: `Switched to ${selected.id}` });

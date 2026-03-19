@@ -11,6 +11,6 @@ export async function handleRestart(ctx: Context) {
     actor: "telegram-owner",
     source: "command",
     reason: "/restart command",
-    chatId: ctx.chat!.id,
+    chatId: String(ctx.chat!.id),
   });
 }

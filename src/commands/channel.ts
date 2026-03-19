@@ -4,9 +4,9 @@ import { getChannelConfig, upsertChannelConfig } from "../memory/db";
 import { refreshSessionContext } from "../agent";
 
 export async function handleChannel(ctx: Context) {
-  const chatId = ctx.chat!.id;
+  const chatId = String(ctx.chat!.id);
 
-  if (chatId === config.telegram.ownerId) {
+  if (chatId === String(config.telegram.ownerId)) {
     await ctx.reply("Channel config is for group chats. This is a DM.");
     return;
   }
@@ -55,7 +55,7 @@ export async function handleChannel(ctx: Context) {
   }
 }
 
-async function showChannelConfig(ctx: Context, chatId: number) {
+async function showChannelConfig(ctx: Context, chatId: string) {
   const cfg = getChannelConfig(chatId);
   if (!cfg) {
     await ctx.reply(

@@ -28,7 +28,7 @@ import { loadRecentSummaries } from "./decay";
 import { getChannelConfig } from "./db";
 import { USER_TIMEZONE } from "../constants";
 
-export async function buildSystemContext(chatId?: number): Promise<string> {
+export async function buildSystemContext(chatId?: string): Promise<string> {
   const isChannel = chatId != null && isChannelChat(chatId);
   const channelConfig = isChannel ? getChannelConfig(chatId) : null;
 

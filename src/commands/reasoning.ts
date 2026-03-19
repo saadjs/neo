@@ -96,7 +96,7 @@ export function isReasoningCallback(data: string | undefined): boolean {
 }
 
 export async function handleReasoning(ctx: Context) {
-  const chatId = ctx.chat!.id;
+  const chatId = String(ctx.chat!.id);
   const text = ctx.message?.text ?? "";
   const arg = getCommandArgs(text, "reasoning");
 
@@ -179,7 +179,7 @@ export async function handleReasoningCallback(ctx: Context): Promise<boolean> {
       }
 
       const level = parsed.level as ReasoningEffort;
-      await setReasoningEffort(ctx.chat.id, level);
+      await setReasoningEffort(String(ctx.chat.id), level);
       reasoningPickers.delete(parsed.pickerId);
 
       await ctx.api.editMessageText(
@@ -192,7 +192,7 @@ export async function handleReasoningCallback(ctx: Context): Promise<boolean> {
     }
 
     if (parsed.action === "reset") {
-      await clearReasoningEffort(ctx.chat.id);
+      await clearReasoningEffort(String(ctx.chat.id));
       reasoningPickers.delete(parsed.pickerId);
 
       await ctx.api.editMessageText(

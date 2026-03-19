@@ -1,4 +1,3 @@
-import type { Api } from "grammy";
 import type { SessionEvent } from "@github/copilot-sdk";
 import { approveAll } from "@github/copilot-sdk";
 import { getClient } from "../agent";
@@ -10,6 +9,8 @@ import { preToolUse } from "../hooks/pre-tool";
 import { splitMessage } from "../telegram/messages";
 import { createJobRun, completeJobRun, failJobRun } from "./jobs-db";
 import type { Job } from "./jobs-db";
+import type { NotificationTarget } from "../transport/types";
+import { notifyText } from "../transport/notifier";
 
 let runningJob: {
   jobId: number;
@@ -37,7 +38,7 @@ export async function cancelRunningJob(): Promise<"cancelled" | "no-job-running"
   return "cancelled";
 }
 
-export async function executeJob(job: Job, api: Api): Promise<void> {
+export async function executeJob(job: Job, target: NotificationTarget): Promise<void> {
   const log = getLogger();
 
   if (runningJob) {
@@ -45,8 +46,6 @@ export async function executeJob(job: Job, api: Api): Promise<void> {
     return;
   }
 
-  // Mark as running before session creation so isJobRunning() is true
-  // when hooks fire during createSession. Session ref is set after.
   const noop = async () => {};
   runningJob = {
     jobId: job.id,
@@ -83,7 +82,7 @@ export async function executeJob(job: Job, api: Api): Promise<void> {
       tools: allTools,
       onPermissionRequest: approveAll,
       hooks: {
-        onPreToolUse: preToolUse(config.telegram.ownerId),
+        onPreToolUse: preToolUse(String(config.telegram.ownerId)),
       },
       workingDirectory: config.paths.root,
     });
@@ -113,7 +112,7 @@ export async function executeJob(job: Job, api: Api): Promise<void> {
       const chunks = splitMessage(`${header}\n\n${output}`);
       for (const chunk of chunks) {
         try {
-          await api.sendMessage(config.telegram.ownerId, chunk);
+          await notifyText(target, chunk);
         } catch (err) {
           log.error({ err, jobId: job.id }, "Failed to send job output");
         }
@@ -123,7 +122,6 @@ export async function executeJob(job: Job, api: Api): Promise<void> {
     } catch (err) {
       unsubscribe();
 
-      // Preserve partial results only on explicit cancellation
       const durationMs = Date.now() - startTime;
       if (runningJob?.cancelled && responseBuffer) {
         completeJobRun(runId, `(cancelled — partial output)\n\n${responseBuffer}`, durationMs);
@@ -131,7 +129,7 @@ export async function executeJob(job: Job, api: Api): Promise<void> {
         const chunks = splitMessage(`${header}\n\n${responseBuffer}`);
         for (const chunk of chunks) {
           try {
-            await api.sendMessage(config.telegram.ownerId, chunk);
+            await notifyText(target, chunk);
           } catch (sendErr) {
             log.error({ err: sendErr, jobId: job.id }, "Failed to send job output");
           }
@@ -148,7 +146,7 @@ export async function executeJob(job: Job, api: Api): Promise<void> {
     log.error({ err, jobId: job.id, jobName: job.name }, "Job execution failed");
 
     try {
-      await api.sendMessage(config.telegram.ownerId, `⚠️ Job "${job.name}" failed: ${errorMsg}`);
+      await notifyText(target, `⚠️ Job "${job.name}" failed: ${errorMsg}`);
     } catch (sendErr) {
       log.error({ err: sendErr, jobId: job.id }, "Failed to send job error notification");
     }

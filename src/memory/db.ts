@@ -31,7 +31,7 @@ export const MEMORY_SCHEMA = `
   END;
 
   CREATE TABLE IF NOT EXISTS channel_config (
-    chat_id INTEGER PRIMARY KEY,
+    chat_id TEXT PRIMARY KEY,
     label TEXT,
     soul_overlay TEXT,
     preferences TEXT,
@@ -79,7 +79,7 @@ export function insertMemoryEntry(
   source: string,
   content: string,
   date?: string,
-  chatId?: number,
+  chatId?: string,
 ): void {
   initMemoryTable();
   try {
@@ -94,7 +94,7 @@ export function insertMemoryEntry(
 export function replaceMemorySource(
   source: string,
   entries: { content: string; date?: string }[],
-  chatId?: number,
+  chatId?: string,
 ): void {
   initMemoryTable();
   const memDb = getMemoryDb();
@@ -130,7 +130,7 @@ export interface MemorySearchResult {
   snippet: string;
 }
 
-export function searchMemoryFts(query: string, limit = 20, chatId?: number): MemorySearchResult[] {
+export function searchMemoryFts(query: string, limit = 20, chatId?: string): MemorySearchResult[] {
   initMemoryTable();
   const sanitized = `"${query.replace(/"/g, '""')}"`;
   try {
@@ -226,7 +226,7 @@ async function backfillFromFiles(memDb: DatabaseSync): Promise<void> {
         // Channel-scoped: MEMORY-{chatId}-YYYY-MM-DD.md
         const channelMatch = file.match(/^MEMORY-(-?\d+)-(\d{4}-\d{2}-\d{2})\.md$/);
         if (channelMatch) {
-          const chatId = Number(channelMatch[1]);
+          const chatId = channelMatch[1];
           const date = channelMatch[2];
           const content = await readFile(join(config.paths.memoryDir, file), "utf-8");
           parseDailyMemoryContent(content, date, insert, chatId);
@@ -252,7 +252,7 @@ function parseDailyMemoryContent(
   content: string,
   date: string | null,
   insert: ReturnType<DatabaseSync["prepare"]>,
-  chatId?: number,
+  chatId?: string,
 ): void {
   const lines = content.split("\n");
   let i = 0;
@@ -280,14 +280,14 @@ function parseDailyMemoryContent(
 }
 
 export interface ChannelConfig {
-  chatId: number;
+  chatId: string;
   label: string | null;
   soulOverlay: string | null;
   preferences: string | null;
   topics: string | null;
 }
 
-export function getChannelConfig(chatId: number): ChannelConfig | null {
+export function getChannelConfig(chatId: string): ChannelConfig | null {
   initMemoryTable();
   const row = getMemoryDb()
     .prepare(
@@ -295,7 +295,7 @@ export function getChannelConfig(chatId: number): ChannelConfig | null {
     )
     .get(chatId) as
     | {
-        chat_id: number;
+        chat_id: string;
         label: string | null;
         soul_overlay: string | null;
         preferences: string | null;
@@ -304,7 +304,7 @@ export function getChannelConfig(chatId: number): ChannelConfig | null {
     | undefined;
   if (!row) return null;
   return {
-    chatId: row.chat_id,
+    chatId: String(row.chat_id),
     label: row.label,
     soulOverlay: row.soul_overlay,
     preferences: row.preferences,
@@ -313,7 +313,7 @@ export function getChannelConfig(chatId: number): ChannelConfig | null {
 }
 
 export function upsertChannelConfig(
-  chatId: number,
+  chatId: string,
   updates: Partial<Omit<ChannelConfig, "chatId">>,
 ): void {
   initMemoryTable();
@@ -322,7 +322,7 @@ export function upsertChannelConfig(
 
   if (existing) {
     const fields: string[] = ["updated_at = datetime('now')"];
-    const values: (string | number | null)[] = [];
+    const values: (string | null)[] = [];
     if ("label" in updates) {
       fields.push("label = ?");
       values.push(updates.label ?? null);
@@ -365,14 +365,14 @@ export function listChannelConfigs(): ChannelConfig[] {
       "SELECT chat_id, label, soul_overlay, preferences, topics FROM channel_config ORDER BY chat_id",
     )
     .all() as {
-    chat_id: number;
+    chat_id: string;
     label: string | null;
     soul_overlay: string | null;
     preferences: string | null;
     topics: string | null;
   }[];
   return rows.map((row) => ({
-    chatId: row.chat_id,
+    chatId: String(row.chat_id),
     label: row.label,
     soulOverlay: row.soul_overlay,
     preferences: row.preferences,

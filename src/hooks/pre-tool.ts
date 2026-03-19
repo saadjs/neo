@@ -2,7 +2,7 @@ import type { PreToolUseHandler } from "./types";
 import { getLogger } from "../logging/index";
 import { isJobRunning } from "../scheduler/job-runner";
 
-export function preToolUse(chatId: number): PreToolUseHandler {
+export function preToolUse(chatId: string): PreToolUseHandler {
   return (input) => {
     const log = getLogger();
     log.debug({ chatId, tool: input.toolName, args: input.toolArgs }, "hook:pre-tool-use");

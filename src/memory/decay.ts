@@ -37,7 +37,7 @@ async function getCompletedWeekMemoryFiles(): Promise<StoredDailyMemoryFile[]> {
     // Channel files: MEMORY-{chatId}-YYYY-MM-DD.md (chatId can be negative for groups)
     const channelMatch = f.match(/^MEMORY-(-?\d+)-(\d{4}-\d{2}-\d{2})\.md$/);
     if (channelMatch) {
-      const chatId = Number(channelMatch[1]);
+      const chatId = channelMatch[1];
       const date = channelMatch[2];
       if (date > lastCompletedWeekEnd) continue;
 
@@ -87,7 +87,7 @@ function groupKey(file: StoredDailyMemoryFile): string {
   return file.chatId != null ? String(file.chatId) : "global";
 }
 
-function summaryFilename(week: string, chatId?: number): string {
+function summaryFilename(week: string, chatId?: string): string {
   return chatId != null ? `MEMORY-SUMMARY-ch${chatId}-${week}.md` : `MEMORY-SUMMARY-${week}.md`;
 }
 
@@ -112,7 +112,7 @@ export async function runMemoryDecay(): Promise<number> {
   let decayedWeeks = 0;
 
   for (const [scope, scopeFiles] of byScope) {
-    const chatId = scope === "global" ? undefined : Number(scope);
+    const chatId = scope === "global" ? undefined : scope;
     const strippedFiles = scopeFiles.map(({ filename, date, content, chatId: cid }) => ({
       filename,
       date,
@@ -168,7 +168,7 @@ export async function runMemoryDecay(): Promise<number> {
 /**
  * Load recent weekly summaries for system context.
  */
-export async function loadRecentSummaries(maxWeeks = 4, chatId?: number): Promise<string> {
+export async function loadRecentSummaries(maxWeeks = 4, chatId?: string): Promise<string> {
   const files = await readdir(config.paths.memoryDir);
 
   let pattern: RegExp;

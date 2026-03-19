@@ -12,7 +12,7 @@ import { truncateTelegramMessage } from "../telegram/messages";
 export async function handleMemory(ctx: Context) {
   const text = ctx.message?.text ?? "";
   const arg = text.replace(/^\/memory\s*/, "").trim();
-  const chatId = ctx.chat?.id;
+  const chatId = ctx.chat?.id != null ? String(ctx.chat.id) : undefined;
   const channelId = chatId != null && isChannelChat(chatId) ? chatId : undefined;
 
   if (!arg) {
