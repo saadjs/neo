@@ -21,10 +21,9 @@ function memoryFilePath(filename?: string): string {
   return join(config.paths.memoryDir, filename ?? dailyFileName());
 }
 
-// Telegram-specific: group/channel chat IDs are negative (start with "-")
-export function isChannelChat(chatId: string): boolean {
-  return chatId.startsWith("-");
-}
+import { isChannelChat } from "../transport/telegram-utils";
+
+export { isChannelChat };
 
 export async function ensureMemoryDir() {
   await mkdir(config.paths.memoryDir, { recursive: true });
