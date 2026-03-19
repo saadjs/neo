@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   createTelegramConversationRef,
+  createTelegramConversationRefFromId,
   getTelegramChatId,
   getTelegramConversationKind,
+  isChannelChat,
 } from "./telegram-utils";
 
 describe("getTelegramConversationKind", () => {
@@ -63,5 +65,34 @@ describe("getTelegramChatId", () => {
     expect(() =>
       getTelegramChatId({ platform: "discord", id: "abc-channel", kind: "channel" }),
     ).toThrow("not a Telegram chat id");
+  });
+});
+
+describe("isChannelChat", () => {
+  it("returns true for negative (group/channel) chat IDs", () => {
+    expect(isChannelChat("-100123")).toBe(true);
+  });
+
+  it("returns false for positive (DM) chat IDs", () => {
+    expect(isChannelChat("42")).toBe(false);
+    expect(isChannelChat("1")).toBe(false);
+  });
+});
+
+describe("createTelegramConversationRefFromId", () => {
+  it("creates a DM ref from a string chat ID without unsafe Number conversion", () => {
+    const ref = createTelegramConversationRefFromId("123");
+    expect(ref).toEqual({
+      platform: "telegram",
+      id: "123",
+      kind: "dm",
+      metadata: { sessionScopeId: "123" },
+    });
+  });
+
+  it("preserves the original string ID for negative chat IDs", () => {
+    const ref = createTelegramConversationRefFromId("-100999");
+    expect(ref.id).toBe("-100999");
+    expect(ref.metadata?.sessionScopeId).toBe("-100999");
   });
 });

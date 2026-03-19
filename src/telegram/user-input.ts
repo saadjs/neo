@@ -15,7 +15,10 @@ import type {
   UserInputPromptPayload,
   UserInputResponse,
 } from "../transport/types";
-import { createTelegramConversationRef } from "../transport/telegram-utils";
+import {
+  createTelegramConversationRef,
+  createTelegramConversationRefFromId,
+} from "../transport/telegram-utils";
 
 interface TelegramUserInputRequest {
   question: string;
@@ -94,7 +97,7 @@ export async function requestUserInput(
   request: TelegramUserInputRequest,
 ): Promise<UserInputResponse> {
   return requestUserInputGeneric({
-    conversation: createTelegramConversationRef({ id: Number(chatId) }),
+    conversation: createTelegramConversationRefFromId(chatId),
     sessionId,
     transport: getTelegramUserInputTransport(),
     request,
@@ -102,27 +105,21 @@ export async function requestUserInput(
 }
 
 export function getPendingUserInput(chatId: string) {
-  return getPendingUserInputGeneric(createTelegramConversationRef({ id: Number(chatId) }));
+  return getPendingUserInputGeneric(createTelegramConversationRefFromId(chatId));
 }
 
 export function watchPendingUserInput(
   chatId: string,
   handler: Parameters<typeof watchPendingUserInputGeneric>[1],
 ) {
-  return watchPendingUserInputGeneric(
-    createTelegramConversationRef({ id: Number(chatId) }),
-    handler,
-  );
+  return watchPendingUserInputGeneric(createTelegramConversationRefFromId(chatId), handler);
 }
 
 export function resolvePendingUserInput(
   chatId: string,
   answer: string,
 ): UserInputResponse | undefined {
-  return resolvePendingUserInputGeneric(
-    createTelegramConversationRef({ id: Number(chatId) }),
-    answer,
-  );
+  return resolvePendingUserInputGeneric(createTelegramConversationRefFromId(chatId), answer);
 }
 
 export async function cancelPendingUserInput(
@@ -130,11 +127,7 @@ export async function cancelPendingUserInput(
   reason: string,
   opts?: { notifyUser?: boolean },
 ): Promise<boolean> {
-  return cancelPendingUserInputGeneric(
-    createTelegramConversationRef({ id: Number(chatId) }),
-    reason,
-    opts,
-  );
+  return cancelPendingUserInputGeneric(createTelegramConversationRefFromId(chatId), reason, opts);
 }
 
 export async function cancelPendingUserInputForSession(
@@ -144,7 +137,7 @@ export async function cancelPendingUserInputForSession(
   opts?: { notifyUser?: boolean },
 ): Promise<boolean> {
   return cancelPendingUserInputForSessionGeneric(
-    createTelegramConversationRef({ id: Number(chatId) }),
+    createTelegramConversationRefFromId(chatId),
     sessionId,
     reason,
     opts,

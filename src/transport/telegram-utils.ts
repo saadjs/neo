@@ -25,6 +25,20 @@ export function createTelegramConversationRef(chat: {
   };
 }
 
+// Telegram-specific: group/channel chat IDs are negative (start with "-")
+export function isChannelChat(chatId: string): boolean {
+  return chatId.startsWith("-");
+}
+
+export function createTelegramConversationRefFromId(chatId: string): ConversationRef {
+  return {
+    platform: "telegram",
+    id: chatId,
+    kind: "dm",
+    metadata: { sessionScopeId: chatId },
+  };
+}
+
 export function getTelegramChatId(conversation: ConversationRef): number {
   const chatId = conversation.metadata?.telegramChatId;
   if (typeof chatId === "number") return chatId;
