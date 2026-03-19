@@ -33,7 +33,7 @@ describe("handleWhichModel", () => {
       typeof handleWhichModel
     >[0]);
 
-    expect(getChatModelContextMock).toHaveBeenCalledWith(42);
+    expect(getChatModelContextMock).toHaveBeenCalledWith("42");
     expect(reply).toHaveBeenCalledWith(
       "Default model: `gpt-5.4`\nCurrent chat model: `claude-haiku-4.5` (override active)",
       { parse_mode: "Markdown" },

@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const { abortSessionMock } = vi.hoisted(() => ({
+const { abortSessionMock, cancelPendingUserInputMock } = vi.hoisted(() => ({
   abortSessionMock: vi.fn(),
+  cancelPendingUserInputMock: vi.fn(async () => false),
 }));
 
 vi.mock("../agent.js", () => ({
@@ -12,10 +13,15 @@ vi.mock("../logging/index.js", () => ({
   getLogger: () => ({ info: vi.fn() }),
 }));
 
+vi.mock("../telegram/user-input.js", () => ({
+  cancelPendingUserInput: cancelPendingUserInputMock,
+}));
+
 import { handleCancel } from "./cancel";
 
 afterEach(() => {
   abortSessionMock.mockReset();
+  cancelPendingUserInputMock.mockReset();
 });
 
 function makeCtx(chatId: number) {
@@ -29,7 +35,7 @@ describe("handleCancel", () => {
 
     await handleCancel(ctx);
 
-    expect(abortSessionMock).toHaveBeenCalledWith(42);
+    expect(abortSessionMock).toHaveBeenCalledWith("42");
     expect(ctx.reply).toHaveBeenCalledWith("Cancelled.");
   });
 
@@ -49,5 +55,23 @@ describe("handleCancel", () => {
     await handleCancel(ctx);
 
     expect(ctx.reply).toHaveBeenCalledWith("Nothing is running right now.");
+  });
+
+  it("cancels pending user input when aborting an active turn", async () => {
+    abortSessionMock.mockResolvedValue("aborted");
+    const ctx = makeCtx(42);
+
+    await handleCancel(ctx);
+
+    expect(cancelPendingUserInputMock).toHaveBeenCalledWith("42", "Cancelled via /cancel.");
+  });
+
+  it("does not cancel pending user input when no turn is active", async () => {
+    abortSessionMock.mockResolvedValue("no-active-turn");
+    const ctx = makeCtx(42);
+
+    await handleCancel(ctx);
+
+    expect(cancelPendingUserInputMock).not.toHaveBeenCalled();
   });
 });

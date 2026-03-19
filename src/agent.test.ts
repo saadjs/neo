@@ -85,10 +85,17 @@ vi.mock("./logging/conversations.js", () => ({
   getActiveSessionId: getActiveSessionIdMock,
 }));
 
+vi.mock("./hooks/index.js", () => ({
+  buildSessionHooks: vi.fn(() => ({ onSessionStart: vi.fn() })),
+}));
+
+vi.mock("./transport/user-input.js", () => ({
+  cancelAllPendingUserInputs: cancelAllPendingUserInputsMock,
+}));
+
 vi.mock("./telegram/user-input.js", () => ({
   requestUserInput: requestUserInputMock,
   cancelPendingUserInput: cancelPendingUserInputMock,
-  cancelAllPendingUserInputs: cancelAllPendingUserInputsMock,
 }));
 
 afterEach(async () => {
@@ -126,7 +133,7 @@ describe("refreshSessionContext", () => {
     const { createNewSession, startAgent } = await import("./agent");
 
     await startAgent();
-    await createNewSession({ chatId: -100123 });
+    await createNewSession({ chatId: "-100123" });
 
     const configArg = createSessionMock.mock.calls[0]?.[0];
     expect(configArg.onUserInputRequest).toBeTypeOf("function");
@@ -134,7 +141,7 @@ describe("refreshSessionContext", () => {
     await expect(
       configArg.onUserInputRequest({ question: "Proceed?" }, { sessionId: "session-ask" }),
     ).resolves.toEqual({ answer: "yes", wasFreeform: true });
-    expect(requestUserInputMock).toHaveBeenCalledWith(-100123, "session-ask", {
+    expect(requestUserInputMock).toHaveBeenCalledWith("-100123", "session-ask", {
       question: "Proceed?",
     });
   });
@@ -153,15 +160,15 @@ describe("refreshSessionContext", () => {
       await import("./agent");
 
     await startAgent();
-    await createNewSession({ chatId: -100123 });
-    expect(getSessionForChat(-100123)).toBe(session);
+    await createNewSession({ chatId: "-100123" });
+    expect(getSessionForChat("-100123")).toBe(session);
 
-    await refreshSessionContext(-100123);
+    await refreshSessionContext("-100123");
 
-    expect(clearActiveSessionMock).toHaveBeenCalledWith(-100123);
+    expect(clearActiveSessionMock).toHaveBeenCalledWith("-100123");
     expect(session.disconnect).toHaveBeenCalledTimes(1);
     expect(deleteSessionMock).toHaveBeenCalledWith("session-1");
-    expect(getSessionForChat(-100123)).toBeUndefined();
+    expect(getSessionForChat("-100123")).toBeUndefined();
   });
 
   it("defers destroying an in-use session until the turn ends", async () => {
@@ -191,24 +198,24 @@ describe("refreshSessionContext", () => {
     } = await import("./agent");
 
     await startAgent();
-    await createNewSession({ chatId: -100123 });
-    beginSessionTurn(-100123);
+    await createNewSession({ chatId: "-100123" });
+    beginSessionTurn("-100123");
 
-    await refreshSessionContext(-100123);
+    await refreshSessionContext("-100123");
 
-    expect(clearActiveSessionMock).toHaveBeenCalledWith(-100123);
+    expect(clearActiveSessionMock).toHaveBeenCalledWith("-100123");
     expect(staleSession.disconnect).toHaveBeenCalledTimes(0);
-    expect(getSessionForChat(-100123)).toBeUndefined();
-    expect(getChatIdForSession("session-2")).toBe(-100123);
-    await expect(getOrCreateSession({ chatId: -100123 })).resolves.toBe(freshSession);
-    expect(getSessionForChat(-100123)).toBe(freshSession);
+    expect(getSessionForChat("-100123")).toBeUndefined();
+    expect(getChatIdForSession("session-2")).toBe("-100123");
+    await expect(getOrCreateSession({ chatId: "-100123" })).resolves.toBe(freshSession);
+    expect(getSessionForChat("-100123")).toBe(freshSession);
 
-    await endSessionTurn(-100123);
+    await endSessionTurn("-100123");
 
     expect(staleSession.disconnect).toHaveBeenCalledTimes(1);
     expect(deleteSessionMock).toHaveBeenCalledWith("session-2");
     expect(freshSession.disconnect).not.toHaveBeenCalled();
-    expect(getSessionForChat(-100123)).toBe(freshSession);
+    expect(getSessionForChat("-100123")).toBe(freshSession);
   });
 
   it("destroys every stale session after overlapping refreshed turns finish", async () => {
@@ -245,22 +252,22 @@ describe("refreshSessionContext", () => {
     } = await import("./agent");
 
     await startAgent();
-    await createNewSession({ chatId: -100123 });
+    await createNewSession({ chatId: "-100123" });
 
-    beginSessionTurn(-100123);
-    await refreshSessionContext(-100123);
-    await expect(getOrCreateSession({ chatId: -100123 })).resolves.toBe(secondSession);
+    beginSessionTurn("-100123");
+    await refreshSessionContext("-100123");
+    await expect(getOrCreateSession({ chatId: "-100123" })).resolves.toBe(secondSession);
 
-    beginSessionTurn(-100123);
-    await refreshSessionContext(-100123);
-    await expect(getOrCreateSession({ chatId: -100123 })).resolves.toBe(thirdSession);
-    expect(getSessionForChat(-100123)).toBe(thirdSession);
+    beginSessionTurn("-100123");
+    await refreshSessionContext("-100123");
+    await expect(getOrCreateSession({ chatId: "-100123" })).resolves.toBe(thirdSession);
+    expect(getSessionForChat("-100123")).toBe(thirdSession);
 
-    await endSessionTurn(-100123);
+    await endSessionTurn("-100123");
     expect(firstSession.disconnect).not.toHaveBeenCalled();
     expect(secondSession.disconnect).not.toHaveBeenCalled();
 
-    await endSessionTurn(-100123);
+    await endSessionTurn("-100123");
     expect(firstSession.disconnect).toHaveBeenCalledTimes(1);
     expect(secondSession.disconnect).toHaveBeenCalledTimes(1);
     expect(deleteSessionMock).toHaveBeenCalledWith("session-1");
@@ -290,12 +297,12 @@ describe("refreshSessionContext", () => {
       await import("./agent");
 
     await startAgent();
-    await createNewSession({ chatId: -100123 });
+    await createNewSession({ chatId: "-100123" });
 
-    await refreshSessionContext(-100123);
-    const nextSession = await getOrCreateSession({ chatId: -100123 });
+    await refreshSessionContext("-100123");
+    const nextSession = await getOrCreateSession({ chatId: "-100123" });
 
-    expect(clearActiveSessionMock).toHaveBeenCalledWith(-100123);
+    expect(clearActiveSessionMock).toHaveBeenCalledWith("-100123");
     expect(resumeSessionMock).not.toHaveBeenCalled();
     expect(nextSession).toBe(freshSession);
     expect(createSessionMock).toHaveBeenCalledTimes(2);
@@ -328,20 +335,20 @@ describe("refreshSessionContext", () => {
     } = await import("./agent");
 
     await startAgent();
-    await createNewSession({ chatId: -100123 });
+    await createNewSession({ chatId: "-100123" });
 
-    beginSessionTurn(-100123);
-    await refreshSessionContext(-100123);
+    beginSessionTurn("-100123");
+    await refreshSessionContext("-100123");
 
-    beginSessionTurn(-100123);
-    await expect(getOrCreateSession({ chatId: -100123 })).rejects.toThrow("create failed");
+    beginSessionTurn("-100123");
+    await expect(getOrCreateSession({ chatId: "-100123" })).rejects.toThrow("create failed");
 
     expect(staleSession.disconnect).not.toHaveBeenCalled();
 
-    await endSessionTurn(-100123);
+    await endSessionTurn("-100123");
     expect(staleSession.disconnect).not.toHaveBeenCalled();
 
-    await endSessionTurn(-100123);
+    await endSessionTurn("-100123");
     expect(staleSession.disconnect).toHaveBeenCalledTimes(1);
     expect(deleteSessionMock).toHaveBeenCalledWith("session-stale");
   });
@@ -362,13 +369,13 @@ describe("discardSession", () => {
       await import("./agent");
 
     await startAgent();
-    await createNewSession({ chatId: -100123 });
-    expect(getSessionForChat(-100123)).toBe(session);
+    await createNewSession({ chatId: "-100123" });
+    expect(getSessionForChat("-100123")).toBe(session);
 
-    discardSession(-100123, session as never);
+    discardSession("-100123", session as never);
 
-    expect(getSessionForChat(-100123)).toBeUndefined();
-    expect(clearActiveSessionMock).toHaveBeenCalledWith(-100123);
+    expect(getSessionForChat("-100123")).toBeUndefined();
+    expect(clearActiveSessionMock).toHaveBeenCalledWith("-100123");
   });
 
   it("removes a stale session from lookup without touching the active session", async () => {
@@ -398,18 +405,18 @@ describe("discardSession", () => {
     } = await import("./agent");
 
     await startAgent();
-    await createNewSession({ chatId: -100123 });
-    beginSessionTurn(-100123);
-    await refreshSessionContext(-100123);
+    await createNewSession({ chatId: "-100123" });
+    beginSessionTurn("-100123");
+    await refreshSessionContext("-100123");
 
-    expect(getChatIdForSession("session-stale")).toBe(-100123);
+    expect(getChatIdForSession("session-stale")).toBe("-100123");
 
-    await expect(getOrCreateSession({ chatId: -100123 })).resolves.toBe(freshSession);
+    await expect(getOrCreateSession({ chatId: "-100123" })).resolves.toBe(freshSession);
     clearActiveSessionMock.mockClear();
-    discardSession(-100123, staleSession as never);
+    discardSession("-100123", staleSession as never);
 
     expect(getChatIdForSession("session-stale")).toBeUndefined();
-    expect(getSessionForChat(-100123)).toBe(freshSession);
+    expect(getSessionForChat("-100123")).toBe(freshSession);
     expect(clearActiveSessionMock).not.toHaveBeenCalled();
   });
 
@@ -439,17 +446,17 @@ describe("discardSession", () => {
     } = await import("./agent");
 
     await startAgent();
-    await createNewSession({ chatId: -100123 });
-    beginSessionTurn(-100123);
-    await refreshSessionContext(-100123);
+    await createNewSession({ chatId: "-100123" });
+    beginSessionTurn("-100123");
+    await refreshSessionContext("-100123");
 
-    expect(hasTrackedSession(-100123, staleSession as never)).toBe(true);
+    expect(hasTrackedSession("-100123", staleSession as never)).toBe(true);
 
-    await expect(getOrCreateSession({ chatId: -100123 })).resolves.toBe(freshSession);
-    expect(hasTrackedSession(-100123, staleSession as never)).toBe(true);
+    await expect(getOrCreateSession({ chatId: "-100123" })).resolves.toBe(freshSession);
+    expect(hasTrackedSession("-100123", staleSession as never)).toBe(true);
 
-    discardSession(-100123, staleSession as never);
-    expect(hasTrackedSession(-100123, staleSession as never)).toBe(false);
+    discardSession("-100123", staleSession as never);
+    expect(hasTrackedSession("-100123", staleSession as never)).toBe(false);
   });
 });
 
@@ -468,14 +475,14 @@ describe("destroySession", () => {
       await import("./agent");
 
     await startAgent();
-    await createNewSession({ chatId: -100123 });
+    await createNewSession({ chatId: "-100123" });
 
-    await destroySession(-100123);
+    await destroySession("-100123");
 
     expect(session.disconnect).toHaveBeenCalledTimes(1);
     expect(deleteSessionMock).not.toHaveBeenCalled();
-    expect(clearActiveSessionMock).toHaveBeenCalledWith(-100123);
-    expect(getSessionForChat(-100123)).toBeUndefined();
+    expect(clearActiveSessionMock).toHaveBeenCalledWith("-100123");
+    expect(getSessionForChat("-100123")).toBeUndefined();
   });
 
   it("deletes persisted history when explicitly requested", async () => {
@@ -491,9 +498,9 @@ describe("destroySession", () => {
     const { createNewSession, destroySession, startAgent } = await import("./agent");
 
     await startAgent();
-    await createNewSession({ chatId: -100123 });
+    await createNewSession({ chatId: "-100123" });
 
-    await destroySession(-100123, { deletePersisted: true });
+    await destroySession("-100123", { deletePersisted: true });
 
     expect(session.disconnect).toHaveBeenCalledTimes(1);
     expect(deleteSessionMock).toHaveBeenCalledWith("session-active");

@@ -36,7 +36,7 @@ describe("handleMemory", () => {
     readDailyMemoryMock.mockReset();
     searchMemoryMock.mockReset();
 
-    isChannelChatMock.mockImplementation((chatId: number) => chatId < 0);
+    isChannelChatMock.mockImplementation((chatId: string) => Number(chatId) < 0);
     loadPreferencesMock.mockResolvedValue("# Preferences\n");
     listMemoryFilesMock.mockResolvedValue([]);
     readDailyMemoryMock.mockResolvedValue("");
@@ -52,8 +52,8 @@ describe("handleMemory", () => {
       reply,
     } as never);
 
-    expect(listMemoryFilesMock).toHaveBeenCalledWith(-100123);
-    expect(readDailyMemoryMock).toHaveBeenCalledWith(undefined, -100123);
+    expect(listMemoryFilesMock).toHaveBeenCalledWith("-100123");
+    expect(readDailyMemoryMock).toHaveBeenCalledWith(undefined, "-100123");
 
     readDailyMemoryMock.mockClear();
 
@@ -63,7 +63,7 @@ describe("handleMemory", () => {
       reply,
     } as never);
 
-    expect(readDailyMemoryMock).toHaveBeenCalledWith(expect.any(String), -100123);
+    expect(readDailyMemoryMock).toHaveBeenCalledWith(expect.any(String), "-100123");
 
     await handleMemory({
       chat: { id: -100123 },
@@ -71,7 +71,7 @@ describe("handleMemory", () => {
       reply,
     } as never);
 
-    expect(searchMemoryMock).toHaveBeenCalledWith("deploy", -100123);
+    expect(searchMemoryMock).toHaveBeenCalledWith("deploy", "-100123");
   });
 
   it("keeps private chats on the global memory namespace", async () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { shouldSilenceSessionError } from "./session-errors";
-import { PendingUserInputCancelledError } from "./user-input";
+import { PendingUserInputCancelledError } from "../transport/user-input";
 
 describe("shouldSilenceSessionError", () => {
   it("silences cancelled ask_user prompts", () => {

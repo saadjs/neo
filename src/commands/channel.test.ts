@@ -43,10 +43,10 @@ describe("handleChannel", () => {
       reply,
     } as never);
 
-    expect(upsertChannelConfigMock).toHaveBeenCalledWith(-100123, {
+    expect(upsertChannelConfigMock).toHaveBeenCalledWith("-100123", {
       topics: "deployments, incidents",
     });
-    expect(refreshSessionContextMock).toHaveBeenCalledWith(-100123);
+    expect(refreshSessionContextMock).toHaveBeenCalledWith("-100123");
     expect(reply).toHaveBeenCalledWith("Topics set to: deployments, incidents");
   });
 
@@ -59,15 +59,15 @@ describe("handleChannel", () => {
       reply,
     } as never);
 
-    expect(upsertChannelConfigMock).toHaveBeenCalledWith(-100123, { label: "Platform" });
-    expect(refreshSessionContextMock).toHaveBeenCalledWith(-100123);
+    expect(upsertChannelConfigMock).toHaveBeenCalledWith("-100123", { label: "Platform" });
+    expect(refreshSessionContextMock).toHaveBeenCalledWith("-100123");
     expect(reply).toHaveBeenCalledWith("Channel label set to: Platform");
   });
 
   it("shows channel config without Markdown parse mode for user-provided values", async () => {
     const reply = vi.fn();
     getChannelConfigMock.mockReturnValue({
-      chatId: -100123,
+      chatId: "-100123",
       label: "dev_ops[*]",
       topics: "deploy_[x], incidents",
       soulOverlay: "overlay with *markdown* chars",

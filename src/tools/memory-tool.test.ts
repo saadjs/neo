@@ -98,7 +98,7 @@ describe("memoryTool", () => {
         operation: "write",
         target: "human",
         content: "User likes sci-fi",
-        channel: -100123,
+        channel: "-100123",
       },
       invocation(),
     )) as ToolResult;
@@ -115,7 +115,7 @@ describe("memoryTool", () => {
         operation: "append",
         target: "human",
         content: "User likes sci-fi",
-        channel: -100123,
+        channel: "-100123",
       },
       invocation(),
     )) as ToolResult;

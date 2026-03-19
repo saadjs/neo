@@ -32,7 +32,7 @@ describe("handleHelp", () => {
     const reply = vi.fn();
     await handleHelp({ chat: { id: 7 }, reply } as unknown as Parameters<typeof handleHelp>[0]);
 
-    expect(getChatModelContextMock).toHaveBeenCalledWith(7);
+    expect(getChatModelContextMock).toHaveBeenCalledWith("7");
     expect(reply).toHaveBeenCalledWith(
       "Hey — default model is `gpt-5.4`, but this chat is using `claude-haiku-4.5`.\n\nHELP",
       { parse_mode: "Markdown" },

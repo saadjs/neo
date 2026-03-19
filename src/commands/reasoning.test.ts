@@ -104,7 +104,7 @@ describe("handleReasoning", () => {
       reply,
     } as never);
 
-    expect(setReasoningEffortMock).toHaveBeenCalledWith(42, "high");
+    expect(setReasoningEffortMock).toHaveBeenCalledWith("42", "high");
     expect(reply).toHaveBeenCalledWith(
       "Reasoning effort set to `high`. Session will refresh on next message.",
       { parse_mode: "Markdown" },
@@ -152,7 +152,7 @@ describe("handleReasoning", () => {
       reply,
     } as never);
 
-    expect(clearReasoningEffortMock).toHaveBeenCalledWith(42);
+    expect(clearReasoningEffortMock).toHaveBeenCalledWith("42");
     expect(reply).toHaveBeenCalledWith(
       "Reasoning effort reset to model default. Session will refresh on next message.",
     );
@@ -196,7 +196,7 @@ describe("handleReasoningCallback", () => {
     } as never);
 
     expect(handled).toBe(true);
-    expect(setReasoningEffortMock).toHaveBeenCalledWith(42, "high");
+    expect(setReasoningEffortMock).toHaveBeenCalledWith("42", "high");
     expect(editMessageText).toHaveBeenCalled();
     expect(answerCallbackQuery).toHaveBeenCalledWith({ text: "Set to high" });
   });
@@ -237,7 +237,7 @@ describe("handleReasoningCallback", () => {
     } as never);
 
     expect(handled).toBe(true);
-    expect(clearReasoningEffortMock).toHaveBeenCalledWith(42);
+    expect(clearReasoningEffortMock).toHaveBeenCalledWith("42");
     expect(answerCallbackQuery).toHaveBeenCalledWith({ text: "Reset to default" });
   });
 

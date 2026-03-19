@@ -118,7 +118,7 @@ describe("runMemoryDecay", () => {
     expect(globalSummaries).toContain("- Global stuff");
     expect(globalSummaries).not.toContain("- Channel stuff");
 
-    const channelSummaries = await loadRecentSummaries(4, -100123);
+    const channelSummaries = await loadRecentSummaries(4, "-100123");
     expect(channelSummaries).toContain("- Channel stuff");
     expect(channelSummaries).not.toContain("- Global stuff");
   });

@@ -32,9 +32,9 @@ vi.mock("../agent.js", () => ({
   getChatIdForSession,
 }));
 
-const sendPhotoFromPath = vi.fn();
-vi.mock("../telegram/runtime.js", () => ({
-  sendPhotoFromPath,
+const notifyPhoto = vi.fn();
+vi.mock("../transport/notifier.js", () => ({
+  notifyPhoto,
 }));
 
 vi.mock("../config.js", () => ({
@@ -67,7 +67,7 @@ describe("browserTool", () => {
     listBrowserSessions.mockReturnValue([]);
     resolveBrowserCredential.mockReset();
     getChatIdForSession.mockReset();
-    sendPhotoFromPath.mockReset();
+    notifyPhoto.mockReset();
   });
 
   it("starts a session and redacts credential references in audit logs", async () => {
@@ -122,8 +122,8 @@ describe("browserTool", () => {
       invocation(),
     );
 
-    expect(sendPhotoFromPath).toHaveBeenCalledWith(
-      42,
+    expect(notifyPhoto).toHaveBeenCalledWith(
+      { conversation: expect.objectContaining({ id: "42", platform: "telegram" }) },
       expect.stringContaining("/tmp/neo-browser-screenshots/main-"),
       "Browser screenshot: https://example.com/dashboard",
     );

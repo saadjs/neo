@@ -129,7 +129,7 @@ describe("restartService", () => {
         actor: "test",
         source: "command",
         reason: "test restart",
-        chatId: 123,
+        chatId: "123",
       }),
     ).resolves.toEqual({
       message: "Restart requested for neo; exiting for supervisor restart.",
@@ -144,10 +144,10 @@ describe("restartService", () => {
 
     const marker = JSON.parse(readFileSync(join(dataDir, ".restart-marker"), "utf-8")) as {
       reason: string;
-      chatId: number;
+      chatId: string;
     };
     expect(marker.reason).toBe("test restart");
-    expect(marker.chatId).toBe(123);
+    expect(marker.chatId).toBe("123");
 
     const history = readFileSync(join(dataDir, "restart-history.jsonl"), "utf-8")
       .trim()

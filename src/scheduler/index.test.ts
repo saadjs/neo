@@ -35,7 +35,11 @@ vi.mock("../memory/index.js", () => ({
   runMemoryDecay: async () => 0,
 }));
 
-import { shouldRunWeeklyMemoryDecay, shouldStartWeeklyMemoryDecay } from "./index";
+import {
+  getOwnerNotificationTarget,
+  shouldRunWeeklyMemoryDecay,
+  shouldStartWeeklyMemoryDecay,
+} from "./index";
 
 describe("shouldRunWeeklyMemoryDecay", () => {
   it("uses UTC for the weekly decay window", () => {
@@ -52,5 +56,17 @@ describe("shouldStartWeeklyMemoryDecay", () => {
     expect(shouldStartWeeklyMemoryDecay(new Date("2026-03-15T03:00:00.000Z"))).toBe(true);
     expect(shouldStartWeeklyMemoryDecay(new Date("2026-03-15T03:00:30.000Z"))).toBe(false);
     expect(shouldStartWeeklyMemoryDecay(new Date("2026-03-22T03:00:00.000Z"))).toBe(true);
+  });
+});
+
+describe("getOwnerNotificationTarget", () => {
+  it("builds a transport-neutral owner dm target", () => {
+    expect(getOwnerNotificationTarget()).toEqual({
+      conversation: expect.objectContaining({
+        platform: "telegram",
+        id: "123",
+        kind: "dm",
+      }),
+    });
   });
 });

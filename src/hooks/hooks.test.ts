@@ -54,7 +54,7 @@ import { readDailyMemory, isChannelChat } from "../memory/daily";
 import { getRuntimeContextSection } from "../runtime/state";
 import { formatAnomaliesForContext } from "../logging/anomalies";
 
-const CHAT_ID = -100123;
+const CHAT_ID = "-100123";
 const INVOCATION = { sessionId: "test-session" };
 
 function baseInput(overrides: Record<string, unknown> = {}): any {

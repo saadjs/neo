@@ -50,7 +50,7 @@ describe("handleModel", () => {
       reply,
     } as never);
 
-    expect(switchModelMock).toHaveBeenCalledWith(42, "gpt-5");
+    expect(switchModelMock).toHaveBeenCalledWith("42", "gpt-5");
     const text = reply.mock.calls[0][0] as string;
     expect(text).toContain("Session model switched to `gpt-5` for this chat only.");
     expect(text).toContain("Reasoning effort: medium (default). Use /reasoning to change.");
@@ -68,7 +68,7 @@ describe("handleModel", () => {
       reply,
     } as never);
 
-    expect(switchModelMock).toHaveBeenCalledWith(42, "gpt-5");
+    expect(switchModelMock).toHaveBeenCalledWith("42", "gpt-5");
     const text = reply.mock.calls[0][0] as string;
     expect(text).toContain("Session model switched to `gpt-5` for this chat only.");
     expect(text).toContain("not supported by this model");
@@ -176,7 +176,7 @@ describe("handleModelCallback", () => {
     } as never);
 
     expect(handled).toBe(true);
-    expect(switchModelMock).toHaveBeenCalledWith(42, "model-2");
+    expect(switchModelMock).toHaveBeenCalledWith("42", "model-2");
     expect(editMessageText).toHaveBeenCalled();
     expect(answerCallbackQuery).toHaveBeenCalledWith({ text: "Switched to model-2" });
   });

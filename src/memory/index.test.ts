@@ -59,9 +59,9 @@ describe("buildSystemContext", () => {
     isChannelChatMock.mockReturnValue(false);
 
     const { buildSystemContext } = await import("./index");
-    const context = await buildSystemContext(123);
+    const context = await buildSystemContext("123");
 
-    expect(isChannelChatMock).toHaveBeenCalledWith(123);
+    expect(isChannelChatMock).toHaveBeenCalledWith("123");
     expect(getChannelConfigMock).not.toHaveBeenCalled();
     expect(context).not.toContain("## Current Channel");
     expect(context).not.toContain("channel: 123");
@@ -74,7 +74,7 @@ describe("buildSystemContext", () => {
     loadRecentSummariesMock.mockResolvedValue("");
     isChannelChatMock.mockReturnValue(true);
     getChannelConfigMock.mockReturnValue({
-      chatId: -100123,
+      chatId: "-100123",
       label: "platform",
       soulOverlay: null,
       preferences: null,
@@ -82,9 +82,9 @@ describe("buildSystemContext", () => {
     });
 
     const { buildSystemContext } = await import("./index");
-    const context = await buildSystemContext(-100123);
+    const context = await buildSystemContext("-100123");
 
-    expect(getChannelConfigMock).toHaveBeenCalledWith(-100123);
+    expect(getChannelConfigMock).toHaveBeenCalledWith("-100123");
     expect(context).toContain("## Current Channel");
     expect(context).toContain("channel: -100123");
   });
@@ -97,7 +97,7 @@ describe("buildSystemContext", () => {
     isChannelChatMock.mockReturnValue(false);
 
     const { buildSystemContext } = await import("./index");
-    const context = await buildSystemContext(123);
+    const context = await buildSystemContext("123");
 
     expect(context).not.toContain("Today's Memory");
     expect(context).not.toContain("Anomalies");

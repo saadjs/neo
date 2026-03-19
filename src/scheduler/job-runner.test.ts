@@ -11,6 +11,7 @@ const {
   completeJobRunMock,
   failJobRunMock,
   approveAllMock,
+  notifyTextMock,
 } = vi.hoisted(() => ({
   createSessionMock: vi.fn(),
   sendAndWaitMock: vi.fn(),
@@ -22,6 +23,7 @@ const {
   completeJobRunMock: vi.fn(),
   failJobRunMock: vi.fn(),
   approveAllMock: vi.fn(),
+  notifyTextMock: vi.fn(),
 }));
 
 vi.mock("@github/copilot-sdk", () => ({
@@ -69,9 +71,21 @@ vi.mock("../telegram/messages.js", () => ({
   splitMessage: (text: string) => [text],
 }));
 
+vi.mock("../transport/notifier.js", () => ({
+  notifyText: notifyTextMock,
+}));
+
 afterEach(() => {
   vi.clearAllMocks();
 });
+
+const target = {
+  conversation: {
+    platform: "telegram" as const,
+    id: "123",
+    kind: "dm" as const,
+  },
+};
 
 describe("executeJob", () => {
   it("attaches the restart guard hook to scheduled-job sessions", async () => {
@@ -114,7 +128,7 @@ describe("executeJob", () => {
         updated_at: "2026-03-13T00:00:00.000Z",
         next_run_at: "2026-03-14T00:00:00.000Z",
       },
-      { sendMessage: vi.fn().mockResolvedValue(undefined) } as never,
+      target,
     );
 
     const sessionConfig = createSessionMock.mock.calls[0]?.[0];
@@ -142,7 +156,6 @@ describe("executeJob", () => {
     });
 
     const { executeJob } = await import("./job-runner");
-    const sendMessage = vi.fn().mockResolvedValue(undefined);
 
     await executeJob(
       {
@@ -155,12 +168,12 @@ describe("executeJob", () => {
         updated_at: "2026-03-13T00:00:00.000Z",
         next_run_at: "2026-03-14T00:00:00.000Z",
       },
-      { sendMessage } as never,
+      target,
     );
 
     expect(completeJobRunMock).toHaveBeenCalledWith(1, "result", expect.any(Number));
     expect(failJobRunMock).not.toHaveBeenCalled();
-    expect(sendMessage).toHaveBeenCalled();
+    expect(notifyTextMock).toHaveBeenCalled();
   });
 
   it("exposes running job metadata and cancels via abort", async () => {
@@ -170,7 +183,6 @@ describe("executeJob", () => {
     sessionDestroyMock.mockResolvedValue(undefined);
     sessionAbortMock.mockResolvedValue(undefined);
 
-    // sendAndWait blocks until we resolve it externally
     let resolveSendAndWait!: (v: unknown) => void;
     sendAndWaitMock.mockReturnValue(
       new Promise((resolve) => {
@@ -199,10 +211,9 @@ describe("executeJob", () => {
         updated_at: "2026-03-13T00:00:00.000Z",
         next_run_at: "2026-03-14T00:00:00.000Z",
       },
-      { sendMessage: vi.fn().mockResolvedValue(undefined) } as never,
+      target,
     );
 
-    // Wait until sendAndWait is called — by then the real session is assigned
     await vi.waitFor(() => expect(sendAndWaitMock).toHaveBeenCalled());
 
     expect(getRunningJob()).toEqual({ jobId: 3, jobName: "long-job" });
@@ -211,7 +222,6 @@ describe("executeJob", () => {
     expect(status).toBe("cancelled");
     expect(sessionAbortMock).toHaveBeenCalled();
 
-    // Resolve sendAndWait so the job completes
     resolveSendAndWait({ data: { content: "partial" } });
     await jobPromise;
 

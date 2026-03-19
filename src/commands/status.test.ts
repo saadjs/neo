@@ -42,7 +42,7 @@ describe("handleStatus", () => {
       typeof handleStatus
     >[0]);
 
-    expect(getChatModelContextMock).toHaveBeenCalledWith(99);
+    expect(getChatModelContextMock).toHaveBeenCalledWith("99");
     expect(reply).toHaveBeenCalledWith(
       "Service: neo (active)\nDefault model: gpt-5.4\nCurrent chat model: `claude-haiku-4.5` (override active)\nLog level: info",
       { parse_mode: "Markdown" },
