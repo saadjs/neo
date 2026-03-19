@@ -3,9 +3,10 @@ import { createLogger } from "./logging/index";
 import { closeConversationDb } from "./logging/conversations";
 import { startAgent, stopAgent } from "./agent";
 import { createBot } from "./bot";
-import { startScheduler, stopScheduler } from "./scheduler/index";
+import { getOwnerNotificationTarget, startScheduler, stopScheduler } from "./scheduler/index";
 import { closeAllBrowserSessions } from "./tools/browser-runtime";
-import { setTelegramApi } from "./telegram/runtime";
+import { notifyText } from "./transport/notifier";
+import { createTelegramConversationRef } from "./transport/telegram-utils";
 import {
   consumeRestartMarker,
   formatSystemStatusSummary,
@@ -14,39 +15,31 @@ import {
 } from "./runtime/state";
 
 async function main() {
-  // Initialize logger first
   const log = await createLogger(config.logging.level, config.paths.logs);
   log.info({ pid: process.pid }, "Neo starting up...");
 
-  // Ensure data directories exist
   const { isFirstRun } = await ensureDataDir();
 
-  // Check for restart marker
   const restartInfo = await consumeRestartMarker();
   await logAutonomyStartup(restartInfo);
   if (restartInfo) {
     log.info({ restartInfo }, "Restart marker found — this is a restart");
   }
 
-  // Start the Copilot SDK client
   await startAgent();
   log.info("Copilot agent ready");
 
-  // Create and start Telegram bot
   const bot = await createBot();
-  setTelegramApi(bot.api);
 
-  // Start reminder scheduler
-  startScheduler(bot.api);
+  startScheduler();
 
   const startupStatus = await getSystemStatus();
   log.info({ startupStatus }, "Runtime status on startup");
 
-  // Send "I'm back" message after restart
   if (restartInfo?.chatId) {
     try {
-      await bot.api.sendMessage(
-        restartInfo.chatId,
+      await notifyText(
+        { conversation: createTelegramConversationRef({ id: Number(restartInfo.chatId) }) },
         `Back online. ⚡\n${formatSystemStatusSummary(startupStatus)}`,
       );
     } catch (err) {
@@ -54,11 +47,10 @@ async function main() {
     }
   }
 
-  // First-run onboarding greeting
   if (isFirstRun && !restartInfo) {
     try {
-      await bot.api.sendMessage(
-        config.telegram.ownerId,
+      await notifyText(
+        getOwnerNotificationTarget(),
         "Hey, just came online for the first time. How would you like my personality to be?",
       );
     } catch (err) {
@@ -66,7 +58,6 @@ async function main() {
     }
   }
 
-  // Graceful shutdown
   const shutdown = async (signal: string) => {
     log.info({ signal }, "Shutting down...");
     stopScheduler();
