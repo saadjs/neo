@@ -1,6 +1,8 @@
 # <img src="./assets/neo.png" alt="Neo" width="50" />
 
-**Neo** - Personal AI agent powered by the GitHub Copilot SDK, accessible via Telegram.
+**Neo** - Personal AI agent powered by the GitHub Copilot SDK, with a transport layer that currently ships on Telegram first and is ready to grow to Discord and Slack next.
+
+See [docs/transport-architecture.md](docs/transport-architecture.md) for the multi-channel transport design.
 
 ## Setup
 
