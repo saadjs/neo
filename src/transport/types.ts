@@ -101,6 +101,7 @@ export interface TransportCapabilities {
   interactiveInput: boolean;
   photoDelivery: boolean;
   voiceMessages: boolean;
+  maxMessageLength?: number;
 }
 
 export interface OutboundTransport {
@@ -129,6 +130,8 @@ export interface OutboundTransport {
     prompt: UserInputPromptPayload,
   ): Promise<UserInputPromptHandle | undefined>;
   clearUserInputPrompt(conversation: ConversationRef, prompt: UserInputPromptHandle): Promise<void>;
+  isEditNoOp?(err: unknown): boolean;
+  isEditTargetGone?(err: unknown): boolean;
 }
 
 export interface NotificationTarget {

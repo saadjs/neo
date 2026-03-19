@@ -126,7 +126,7 @@ vi.mock("../logging/cost.js", () => ({
   recordMessageEstimate: vi.fn(),
 }));
 
-vi.mock("../telegram/session-errors.js", () => ({
+vi.mock("./session-errors.js", () => ({
   shouldSilenceSessionError: shouldSilenceSessionErrorMock,
 }));
 
@@ -134,17 +134,12 @@ vi.mock("../hooks/error-state.js", () => ({
   consumeSessionErrorNotified: consumeSessionErrorNotifiedMock,
 }));
 
-vi.mock("../telegram/session-timeout.js", () => ({
-  isMessageNotModifiedError: vi.fn(() => false),
-  isMissingProgressMessageError: vi.fn(() => false),
-}));
-
-vi.mock("../telegram/progress.js", () => ({
+vi.mock("./progress.js", () => ({
   buildProgressText: vi.fn(() => "Thinking..."),
   formatProgressName: vi.fn((name?: string) => name ?? "tool"),
 }));
 
-vi.mock("../telegram/messages.js", () => ({
+vi.mock("./messages.js", () => ({
   splitMessage: vi.fn((text: string) => [text]),
 }));
 

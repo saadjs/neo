@@ -74,4 +74,12 @@ export class DiscordTransport implements OutboundTransport {
   ): Promise<void> {
     this.unsupported("clearUserInputPrompt");
   }
+
+  isEditNoOp(_err: unknown): boolean {
+    return false;
+  }
+
+  isEditTargetGone(_err: unknown): boolean {
+    return false;
+  }
 }

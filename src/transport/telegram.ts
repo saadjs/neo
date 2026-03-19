@@ -48,6 +48,7 @@ export class TelegramTransport implements OutboundTransport {
     interactiveInput: true,
     photoDelivery: true,
     voiceMessages: true,
+    maxMessageLength: 4096,
   };
 
   private readonly bot: Bot;
@@ -282,6 +283,15 @@ export class TelegramTransport implements OutboundTransport {
     await this.bot.api.editMessageReplyMarkup(getTelegramChatId(conversation), Number(prompt.id), {
       reply_markup: new InlineKeyboard(),
     });
+  }
+
+  isEditNoOp(err: unknown): boolean {
+    return err instanceof Error && /message is not modified/i.test(err.message);
+  }
+
+  isEditTargetGone(err: unknown): boolean {
+    if (!(err instanceof Error)) return false;
+    return /message to edit not found|message_id_invalid|Bad Request: not Found/i.test(err.message);
   }
 
   private async handleMessage(ctx: Context, text: string, attachments?: AttachmentRef[]) {

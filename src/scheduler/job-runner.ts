@@ -6,7 +6,7 @@ import { allTools } from "../tools/index";
 import { buildSystemContext } from "../memory/index";
 import { getLogger } from "../logging/index";
 import { preToolUse } from "../hooks/pre-tool";
-import { splitMessage } from "../telegram/messages";
+import { splitMessage } from "../runtime/messages";
 import { createJobRun, completeJobRun, failJobRun } from "./jobs-db";
 import type { Job } from "./jobs-db";
 import type { NotificationTarget } from "../transport/types";

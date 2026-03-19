@@ -21,7 +21,7 @@ import { getLogger } from "../logging/index";
 import { appendCompactionMemory } from "../memory/index";
 import { extractTags } from "../memory/tagging";
 import { recordCompactionTokens, recordMessageEstimate } from "../logging/cost";
-import { shouldSilenceSessionError } from "../telegram/session-errors";
+import { shouldSilenceSessionError } from "./session-errors";
 import { consumeSessionErrorNotified } from "../hooks/error-state";
 import {
   SESSION_HEALTH_POLL_MS,
@@ -31,12 +31,8 @@ import {
   STREAMING_MSG_MAX_LEN,
   LOG_REASONING_MAX_CHARS,
 } from "../constants";
-import {
-  isMessageNotModifiedError,
-  isMissingProgressMessageError,
-} from "../telegram/session-timeout";
-import { buildProgressText, formatProgressName, type ProgressPhase } from "../telegram/progress";
-import { splitMessage } from "../telegram/messages";
+import { buildProgressText, formatProgressName, type ProgressPhase } from "./progress";
+import { splitMessage } from "./messages";
 import { cancelPendingUserInputForSession, watchPendingUserInput } from "../transport/user-input";
 import type {
   AttachmentRef,
@@ -132,11 +128,7 @@ async function sendTextChunk(
   conversation: ConversationRef,
   text: string,
 ): Promise<void> {
-  try {
-    await transport.sendText(conversation, text, { format: "markdown" });
-  } catch {
-    await transport.sendText(conversation, text, { format: "plain" });
-  }
+  await transport.sendText(conversation, text, { format: "markdown" });
 }
 
 export async function handleRuntimeMessage(
@@ -194,8 +186,8 @@ export async function handleRuntimeMessage(
 
       await transport.editText(input.conversation, progressMessage, nextText);
     } catch (err) {
-      if (isMessageNotModifiedError(err)) return;
-      if (isMissingProgressMessageError(err)) {
+      if (transport.isEditNoOp?.(err)) return;
+      if (transport.isEditTargetGone?.(err)) {
         progressMessage = null;
       }
       log.debug({ err, conversationKey, nextText }, "Failed to update progress message");
@@ -221,8 +213,8 @@ export async function handleRuntimeMessage(
       }
       await transport.editText(input.conversation, progressMessage, display);
     } catch (err) {
-      if (isMessageNotModifiedError(err)) return;
-      if (isMissingProgressMessageError(err)) {
+      if (transport.isEditNoOp?.(err)) return;
+      if (transport.isEditTargetGone?.(err)) {
         progressMessage = null;
       }
       log.debug({ err, conversationKey }, "Failed to update streaming message");
@@ -474,7 +466,7 @@ export async function handleRuntimeMessage(
       return;
     }
 
-    const chunks = splitMessage(finalContent);
+    const chunks = splitMessage(finalContent, transport.capabilities.maxMessageLength);
     for (const chunk of chunks) {
       await sendTextChunk(transport, input.conversation, chunk);
     }
