@@ -127,6 +127,30 @@ describe("loadModelCatalog", () => {
     expect(listModelsMock).toHaveBeenCalledTimes(1);
   });
 
+  it("busts SDK internal model cache on forced refresh", async () => {
+    const mockClient = { listModels: listModelsMock, modelsCache: ["stale-entry"] };
+    listModelsMock.mockResolvedValue([createModel("gpt-5.4-mini", "GPT-5.4 Mini")]);
+    getClientMock.mockReturnValue(mockClient);
+
+    const { loadModelCatalog } = await import("./model-catalog");
+    const result = await loadModelCatalog({ forceRefresh: true });
+
+    expect(mockClient.modelsCache).toBeNull();
+    expect(result.source).toBe("network");
+    expect(result.models[0].id).toBe("gpt-5.4-mini");
+  });
+
+  it("does not bust SDK cache on normal load", async () => {
+    const mockClient = { listModels: listModelsMock, modelsCache: ["stale-entry"] };
+    listModelsMock.mockResolvedValue([createModel("gpt-5.4", "GPT-5.4")]);
+    getClientMock.mockReturnValue(mockClient);
+
+    const { loadModelCatalog } = await import("./model-catalog");
+    await loadModelCatalog();
+
+    expect(mockClient.modelsCache).toEqual(["stale-entry"]);
+  });
+
   it("falls back to stale cache when SDK refresh fails", async () => {
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(

@@ -80,10 +80,16 @@ function normalizeModel(value: ModelInfo): AvailableModel | null {
   };
 }
 
-async function fetchModelCatalogFromCopilot(): Promise<ModelCatalogCache> {
+async function fetchModelCatalogFromCopilot(forceRefresh = false): Promise<ModelCatalogCache> {
   const client = getClient();
   if (!client) {
     throw new Error("Copilot client is not started");
+  }
+
+  if (forceRefresh) {
+    // SDK caches models for the client's lifetime with no public invalidation API.
+    // Null out the private cache so listModels() re-fetches from the server.
+    (client as unknown as Record<string, unknown>).modelsCache = null;
   }
 
   const payload = await client.listModels();
@@ -121,7 +127,7 @@ export async function loadModelCatalog(options?: {
   }
 
   try {
-    const fresh = await fetchModelCatalogFromCopilot();
+    const fresh = await fetchModelCatalogFromCopilot(options?.forceRefresh);
     await writeModelCatalogCache(fresh);
     return {
       fetchedAt: fresh.fetchedAt,
