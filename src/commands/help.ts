@@ -9,9 +9,14 @@ export async function handleHelp(ctx: Context) {
   }
 
   const context = getChatModelContext(ctx.chat.id);
-  const intro = context.overrideActive
-    ? `Hey — default model is \`${context.defaultModel}\`, but this chat is using \`${context.currentModel}\`.\n\n`
-    : `Hey — default model is \`${context.defaultModel}\`, and this chat is using it.\n\n`;
+  let intro: string;
+  if (context.overrideActive) {
+    intro = `Hey — using \`${context.currentModel}\` (per-chat override, default is \`${context.defaultModel}\`).\n\n`;
+  } else if (context.channelDefaultModel) {
+    intro = `Hey — using \`${context.currentModel}\` (channel default).\n\n`;
+  } else {
+    intro = `Hey — using \`${context.currentModel}\` (global default).\n\n`;
+  }
 
   await ctx.reply(`${intro}${buildHelpText()}`, { parse_mode: "Markdown" });
 }

@@ -16,6 +16,7 @@ import {
 } from "./telegram/user-input";
 import { clearActiveSession, getActiveSessionId } from "./logging/conversations";
 import { VALID_REASONING_EFFORTS } from "./constants";
+import { getChannelConfig } from "./memory/db";
 
 let client: CopilotClient | null = null;
 const sessions = new Map<number, CopilotSession>();
@@ -170,7 +171,7 @@ export async function getOrCreateSession(opts: CreateSessionOptions): Promise<Co
         await buildSessionConfig(opts.chatId),
       );
 
-      const desiredModel = sessionModels.get(opts.chatId) ?? config.copilot.model;
+      const desiredModel = getModelForChat(opts.chatId);
       await resumed.setModel(desiredModel);
 
       sessions.set(opts.chatId, resumed);
@@ -206,7 +207,7 @@ export async function createNewSession(opts: CreateSessionOptions): Promise<Copi
     sessions.delete(opts.chatId);
   }
 
-  const model = sessionModels.get(opts.chatId) ?? config.copilot.model;
+  const model = getModelForChat(opts.chatId);
 
   log.info({ chatId: opts.chatId, model }, "Creating new Copilot session");
 
@@ -367,12 +368,22 @@ export function consumeAbortFlag(chatId: number): boolean {
   return abortedChats.delete(chatId);
 }
 
+export function getPerChatModelOverride(chatId: number): string | undefined {
+  return sessionModels.get(chatId);
+}
+
 export function getModelForChat(chatId: number): string {
-  return sessionModels.get(chatId) ?? config.copilot.model;
+  return (
+    sessionModels.get(chatId) ?? getChannelConfig(chatId)?.defaultModel ?? config.copilot.model
+  );
 }
 
 export function getReasoningEffortForChat(chatId: number): ReasoningEffort | undefined {
-  return sessionReasoningEfforts.get(chatId);
+  const effort =
+    sessionReasoningEfforts.get(chatId) ??
+    getChannelConfig(chatId)?.defaultReasoningEffort ??
+    undefined;
+  return effort as ReasoningEffort | undefined;
 }
 
 export async function setReasoningEffort(chatId: number, effort: ReasoningEffort): Promise<void> {
@@ -505,7 +516,7 @@ export async function resumeSessionById(
 
   const resumed = await client.resumeSession(sessionId, await buildSessionConfig(chatId));
 
-  const desiredModel = sessionModels.get(chatId) ?? config.copilot.model;
+  const desiredModel = getModelForChat(chatId);
   await resumed.setModel(desiredModel);
 
   sessions.set(chatId, resumed);
@@ -516,9 +527,9 @@ export async function resumeSessionById(
 
 async function buildSessionConfig(chatId: number) {
   const systemContext = await buildSystemContext(chatId);
-  const model = sessionModels.get(chatId) ?? config.copilot.model;
+  const model = getModelForChat(chatId);
 
-  const reasoningEffort = sessionReasoningEfforts.get(chatId);
+  const reasoningEffort = getReasoningEffortForChat(chatId);
 
   return {
     clientName: "neo",

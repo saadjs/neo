@@ -24,9 +24,15 @@ export async function handleStatus(ctx: Context) {
   }
 
   const modelContext = getChatModelContext(ctx.chat.id);
-  const currentLine = modelContext.overrideActive
-    ? `Current chat model: \`${modelContext.currentModel}\` (override active)`
-    : `Current chat model: \`${modelContext.currentModel}\` (using default)`;
+  let source: string;
+  if (modelContext.overrideActive) {
+    source = "override active";
+  } else if (modelContext.channelDefaultModel) {
+    source = "channel default";
+  } else {
+    source = "global default";
+  }
+  const currentLine = `Current chat model: \`${modelContext.currentModel}\` (${source})`;
 
   await ctx.reply(buildStatusWithGroupedModels(summary, currentLine), { parse_mode: "Markdown" });
 }

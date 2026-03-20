@@ -23,6 +23,7 @@ describe("handleHelp", () => {
     buildHelpTextMock.mockReturnValue("HELP");
     getChatModelContextMock.mockReturnValue({
       defaultModel: "gpt-5.4",
+      channelDefaultModel: null,
       currentModel: "claude-haiku-4.5",
       overrideActive: true,
     });
@@ -34,7 +35,7 @@ describe("handleHelp", () => {
 
     expect(getChatModelContextMock).toHaveBeenCalledWith(7);
     expect(reply).toHaveBeenCalledWith(
-      "Hey — default model is `gpt-5.4`, but this chat is using `claude-haiku-4.5`.\n\nHELP",
+      "Hey — using `claude-haiku-4.5` (per-chat override, default is `gpt-5.4`).\n\nHELP",
       { parse_mode: "Markdown" },
     );
   });

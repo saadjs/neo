@@ -31,6 +31,7 @@ describe("handleStatus", () => {
     );
     getChatModelContextMock.mockReturnValue({
       defaultModel: "gpt-5.4",
+      channelDefaultModel: null,
       currentModel: "claude-haiku-4.5",
       overrideActive: true,
     });

@@ -1,12 +1,26 @@
 import { describe, expect, it, vi } from "vitest";
 
+const { getModelForChatMock, getReasoningEffortForChatMock, getChannelConfigMock } = vi.hoisted(
+  () => ({
+    getModelForChatMock: vi.fn((_chatId: number): string => "gpt-4.1"),
+    getReasoningEffortForChatMock: vi.fn((_chatId: number): string | undefined => undefined),
+    getChannelConfigMock: vi.fn(
+      (_chatId: number): Record<string, string | number | null> | null => null,
+    ),
+  }),
+);
+
 vi.mock("../agent.js", () => ({
-  getModelForChat: vi.fn(() => "gpt-4.1"),
-  getReasoningEffortForChat: vi.fn(() => undefined),
+  getModelForChat: getModelForChatMock,
+  getReasoningEffortForChat: getReasoningEffortForChatMock,
 }));
 
 vi.mock("../config.js", () => ({
   config: { copilot: { model: "gpt-4.1" } },
+}));
+
+vi.mock("../memory/db.js", () => ({
+  getChannelConfig: getChannelConfigMock,
 }));
 
 describe("formatChatModelContextMarkdown", () => {
@@ -15,9 +29,11 @@ describe("formatChatModelContextMarkdown", () => {
 
     const result = formatChatModelContextMarkdown({
       defaultModel: "gpt-4.1",
+      channelDefaultModel: null,
       currentModel: "claude-sonnet-4",
       overrideActive: true,
       reasoningEffort: "high",
+      channelDefaultReasoningEffort: null,
     });
 
     expect(result).toContain("Reasoning effort: `high` (override active)");
@@ -28,11 +44,78 @@ describe("formatChatModelContextMarkdown", () => {
 
     const result = formatChatModelContextMarkdown({
       defaultModel: "gpt-4.1",
+      channelDefaultModel: null,
       currentModel: "gpt-4.1",
       overrideActive: false,
       reasoningEffort: undefined,
+      channelDefaultReasoningEffort: null,
     });
 
     expect(result).toContain("Reasoning effort: model default");
+  });
+
+  it("shows channel default model line when set", async () => {
+    const { formatChatModelContextMarkdown } = await import("./model-context");
+
+    const result = formatChatModelContextMarkdown({
+      defaultModel: "gpt-4.1",
+      channelDefaultModel: "gpt-5.4",
+      currentModel: "gpt-5.4",
+      overrideActive: false,
+      reasoningEffort: undefined,
+      channelDefaultReasoningEffort: null,
+    });
+
+    expect(result).toContain("Channel default: `gpt-5.4`");
+    expect(result).toContain("(using channel default)");
+  });
+
+  it("shows per-chat override over channel default", async () => {
+    const { formatChatModelContextMarkdown } = await import("./model-context");
+
+    const result = formatChatModelContextMarkdown({
+      defaultModel: "gpt-4.1",
+      channelDefaultModel: "gpt-5.4",
+      currentModel: "claude-sonnet-4",
+      overrideActive: true,
+      reasoningEffort: undefined,
+      channelDefaultReasoningEffort: null,
+    });
+
+    expect(result).toContain("Channel default: `gpt-5.4`");
+    expect(result).toContain("Current chat model: `claude-sonnet-4` (override active)");
+  });
+
+  it("shows channel default reasoning effort", async () => {
+    const { formatChatModelContextMarkdown } = await import("./model-context");
+
+    const result = formatChatModelContextMarkdown({
+      defaultModel: "gpt-4.1",
+      channelDefaultModel: null,
+      currentModel: "gpt-4.1",
+      overrideActive: false,
+      reasoningEffort: "medium",
+      channelDefaultReasoningEffort: "medium",
+    });
+
+    expect(result).toContain("Reasoning effort: `medium` (channel default)");
+  });
+});
+
+describe("getChatModelContext", () => {
+  it("includes channel config in context", async () => {
+    getModelForChatMock.mockReturnValue("gpt-5.4");
+    getChannelConfigMock.mockReturnValue({
+      defaultModel: "gpt-5.4",
+      defaultReasoningEffort: "high",
+    });
+    getReasoningEffortForChatMock.mockReturnValue("high");
+
+    const { getChatModelContext } = await import("./model-context");
+    const result = getChatModelContext(-100123);
+
+    expect(result.channelDefaultModel).toBe("gpt-5.4");
+    expect(result.channelDefaultReasoningEffort).toBe("high");
+    expect(result.overrideActive).toBe(false);
   });
 });

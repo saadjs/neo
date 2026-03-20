@@ -29,9 +29,14 @@ export async function handleNewSession(ctx: Context) {
   log.info({ chatId }, "New session created via /new");
 
   const context = getChatModelContext(chatId);
-  const message = context.overrideActive
-    ? `Fresh session. Default model is \`${context.defaultModel}\`, using \`${context.currentModel}\` for this chat.`
-    : `Fresh session. Default model is \`${context.defaultModel}\`, and this chat is using it.`;
+  let message: string;
+  if (context.overrideActive) {
+    message = `Fresh session. Using \`${context.currentModel}\` (per-chat override).`;
+  } else if (context.channelDefaultModel) {
+    message = `Fresh session. Using \`${context.currentModel}\` (channel default).`;
+  } else {
+    message = `Fresh session. Using \`${context.currentModel}\` (global default).`;
+  }
 
   await ctx.reply(message, { parse_mode: "Markdown" });
 }
