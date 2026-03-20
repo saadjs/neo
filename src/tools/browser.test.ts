@@ -27,9 +27,9 @@ vi.mock("./browser-runtime.js", () => ({
   resolveBrowserCredential,
 }));
 
-const getChatIdForSession = vi.fn();
+const getConversationRefForSession = vi.fn();
 vi.mock("../agent.js", () => ({
-  getChatIdForSession,
+  getConversationRefForSession,
 }));
 
 const notifyPhoto = vi.fn();
@@ -66,7 +66,7 @@ describe("browserTool", () => {
     listBrowserSessions.mockReset();
     listBrowserSessions.mockReturnValue([]);
     resolveBrowserCredential.mockReset();
-    getChatIdForSession.mockReset();
+    getConversationRefForSession.mockReset();
     notifyPhoto.mockReset();
   });
 
@@ -102,7 +102,7 @@ describe("browserTool", () => {
     expect(result).toContain('"credential_key": "[REDACTED]"');
   });
 
-  it("captures a screenshot and sends it to Telegram", async () => {
+  it("captures a screenshot and sends it to the session conversation", async () => {
     getBrowserSession.mockResolvedValue({
       page: {
         url: () => "https://example.com/dashboard",
@@ -110,7 +110,11 @@ describe("browserTool", () => {
         viewportSize: () => ({ width: 1280, height: 720 }),
       },
     });
-    getChatIdForSession.mockReturnValue(42);
+    getConversationRefForSession.mockReturnValue({
+      platform: "discord",
+      id: "thread-42",
+      kind: "channel",
+    });
 
     const { browserTool } = await import("./browser");
     const result = await browserTool.handler(
@@ -123,11 +127,17 @@ describe("browserTool", () => {
     );
 
     expect(notifyPhoto).toHaveBeenCalledWith(
-      { conversation: expect.objectContaining({ id: "42", platform: "telegram" }) },
+      {
+        conversation: expect.objectContaining({
+          id: "thread-42",
+          platform: "discord",
+          kind: "channel",
+        }),
+      },
       expect.stringContaining("/tmp/neo-browser-screenshots/main-"),
       "Browser screenshot: https://example.com/dashboard",
     );
-    expect(result).toContain('"delivered_to_telegram": true');
+    expect(result).toContain('"delivered_to_conversation": true');
     expect(result).toContain('"width": 1280');
   });
 

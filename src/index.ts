@@ -6,7 +6,7 @@ import { createBot } from "./bot";
 import { getOwnerNotificationTarget, startScheduler, stopScheduler } from "./scheduler/index";
 import { closeAllBrowserSessions } from "./tools/browser-runtime";
 import { notifyText } from "./transport/notifier";
-import { createTelegramConversationRef } from "./transport/telegram-utils";
+import { createTelegramConversationRefFromId } from "./transport/telegram-utils";
 import {
   consumeRestartMarker,
   formatSystemStatusSummary,
@@ -39,7 +39,7 @@ async function main() {
   if (restartInfo?.chatId) {
     try {
       await notifyText(
-        { conversation: createTelegramConversationRef({ id: Number(restartInfo.chatId) }) },
+        { conversation: createTelegramConversationRefFromId(restartInfo.chatId) },
         `Back online. ⚡\n${formatSystemStatusSummary(startupStatus)}`,
       );
     } catch (err) {

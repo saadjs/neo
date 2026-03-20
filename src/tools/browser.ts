@@ -3,11 +3,10 @@ import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { defineTool } from "@github/copilot-sdk";
 import { z } from "zod";
-import { getChatIdForSession } from "../agent";
+import { getConversationRefForSession } from "../agent";
 import { config } from "../config";
 import { createAuditTimer } from "../logging/audit";
 import { notifyPhoto } from "../transport/notifier";
-import { createTelegramConversationRef } from "../transport/telegram-utils";
 import {
   closeAllBrowserSessions,
   closeBrowserSession,
@@ -306,22 +305,18 @@ async function execute(args: BrowserArgs, invocationSessionId: string): Promise<
         await session.page.screenshot({ path, fullPage: args.full_page ?? true });
       }
 
-      const chatId = getChatIdForSession(invocationSessionId);
-      let deliveredToTelegram = false;
+      const conversation = getConversationRefForSession(invocationSessionId);
+      let deliveredToConversation = false;
       let deliveryError: string | undefined;
-      if (chatId != null) {
+      if (conversation) {
         try {
-          await notifyPhoto(
-            { conversation: createTelegramConversationRef({ id: Number(chatId) }) },
-            path,
-            `Browser screenshot: ${session.page.url()}`,
-          );
-          deliveredToTelegram = true;
+          await notifyPhoto({ conversation }, path, `Browser screenshot: ${session.page.url()}`);
+          deliveredToConversation = true;
         } catch (error) {
           deliveryError = error instanceof Error ? error.message : String(error);
         }
       } else {
-        deliveryError = "No Telegram chat mapping found for this session.";
+        deliveryError = "No conversation mapping found for this session.";
       }
 
       return formatResult({
@@ -329,8 +324,8 @@ async function execute(args: BrowserArgs, invocationSessionId: string): Promise<
         session_name: sessionName,
         url: session.page.url(),
         path,
-        delivered_to_telegram: deliveredToTelegram,
-        telegram_delivery_error: deliveryError,
+        delivered_to_conversation: deliveredToConversation,
+        delivery_error: deliveryError,
         viewport: session.page.viewportSize() ?? undefined,
       });
     }
