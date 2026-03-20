@@ -15,6 +15,7 @@ const {
   requestUserInputMock,
   cancelPendingUserInputMock,
   cancelAllPendingUserInputsMock,
+  getChannelConfigMock,
 } = vi.hoisted(() => ({
   createSessionMock: vi.fn(),
   resumeSessionMock: vi.fn(),
@@ -30,6 +31,7 @@ const {
   requestUserInputMock: vi.fn(),
   cancelPendingUserInputMock: vi.fn(),
   cancelAllPendingUserInputsMock: vi.fn(),
+  getChannelConfigMock: vi.fn(),
 }));
 
 vi.mock("@github/copilot-sdk", () => ({
@@ -91,6 +93,10 @@ vi.mock("./telegram/user-input.js", () => ({
   cancelAllPendingUserInputs: cancelAllPendingUserInputsMock,
 }));
 
+vi.mock("./memory/db.js", () => ({
+  getChannelConfig: getChannelConfigMock,
+}));
+
 afterEach(async () => {
   const { stopAgent } = await import("./agent");
   await stopAgent();
@@ -109,6 +115,7 @@ afterEach(async () => {
   requestUserInputMock.mockReset();
   cancelPendingUserInputMock.mockReset();
   cancelAllPendingUserInputsMock.mockReset();
+  getChannelConfigMock.mockReset();
 });
 
 describe("refreshSessionContext", () => {
@@ -497,5 +504,65 @@ describe("destroySession", () => {
 
     expect(session.disconnect).toHaveBeenCalledTimes(1);
     expect(deleteSessionMock).toHaveBeenCalledWith("session-active");
+  });
+});
+
+describe("getModelForChat", () => {
+  it("uses per-chat override over channel default", async () => {
+    getChannelConfigMock.mockReturnValue({ defaultModel: "channel-model" });
+
+    const { getModelForChat, startAgent, switchModel } = await import("./agent");
+    await startAgent();
+    await switchModel(-100123, "chat-model");
+
+    expect(getModelForChat(-100123)).toBe("chat-model");
+  });
+
+  it("falls back to channel default when no per-chat override", async () => {
+    getChannelConfigMock.mockReturnValue({ defaultModel: "channel-model" });
+
+    const { getModelForChat, startAgent } = await import("./agent");
+    await startAgent();
+
+    expect(getModelForChat(-200001)).toBe("channel-model");
+  });
+
+  it("falls back to global config when no channel default", async () => {
+    getChannelConfigMock.mockReturnValue(null);
+
+    const { getModelForChat, startAgent } = await import("./agent");
+    await startAgent();
+
+    expect(getModelForChat(-200002)).toBe("gpt-4.1");
+  });
+});
+
+describe("getReasoningEffortForChat", () => {
+  it("uses per-chat override over channel default", async () => {
+    getChannelConfigMock.mockReturnValue({ defaultReasoningEffort: "low" });
+
+    const { getReasoningEffortForChat, setReasoningEffort, startAgent } = await import("./agent");
+    await startAgent();
+    await setReasoningEffort(-100123, "high");
+
+    expect(getReasoningEffortForChat(-100123)).toBe("high");
+  });
+
+  it("falls back to channel default when no per-chat override", async () => {
+    getChannelConfigMock.mockReturnValue({ defaultReasoningEffort: "medium" });
+
+    const { getReasoningEffortForChat, startAgent } = await import("./agent");
+    await startAgent();
+
+    expect(getReasoningEffortForChat(-200003)).toBe("medium");
+  });
+
+  it("returns undefined when no reasoning set anywhere", async () => {
+    getChannelConfigMock.mockReturnValue(null);
+
+    const { getReasoningEffortForChat, startAgent } = await import("./agent");
+    await startAgent();
+
+    expect(getReasoningEffortForChat(-200004)).toBeUndefined();
   });
 });
