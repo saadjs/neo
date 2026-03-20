@@ -28,7 +28,7 @@ This module works with normalized `ConversationRef` values plus the `OutboundTra
 - implementing outbound text/photo/edit/delete/typing operations
 - rendering `ask_user` prompts with inline keyboards
 
-`src/transport/discord.ts` and `src/transport/slack.ts` are intentionally small compile-safe skeletons that show the required surface area without pretending those integrations are finished.
+Discord and Slack adapters are not included yet. When ready, each should implement `OutboundTransport` and register itself at startup.
 
 ### 3. Shared transport services
 
