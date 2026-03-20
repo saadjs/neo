@@ -2,7 +2,8 @@ import type { Context } from "grammy";
 import { config } from "../config";
 import { VALID_REASONING_EFFORTS } from "../constants";
 import { getChannelConfig, upsertChannelConfig } from "../memory/db";
-import { refreshSessionContext } from "../agent";
+import { getPerChatModelOverride, refreshSessionContext } from "../agent";
+import { getModelReasoningInfo } from "./model-catalog";
 
 export async function handleChannel(ctx: Context) {
   const chatId = ctx.chat!.id;
@@ -49,7 +50,7 @@ export async function handleChannel(ctx: Context) {
       }
       break;
 
-    case "model":
+    case "model": {
       if (!value) {
         await ctx.reply("Usage: /channel model <model-id> or /channel model clear");
         return;
@@ -61,11 +62,17 @@ export async function handleChannel(ctx: Context) {
       } else {
         upsertChannelConfig(chatId, { defaultModel: value });
         await refreshSessionContext(chatId);
-        await ctx.reply(`Channel default model set to: ${value}`);
+        const perChatOverride = getPerChatModelOverride(chatId);
+        let reply = `Channel default model set to: ${value}`;
+        if (perChatOverride) {
+          reply += `\n⚠️ This chat has a per-chat override (\`${perChatOverride}\`) which takes precedence. Use /model to change or clear it.`;
+        }
+        await ctx.reply(reply, perChatOverride ? { parse_mode: "Markdown" } : undefined);
       }
       break;
+    }
 
-    case "reasoning":
+    case "reasoning": {
       if (!value) {
         await ctx.reply("Usage: /channel reasoning <level> or /channel reasoning clear");
         return;
@@ -74,16 +81,26 @@ export async function handleChannel(ctx: Context) {
         upsertChannelConfig(chatId, { defaultReasoningEffort: null });
         await refreshSessionContext(chatId);
         await ctx.reply("Channel default reasoning effort cleared.");
-      } else if (VALID_REASONING_EFFORTS.has(value)) {
-        upsertChannelConfig(chatId, { defaultReasoningEffort: value });
-        await refreshSessionContext(chatId);
-        await ctx.reply(`Channel default reasoning effort set to: ${value}`);
-      } else {
+      } else if (!VALID_REASONING_EFFORTS.has(value)) {
         await ctx.reply(
           `Invalid reasoning effort: ${value}. Valid levels: ${[...VALID_REASONING_EFFORTS].join(", ")}`,
         );
+      } else {
+        const channelModel = getChannelConfig(chatId)?.defaultModel ?? config.copilot.model;
+        const info = await getModelReasoningInfo(channelModel);
+        if (!info || !info.supported) {
+          await ctx.reply(
+            `Cannot set reasoning effort: the channel model (\`${channelModel}\`) does not support reasoning.`,
+            { parse_mode: "Markdown" },
+          );
+        } else {
+          upsertChannelConfig(chatId, { defaultReasoningEffort: value });
+          await refreshSessionContext(chatId);
+          await ctx.reply(`Channel default reasoning effort set to: ${value}`);
+        }
       }
       break;
+    }
 
     default:
       await ctx.reply(

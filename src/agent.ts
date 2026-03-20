@@ -368,6 +368,10 @@ export function consumeAbortFlag(chatId: number): boolean {
   return abortedChats.delete(chatId);
 }
 
+export function getPerChatModelOverride(chatId: number): string | undefined {
+  return sessionModels.get(chatId);
+}
+
 export function getModelForChat(chatId: number): string {
   return (
     sessionModels.get(chatId) ?? getChannelConfig(chatId)?.defaultModel ?? config.copilot.model
