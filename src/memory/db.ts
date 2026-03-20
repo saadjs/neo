@@ -65,6 +65,18 @@ export function initMemoryTable(): void {
   }
   memDb.exec("CREATE INDEX IF NOT EXISTS idx_memory_chat_id ON memory_entries(chat_id)");
 
+  // Idempotent migration: add channel default model and reasoning effort
+  try {
+    memDb.exec("ALTER TABLE channel_config ADD COLUMN default_model TEXT");
+  } catch {
+    // Column already exists
+  }
+  try {
+    memDb.exec("ALTER TABLE channel_config ADD COLUMN default_reasoning_effort TEXT");
+  } catch {
+    // Column already exists
+  }
+
   const row = memDb.prepare("SELECT COUNT(*) AS cnt FROM memory_entries").get() as { cnt: number };
   if (row.cnt === 0) {
     backfillFromFiles(memDb).catch((err) => {
@@ -285,13 +297,15 @@ export interface ChannelConfig {
   soulOverlay: string | null;
   preferences: string | null;
   topics: string | null;
+  defaultModel: string | null;
+  defaultReasoningEffort: string | null;
 }
 
 export function getChannelConfig(chatId: number): ChannelConfig | null {
   initMemoryTable();
   const row = getMemoryDb()
     .prepare(
-      "SELECT chat_id, label, soul_overlay, preferences, topics FROM channel_config WHERE chat_id = ?",
+      "SELECT chat_id, label, soul_overlay, preferences, topics, default_model, default_reasoning_effort FROM channel_config WHERE chat_id = ?",
     )
     .get(chatId) as
     | {
@@ -300,6 +314,8 @@ export function getChannelConfig(chatId: number): ChannelConfig | null {
         soul_overlay: string | null;
         preferences: string | null;
         topics: string | null;
+        default_model: string | null;
+        default_reasoning_effort: string | null;
       }
     | undefined;
   if (!row) return null;
@@ -309,6 +325,8 @@ export function getChannelConfig(chatId: number): ChannelConfig | null {
     soulOverlay: row.soul_overlay,
     preferences: row.preferences,
     topics: row.topics,
+    defaultModel: row.default_model,
+    defaultReasoningEffort: row.default_reasoning_effort,
   };
 }
 
@@ -339,6 +357,14 @@ export function upsertChannelConfig(
       fields.push("topics = ?");
       values.push(updates.topics ?? null);
     }
+    if ("defaultModel" in updates) {
+      fields.push("default_model = ?");
+      values.push(updates.defaultModel ?? null);
+    }
+    if ("defaultReasoningEffort" in updates) {
+      fields.push("default_reasoning_effort = ?");
+      values.push(updates.defaultReasoningEffort ?? null);
+    }
     values.push(chatId);
     memDb
       .prepare(`UPDATE channel_config SET ${fields.join(", ")} WHERE chat_id = ?`)
@@ -346,7 +372,7 @@ export function upsertChannelConfig(
   } else {
     memDb
       .prepare(
-        "INSERT INTO channel_config (chat_id, label, soul_overlay, preferences, topics) VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO channel_config (chat_id, label, soul_overlay, preferences, topics, default_model, default_reasoning_effort) VALUES (?, ?, ?, ?, ?, ?, ?)",
       )
       .run(
         chatId,
@@ -354,6 +380,8 @@ export function upsertChannelConfig(
         updates.soulOverlay ?? null,
         updates.preferences ?? null,
         updates.topics ?? null,
+        updates.defaultModel ?? null,
+        updates.defaultReasoningEffort ?? null,
       );
   }
 }
@@ -362,7 +390,7 @@ export function listChannelConfigs(): ChannelConfig[] {
   initMemoryTable();
   const rows = getMemoryDb()
     .prepare(
-      "SELECT chat_id, label, soul_overlay, preferences, topics FROM channel_config ORDER BY chat_id",
+      "SELECT chat_id, label, soul_overlay, preferences, topics, default_model, default_reasoning_effort FROM channel_config ORDER BY chat_id",
     )
     .all() as {
     chat_id: number;
@@ -370,6 +398,8 @@ export function listChannelConfigs(): ChannelConfig[] {
     soul_overlay: string | null;
     preferences: string | null;
     topics: string | null;
+    default_model: string | null;
+    default_reasoning_effort: string | null;
   }[];
   return rows.map((row) => ({
     chatId: row.chat_id,
@@ -377,6 +407,8 @@ export function listChannelConfigs(): ChannelConfig[] {
     soulOverlay: row.soul_overlay,
     preferences: row.preferences,
     topics: row.topics,
+    defaultModel: row.default_model,
+    defaultReasoningEffort: row.default_reasoning_effort,
   }));
 }
 
