@@ -283,7 +283,13 @@ export async function handleRuntimeMessage(
 
     beginSessionTurn(scopeId);
     sessionTurnStarted = true;
-    const session = await getOrCreateSession({ chatId: scopeId });
+    const session = await getOrCreateSession({
+      chatId: scopeId,
+      origin: {
+        conversation: input.conversation,
+        transport,
+      },
+    });
     activeSession = session;
     sessionId = session.sessionId;
 

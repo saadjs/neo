@@ -9,8 +9,15 @@ import { allTools } from "./tools/index";
 import { buildSystemContext } from "./memory/index";
 import { getLogger } from "./logging/index";
 import { buildSessionHooks } from "./hooks/index";
-import { cancelAllPendingUserInputs } from "./transport/user-input";
-import { cancelPendingUserInput, requestUserInput } from "./telegram/user-input";
+import {
+  cancelAllPendingUserInputs,
+  requestUserInput as requestTransportUserInput,
+} from "./transport/user-input";
+import type { ConversationRef, OutboundTransport } from "./transport/types";
+import {
+  cancelPendingUserInput,
+  requestUserInput as requestTelegramUserInput,
+} from "./telegram/user-input";
 import { clearActiveSession, getActiveSessionId } from "./logging/conversations";
 import { VALID_REASONING_EFFORTS } from "./constants";
 
@@ -20,6 +27,12 @@ const sessionModels = new Map<string, string>();
 const activeSessionTurns = new Map<string, number>();
 const staleSessions = new Map<string, Set<CopilotSession>>();
 const abortedChats = new Set<string>();
+interface SessionOrigin {
+  conversation: ConversationRef;
+  transport: OutboundTransport;
+}
+
+const sessionOrigins = new Map<string, SessionOrigin>();
 const SESSION_MODEL_OVERRIDES_FILE = join(config.paths.data, "session-model-overrides.json");
 const sessionReasoningEfforts = new Map<string, ReasoningEffort>();
 const SESSION_REASONING_OVERRIDES_FILE = join(
@@ -135,6 +148,7 @@ export async function stopAgent(): Promise<void> {
   }
   staleSessions.clear();
   activeSessionTurns.clear();
+  sessionOrigins.clear();
 
   if (client) {
     await client.stop();
@@ -145,6 +159,7 @@ export async function stopAgent(): Promise<void> {
 
 export interface CreateSessionOptions {
   chatId: string;
+  origin?: SessionOrigin;
 }
 
 export interface DestroySessionOptions {
@@ -153,7 +168,12 @@ export interface DestroySessionOptions {
 
 export async function getOrCreateSession(opts: CreateSessionOptions): Promise<CopilotSession> {
   const existing = sessions.get(opts.chatId);
-  if (existing) return existing;
+  if (existing) {
+    if (opts.origin) {
+      setSessionOrigin(existing.sessionId, opts.origin);
+    }
+    return existing;
+  }
 
   const previousSessionId = getActiveSessionId(opts.chatId);
   if (previousSessionId && client) {
@@ -167,6 +187,9 @@ export async function getOrCreateSession(opts: CreateSessionOptions): Promise<Co
       await resumed.setModel(desiredModel);
 
       sessions.set(opts.chatId, resumed);
+      if (opts.origin) {
+        setSessionOrigin(resumed.sessionId, opts.origin);
+      }
       getLogger().info(
         { chatId: opts.chatId, sessionId: resumed.sessionId, model: desiredModel },
         "Resumed Copilot session",
@@ -206,6 +229,9 @@ export async function createNewSession(opts: CreateSessionOptions): Promise<Copi
   const session = await client.createSession(await buildSessionConfig(opts.chatId));
 
   sessions.set(opts.chatId, session);
+  if (opts.origin) {
+    setSessionOrigin(session.sessionId, opts.origin);
+  }
   log.info({ chatId: opts.chatId, sessionId: session.sessionId }, "Session created");
 
   return session;
@@ -253,6 +279,7 @@ export async function destroySession(
   const session = sessions.get(chatId);
   if (session) {
     const sessionId = session.sessionId;
+    clearSessionOrigin(sessionId);
     try {
       await session.disconnect();
     } catch {
@@ -272,6 +299,7 @@ export async function destroySession(
   if (staleSessionsForChat) {
     for (const staleSession of staleSessionsForChat) {
       const staleId = staleSession.sessionId;
+      clearSessionOrigin(staleId);
       try {
         await staleSession.disconnect();
       } catch {
@@ -302,6 +330,7 @@ export function hasTrackedSession(chatId: string, session: CopilotSession): bool
 }
 
 export function discardSession(chatId: string, session: CopilotSession): void {
+  clearSessionOrigin(session.sessionId);
   const activeSession = sessions.get(chatId);
   if (activeSession === session) {
     sessions.delete(chatId);
@@ -409,6 +438,7 @@ export async function endSessionTurn(chatId: string): Promise<void> {
 
   for (const staleSession of staleSessionsForChat) {
     const staleId = staleSession.sessionId;
+    clearSessionOrigin(staleId);
     try {
       await staleSession.disconnect();
     } catch {
@@ -455,6 +485,7 @@ export async function refreshSessionContext(chatId: string): Promise<void> {
   sessions.delete(chatId);
 
   const sessionId = session.sessionId;
+  clearSessionOrigin(sessionId);
   try {
     await session.disconnect();
   } catch {
@@ -502,6 +533,7 @@ export async function resumeSessionById(
   await resumed.setModel(desiredModel);
 
   sessions.set(chatId, resumed);
+  clearSessionOrigin(sessionId);
   log.info({ chatId, sessionId: resumed.sessionId }, "Resumed session via /sessions");
 
   return resumed;
@@ -525,7 +557,19 @@ async function buildSessionConfig(chatId: string) {
     onUserInputRequest: async (
       request: { question: string; choices?: string[]; allowFreeform?: boolean },
       invocation: { sessionId: string },
-    ) => requestUserInput(chatId, invocation.sessionId, request),
+    ) => {
+      const origin = getSessionOrigin(invocation.sessionId);
+      if (origin) {
+        return requestTransportUserInput({
+          conversation: origin.conversation,
+          sessionId: invocation.sessionId,
+          transport: origin.transport,
+          request,
+        });
+      }
+
+      return requestTelegramUserInput(chatId, invocation.sessionId, request);
+    },
     hooks: buildSessionHooks(chatId),
     workingDirectory: config.paths.root,
     infiniteSessions: {
@@ -534,4 +578,20 @@ async function buildSessionConfig(chatId: string) {
       bufferExhaustionThreshold: config.copilot.contextCompaction.bufferExhaustionThreshold,
     },
   };
+}
+
+function setSessionOrigin(sessionId: string, origin: SessionOrigin): void {
+  sessionOrigins.set(sessionId, origin);
+}
+
+function clearSessionOrigin(sessionId: string): void {
+  sessionOrigins.delete(sessionId);
+}
+
+function getSessionOrigin(sessionId: string): SessionOrigin | undefined {
+  return sessionOrigins.get(sessionId);
+}
+
+export function getConversationRefForSession(sessionId: string): ConversationRef | undefined {
+  return getSessionOrigin(sessionId)?.conversation;
 }

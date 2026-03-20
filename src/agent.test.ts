@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { OutboundTransport } from "./transport/types";
 
 const {
   createSessionMock,
@@ -12,6 +13,7 @@ const {
   setActiveSessionMock,
   getActiveSessionIdMock,
   approveAllMock,
+  requestTransportUserInputMock,
   requestUserInputMock,
   cancelPendingUserInputMock,
   cancelAllPendingUserInputsMock,
@@ -27,6 +29,7 @@ const {
   setActiveSessionMock: vi.fn(),
   getActiveSessionIdMock: vi.fn(),
   approveAllMock: vi.fn(),
+  requestTransportUserInputMock: vi.fn(),
   requestUserInputMock: vi.fn(),
   cancelPendingUserInputMock: vi.fn(),
   cancelAllPendingUserInputsMock: vi.fn(),
@@ -90,6 +93,7 @@ vi.mock("./hooks/index.js", () => ({
 }));
 
 vi.mock("./transport/user-input.js", () => ({
+  requestUserInput: requestTransportUserInputMock,
   cancelAllPendingUserInputs: cancelAllPendingUserInputsMock,
 }));
 
@@ -113,6 +117,7 @@ afterEach(async () => {
   setActiveSessionMock.mockReset();
   getActiveSessionIdMock.mockReset();
   approveAllMock.mockReset();
+  requestTransportUserInputMock.mockReset();
   requestUserInputMock.mockReset();
   cancelPendingUserInputMock.mockReset();
   cancelAllPendingUserInputsMock.mockReset();
@@ -144,6 +149,71 @@ describe("refreshSessionContext", () => {
     expect(requestUserInputMock).toHaveBeenCalledWith("-100123", "session-ask", {
       question: "Proceed?",
     });
+  });
+
+  it("routes ask_user through the session origin transport when available", async () => {
+    const session = {
+      sessionId: "session-ask",
+      destroy: vi.fn().mockResolvedValue(undefined),
+      disconnect: vi.fn().mockResolvedValue(undefined),
+    };
+    const transport: OutboundTransport = {
+      platform: "discord" as const,
+      capabilities: {
+        editableMessages: true,
+        typingIndicators: true,
+        commands: true,
+        interactiveInput: true,
+        photoDelivery: true,
+        voiceMessages: false,
+      },
+      sendText: vi.fn(),
+      editText: vi.fn(),
+      deleteMessage: vi.fn(),
+      indicateTyping: vi.fn(),
+      sendPhoto: vi.fn(),
+      requestUserInput: vi.fn(),
+      clearUserInputPrompt: vi.fn(),
+    };
+
+    createSessionMock.mockResolvedValue(session);
+    buildSystemContextMock.mockResolvedValue("context");
+    getActiveSessionIdMock.mockReturnValue(null);
+    requestTransportUserInputMock.mockResolvedValue({ answer: "yes", wasFreeform: true });
+
+    const { createNewSession, startAgent } = await import("./agent");
+
+    await startAgent();
+    await createNewSession({
+      chatId: "discord-thread-1",
+      origin: {
+        conversation: {
+          platform: "discord",
+          id: "thread-1",
+          kind: "channel",
+        },
+        transport,
+      },
+    });
+
+    const configArg = createSessionMock.mock.calls[0]?.[0];
+
+    await expect(
+      configArg.onUserInputRequest({ question: "Proceed?" }, { sessionId: "session-ask" }),
+    ).resolves.toEqual({ answer: "yes", wasFreeform: true });
+    expect(requestTransportUserInputMock).toHaveBeenCalledWith({
+      conversation: {
+        platform: "discord",
+        id: "thread-1",
+        kind: "channel",
+      },
+      sessionId: "session-ask",
+      transport,
+      request: {
+        question: "Proceed?",
+      },
+    });
+    expect(requestUserInputMock).not.toHaveBeenCalled();
   });
 
   it("destroys an idle cached session immediately and deletes from disk", async () => {
