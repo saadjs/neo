@@ -19,7 +19,7 @@ export function createTelegramConversationRef(chat: {
     title: chat.title ?? chat.username,
     metadata: {
       telegramChatId: chat.id,
-      sessionScopeId: chat.id,
+      sessionScopeId: String(chat.id),
       telegramChatType: chat.type,
     },
   };
@@ -34,7 +34,7 @@ export function createTelegramConversationRefFromId(chatId: string): Conversatio
   return {
     platform: "telegram",
     id: chatId,
-    kind: "dm",
+    kind: isChannelChat(chatId) ? "group" : "dm",
     metadata: { sessionScopeId: chatId },
   };
 }

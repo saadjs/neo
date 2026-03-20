@@ -152,7 +152,7 @@ const conversation: ConversationRef = {
   platform: "telegram",
   id: "123",
   kind: "dm",
-  metadata: { sessionScopeId: 123 },
+  metadata: { sessionScopeId: "123" },
 };
 
 afterEach(() => {
@@ -169,7 +169,10 @@ describe("handleRuntimeMessage", () => {
     });
 
     expect(beginSessionTurnMock).toHaveBeenCalledWith("123");
-    expect(getOrCreateSessionMock).toHaveBeenCalledWith({ chatId: "123" });
+    expect(getOrCreateSessionMock).toHaveBeenCalledWith({
+      chatId: "123",
+      origin: { conversation, transport },
+    });
     expect(session.send).toHaveBeenCalledWith({ prompt: "Hello", attachments: undefined });
     expect(transport.indicateTyping).toHaveBeenCalled();
 

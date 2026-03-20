@@ -38,7 +38,7 @@ describe("createTelegramConversationRef", () => {
       title: "Dev Chat",
       metadata: {
         telegramChatId: -100123,
-        sessionScopeId: -100123,
+        sessionScopeId: "-100123",
         telegramChatType: "supergroup",
       },
     });
@@ -93,6 +93,7 @@ describe("createTelegramConversationRefFromId", () => {
   it("preserves the original string ID for negative chat IDs", () => {
     const ref = createTelegramConversationRefFromId("-100999");
     expect(ref.id).toBe("-100999");
+    expect(ref.kind).toBe("group");
     expect(ref.metadata?.sessionScopeId).toBe("-100999");
   });
 });
