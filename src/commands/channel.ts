@@ -2,7 +2,7 @@ import type { Context } from "grammy";
 import { config } from "../config";
 import { VALID_REASONING_EFFORTS } from "../constants";
 import { getChannelConfig, upsertChannelConfig } from "../memory/db";
-import { getPerChatModelOverride, refreshSessionContext } from "../agent";
+import { getModelForChat, getPerChatModelOverride, refreshSessionContext } from "../agent";
 import { getModelReasoningInfo } from "./model-catalog";
 
 export async function handleChannel(ctx: Context) {
@@ -86,11 +86,11 @@ export async function handleChannel(ctx: Context) {
           `Invalid reasoning effort: ${value}. Valid levels: ${[...VALID_REASONING_EFFORTS].join(", ")}`,
         );
       } else {
-        const channelModel = getChannelConfig(chatId)?.defaultModel ?? config.copilot.model;
-        const info = await getModelReasoningInfo(channelModel);
+        const effectiveModel = getModelForChat(chatId);
+        const info = await getModelReasoningInfo(effectiveModel);
         if (!info || !info.supported) {
           await ctx.reply(
-            `Cannot set reasoning effort: the channel model (\`${channelModel}\`) does not support reasoning.`,
+            `Cannot set reasoning effort: the effective chat model (\`${effectiveModel}\`) does not support reasoning.`,
             { parse_mode: "Markdown" },
           );
         } else {

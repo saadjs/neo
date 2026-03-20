@@ -5,12 +5,14 @@ const {
   getChannelConfigMock,
   refreshSessionContextMock,
   getPerChatModelOverrideMock,
+  getModelForChatMock,
   getModelReasoningInfoMock,
 } = vi.hoisted(() => ({
   upsertChannelConfigMock: vi.fn(),
   getChannelConfigMock: vi.fn(),
   refreshSessionContextMock: vi.fn(),
   getPerChatModelOverrideMock: vi.fn(),
+  getModelForChatMock: vi.fn(),
   getModelReasoningInfoMock: vi.fn(),
 }));
 
@@ -33,6 +35,7 @@ vi.mock("../memory/db.js", () => ({
 vi.mock("../agent.js", () => ({
   refreshSessionContext: refreshSessionContextMock,
   getPerChatModelOverride: getPerChatModelOverrideMock,
+  getModelForChat: getModelForChatMock,
 }));
 
 vi.mock("./model-catalog.js", () => ({
@@ -47,7 +50,9 @@ describe("handleChannel", () => {
     getChannelConfigMock.mockReset();
     refreshSessionContextMock.mockReset();
     getPerChatModelOverrideMock.mockReset();
+    getModelForChatMock.mockReset();
     getModelReasoningInfoMock.mockReset();
+    getModelForChatMock.mockReturnValue("gpt-4.1");
     getModelReasoningInfoMock.mockResolvedValue({
       supported: true,
       levels: ["low", "medium", "high", "xhigh"],
@@ -163,7 +168,7 @@ describe("handleChannel", () => {
 
   it("sets channel default reasoning effort when model supports it", async () => {
     const reply = vi.fn();
-    getChannelConfigMock.mockReturnValue({ defaultModel: "claude-sonnet-4" });
+    getModelForChatMock.mockReturnValue("claude-sonnet-4");
     getModelReasoningInfoMock.mockResolvedValue({
       supported: true,
       levels: ["low", "medium", "high"],
@@ -185,7 +190,7 @@ describe("handleChannel", () => {
 
   it("rejects reasoning when channel model does not support it", async () => {
     const reply = vi.fn();
-    getChannelConfigMock.mockReturnValue({ defaultModel: "gpt-4.1" });
+    getModelForChatMock.mockReturnValue("gpt-4.1");
     getModelReasoningInfoMock.mockResolvedValue({ supported: false, levels: [] });
 
     await handleChannel({
@@ -197,15 +202,19 @@ describe("handleChannel", () => {
     expect(getModelReasoningInfoMock).toHaveBeenCalledWith("gpt-4.1");
     expect(upsertChannelConfigMock).not.toHaveBeenCalled();
     expect(reply).toHaveBeenCalledWith(
-      expect.stringContaining("does not support reasoning"),
+      expect.stringContaining("effective chat model"),
       expect.objectContaining({ parse_mode: "Markdown" }),
     );
   });
 
-  it("checks global default model when no channel model is set", async () => {
+  it("checks the effective per-chat model when a group override is active", async () => {
     const reply = vi.fn();
-    getChannelConfigMock.mockReturnValue(null);
-    getModelReasoningInfoMock.mockResolvedValue({ supported: false, levels: [] });
+    getChannelConfigMock.mockReturnValue({ defaultModel: "gpt-4.1" });
+    getModelForChatMock.mockReturnValue("claude-opus-4.6");
+    getModelReasoningInfoMock.mockResolvedValue({
+      supported: true,
+      levels: ["low", "medium", "high"],
+    });
 
     await handleChannel({
       chat: { id: -100123 },
@@ -213,8 +222,10 @@ describe("handleChannel", () => {
       reply,
     } as never);
 
-    expect(getModelReasoningInfoMock).toHaveBeenCalledWith("gpt-4.1");
-    expect(upsertChannelConfigMock).not.toHaveBeenCalled();
+    expect(getModelReasoningInfoMock).toHaveBeenCalledWith("claude-opus-4.6");
+    expect(upsertChannelConfigMock).toHaveBeenCalledWith(-100123, {
+      defaultReasoningEffort: "high",
+    });
   });
 
   it("clears channel default reasoning effort", async () => {

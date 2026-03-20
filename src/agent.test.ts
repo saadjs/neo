@@ -119,6 +119,49 @@ afterEach(async () => {
 });
 
 describe("refreshSessionContext", () => {
+  it("creates sessions with the channel default model when no per-chat override exists", async () => {
+    const chatId = -300001;
+    const session = {
+      sessionId: "session-channel-default",
+      destroy: vi.fn().mockResolvedValue(undefined),
+      disconnect: vi.fn().mockResolvedValue(undefined),
+    };
+    createSessionMock.mockResolvedValue(session);
+    buildSystemContextMock.mockResolvedValue("context");
+    getActiveSessionIdMock.mockReturnValue(null);
+    getChannelConfigMock.mockReturnValue({ defaultModel: "channel-model" });
+
+    const { createNewSession, startAgent } = await import("./agent");
+
+    await startAgent();
+    await createNewSession({ chatId });
+
+    expect(createSessionMock).toHaveBeenCalledWith(
+      expect.objectContaining({ model: "channel-model" }),
+    );
+  });
+
+  it("reapplies the channel default model when resuming a session", async () => {
+    const chatId = -300002;
+    const resumedSession = {
+      sessionId: "session-resumed",
+      setModel: vi.fn().mockResolvedValue(undefined),
+      disconnect: vi.fn().mockResolvedValue(undefined),
+    };
+    resumeSessionMock.mockResolvedValue(resumedSession);
+    buildSystemContextMock.mockResolvedValue("context");
+    getActiveSessionIdMock.mockReturnValue("session-resumed");
+    getChannelConfigMock.mockReturnValue({ defaultModel: "channel-model" });
+
+    const { getOrCreateSession, startAgent } = await import("./agent");
+
+    await startAgent();
+    await getOrCreateSession({ chatId });
+
+    expect(resumeSessionMock).toHaveBeenCalled();
+    expect(resumedSession.setModel).toHaveBeenCalledWith("channel-model");
+  });
+
   it("registers the ask_user bridge for interactive sessions", async () => {
     const session = {
       sessionId: "session-ask",

@@ -171,7 +171,7 @@ export async function getOrCreateSession(opts: CreateSessionOptions): Promise<Co
         await buildSessionConfig(opts.chatId),
       );
 
-      const desiredModel = sessionModels.get(opts.chatId) ?? config.copilot.model;
+      const desiredModel = getModelForChat(opts.chatId);
       await resumed.setModel(desiredModel);
 
       sessions.set(opts.chatId, resumed);
@@ -207,7 +207,7 @@ export async function createNewSession(opts: CreateSessionOptions): Promise<Copi
     sessions.delete(opts.chatId);
   }
 
-  const model = sessionModels.get(opts.chatId) ?? config.copilot.model;
+  const model = getModelForChat(opts.chatId);
 
   log.info({ chatId: opts.chatId, model }, "Creating new Copilot session");
 
@@ -516,7 +516,7 @@ export async function resumeSessionById(
 
   const resumed = await client.resumeSession(sessionId, await buildSessionConfig(chatId));
 
-  const desiredModel = sessionModels.get(chatId) ?? config.copilot.model;
+  const desiredModel = getModelForChat(chatId);
   await resumed.setModel(desiredModel);
 
   sessions.set(chatId, resumed);
