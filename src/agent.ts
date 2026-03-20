@@ -16,6 +16,7 @@ import {
 } from "./telegram/user-input";
 import { clearActiveSession, getActiveSessionId } from "./logging/conversations";
 import { VALID_REASONING_EFFORTS } from "./constants";
+import { getChannelConfig } from "./memory/db";
 
 let client: CopilotClient | null = null;
 const sessions = new Map<number, CopilotSession>();
@@ -368,11 +369,17 @@ export function consumeAbortFlag(chatId: number): boolean {
 }
 
 export function getModelForChat(chatId: number): string {
-  return sessionModels.get(chatId) ?? config.copilot.model;
+  return (
+    sessionModels.get(chatId) ?? getChannelConfig(chatId)?.defaultModel ?? config.copilot.model
+  );
 }
 
 export function getReasoningEffortForChat(chatId: number): ReasoningEffort | undefined {
-  return sessionReasoningEfforts.get(chatId);
+  const effort =
+    sessionReasoningEfforts.get(chatId) ??
+    getChannelConfig(chatId)?.defaultReasoningEffort ??
+    undefined;
+  return effort as ReasoningEffort | undefined;
 }
 
 export async function setReasoningEffort(chatId: number, effort: ReasoningEffort): Promise<void> {
@@ -516,9 +523,9 @@ export async function resumeSessionById(
 
 async function buildSessionConfig(chatId: number) {
   const systemContext = await buildSystemContext(chatId);
-  const model = sessionModels.get(chatId) ?? config.copilot.model;
+  const model = getModelForChat(chatId);
 
-  const reasoningEffort = sessionReasoningEfforts.get(chatId);
+  const reasoningEffort = getReasoningEffortForChat(chatId);
 
   return {
     clientName: "neo",

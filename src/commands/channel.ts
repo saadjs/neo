@@ -1,5 +1,6 @@
 import type { Context } from "grammy";
 import { config } from "../config";
+import { VALID_REASONING_EFFORTS } from "../constants";
 import { getChannelConfig, upsertChannelConfig } from "../memory/db";
 import { refreshSessionContext } from "../agent";
 
@@ -48,9 +49,45 @@ export async function handleChannel(ctx: Context) {
       }
       break;
 
+    case "model":
+      if (!value) {
+        await ctx.reply("Usage: /channel model <model-id> or /channel model clear");
+        return;
+      }
+      if (value === "clear") {
+        upsertChannelConfig(chatId, { defaultModel: null });
+        await refreshSessionContext(chatId);
+        await ctx.reply("Channel default model cleared.");
+      } else {
+        upsertChannelConfig(chatId, { defaultModel: value });
+        await refreshSessionContext(chatId);
+        await ctx.reply(`Channel default model set to: ${value}`);
+      }
+      break;
+
+    case "reasoning":
+      if (!value) {
+        await ctx.reply("Usage: /channel reasoning <level> or /channel reasoning clear");
+        return;
+      }
+      if (value === "clear") {
+        upsertChannelConfig(chatId, { defaultReasoningEffort: null });
+        await refreshSessionContext(chatId);
+        await ctx.reply("Channel default reasoning effort cleared.");
+      } else if (VALID_REASONING_EFFORTS.has(value)) {
+        upsertChannelConfig(chatId, { defaultReasoningEffort: value });
+        await refreshSessionContext(chatId);
+        await ctx.reply(`Channel default reasoning effort set to: ${value}`);
+      } else {
+        await ctx.reply(
+          `Invalid reasoning effort: ${value}. Valid levels: ${[...VALID_REASONING_EFFORTS].join(", ")}`,
+        );
+      }
+      break;
+
     default:
       await ctx.reply(
-        "Unknown subcommand. Usage:\n/channel — Show config\n/channel label <name>\n/channel topics <t1,t2,...>\n/channel topics clear",
+        "Unknown subcommand. Usage:\n/channel — Show config\n/channel label <name>\n/channel topics <t1,t2,...>\n/channel topics clear\n/channel model <model-id>\n/channel model clear\n/channel reasoning <level>\n/channel reasoning clear",
       );
   }
 }
@@ -68,6 +105,8 @@ async function showChannelConfig(ctx: Context, chatId: number) {
     `Channel Config (${chatId})`,
     `Label: ${cfg.label || "(none)"}`,
     `Topics: ${cfg.topics || "(unrestricted)"}`,
+    `Default Model: ${cfg.defaultModel || "(global)"}`,
+    `Default Reasoning: ${cfg.defaultReasoningEffort || "(global)"}`,
     `Soul Overlay: ${cfg.soulOverlay ? `${cfg.soulOverlay.slice(0, 100)}...` : "(none)"}`,
     `Preferences: ${cfg.preferences ? `${cfg.preferences.slice(0, 100)}...` : "(none)"}`,
   ];

@@ -156,7 +156,7 @@ Key commands:
 - `/memory` — View or search memory
 - `/reasoning` — Set reasoning effort level
 - `/sessions` — List active sessions
-- `/channel` — Configure group chat settings
+- `/channel` — Configure group chat settings (label, topics, default model, reasoning effort)
 
 ## Tools
 
