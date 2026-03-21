@@ -6,19 +6,25 @@ vi.mock("@github/copilot-sdk", () => ({
 
 const {
   clearPerChatModelOverrideMock,
+  clearReasoningEffortMock,
   getPerChatModelOverrideMock,
+  getReasoningEffortForChatMock,
   refreshSessionContextMock,
   switchModelMock,
   getChannelConfigMock,
   upsertChannelConfigMock,
+  loadModelCatalogMock,
   createAuditTimerMock,
 } = vi.hoisted(() => ({
   clearPerChatModelOverrideMock: vi.fn(),
+  clearReasoningEffortMock: vi.fn(),
   getPerChatModelOverrideMock: vi.fn(),
+  getReasoningEffortForChatMock: vi.fn(),
   refreshSessionContextMock: vi.fn(),
   switchModelMock: vi.fn(),
   getChannelConfigMock: vi.fn(),
   upsertChannelConfigMock: vi.fn(),
+  loadModelCatalogMock: vi.fn(),
   createAuditTimerMock: vi.fn(() => ({
     complete: vi.fn(),
   })),
@@ -26,9 +32,15 @@ const {
 
 vi.mock("../agent.js", () => ({
   clearPerChatModelOverride: clearPerChatModelOverrideMock,
+  clearReasoningEffort: clearReasoningEffortMock,
   getPerChatModelOverride: getPerChatModelOverrideMock,
+  getReasoningEffortForChat: getReasoningEffortForChatMock,
   refreshSessionContext: refreshSessionContextMock,
   switchModel: switchModelMock,
+}));
+
+vi.mock("../commands/model-catalog.js", () => ({
+  loadModelCatalog: loadModelCatalogMock,
 }));
 
 vi.mock("../memory/db.js", () => ({
@@ -68,6 +80,33 @@ const invocation = { sessionId: "test-session" };
 describe("system tool — set_chat_model", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    loadModelCatalogMock.mockResolvedValue({
+      models: [
+        {
+          id: "claude-opus-4-6",
+          label: "Claude Opus 4.6",
+          provider: "copilot",
+          supportsReasoningEffort: true,
+          supportedReasoningEfforts: ["medium", "high"],
+          defaultReasoningEffort: "medium",
+        },
+        {
+          id: "gpt-4.1",
+          label: "GPT-4.1",
+          provider: "copilot",
+          supportsReasoningEffort: false,
+          supportedReasoningEfforts: [],
+        },
+        {
+          id: "gpt-5.4",
+          label: "GPT-5.4",
+          provider: "copilot",
+          supportsReasoningEffort: true,
+          supportedReasoningEfforts: ["low", "medium"],
+          defaultReasoningEffort: "medium",
+        },
+      ],
+    });
   });
 
   it("requires chat_id", async () => {
@@ -78,6 +117,17 @@ describe("system tool — set_chat_model", () => {
   it("requires model", async () => {
     const result = await handler({ action: "set_chat_model", chat_id: -100 }, invocation);
     expect(result).toContain("model is required");
+  });
+
+  it("rejects unknown models before persisting them", async () => {
+    const result = await handler(
+      { action: "set_chat_model", chat_id: -100, model: "unknown-model" },
+      invocation,
+    );
+
+    expect(result).toContain("unknown model: unknown-model");
+    expect(upsertChannelConfigMock).not.toHaveBeenCalled();
+    expect(switchModelMock).not.toHaveBeenCalled();
   });
 
   it("sets channel default and clears per-chat override by default", async () => {
@@ -118,6 +168,21 @@ describe("system tool — set_chat_model", () => {
     expect(parsed.previousPerChatOverride).toBeUndefined();
   });
 
+  it("clears incompatible reasoning overrides when setting a channel default", async () => {
+    getPerChatModelOverrideMock.mockReturnValue(undefined);
+    getReasoningEffortForChatMock.mockReturnValue("high");
+
+    const result = await handler(
+      { action: "set_chat_model", chat_id: -200, model: "gpt-4.1" },
+      invocation,
+    );
+    const parsed = JSON.parse(result);
+
+    expect(clearReasoningEffortMock).toHaveBeenCalledWith(-200);
+    expect(parsed.previousReasoningEffort).toBe("high");
+    expect(parsed.reasoningEffortCleared).toBe(true);
+  });
+
   it("sets per-chat override when scope is chat", async () => {
     getPerChatModelOverrideMock.mockReturnValue("gpt-4.1");
 
@@ -146,6 +211,36 @@ describe("system tool — set_chat_model", () => {
 
     expect(switchModelMock).toHaveBeenCalledWith(456, "gpt-5.4");
     expect(parsed.previousPerChatModel).toBeNull();
+  });
+
+  it("clears incompatible reasoning overrides when setting a per-chat model", async () => {
+    getPerChatModelOverrideMock.mockReturnValue(undefined);
+    getReasoningEffortForChatMock.mockReturnValue("high");
+
+    const result = await handler(
+      { action: "set_chat_model", chat_id: 456, model: "gpt-5.4", scope: "chat" },
+      invocation,
+    );
+    const parsed = JSON.parse(result);
+
+    expect(switchModelMock).toHaveBeenCalledWith(456, "gpt-5.4");
+    expect(clearReasoningEffortMock).toHaveBeenCalledWith(456);
+    expect(parsed.previousReasoningEffort).toBe("high");
+    expect(parsed.reasoningEffortCleared).toBe(true);
+  });
+
+  it("keeps compatible reasoning overrides when the new model supports them", async () => {
+    getPerChatModelOverrideMock.mockReturnValue(undefined);
+    getReasoningEffortForChatMock.mockReturnValue("medium");
+
+    const result = await handler(
+      { action: "set_chat_model", chat_id: 456, model: "gpt-5.4", scope: "chat" },
+      invocation,
+    );
+    const parsed = JSON.parse(result);
+
+    expect(clearReasoningEffortMock).not.toHaveBeenCalled();
+    expect(parsed.reasoningEffortCleared).toBeUndefined();
   });
 });
 
