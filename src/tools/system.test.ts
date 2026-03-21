@@ -8,6 +8,7 @@ const {
   clearPerChatModelOverrideMock,
   clearReasoningEffortMock,
   getPerChatModelOverrideMock,
+  getPerChatReasoningEffortOverrideMock,
   getReasoningEffortForChatMock,
   refreshSessionContextMock,
   switchModelMock,
@@ -19,6 +20,7 @@ const {
   clearPerChatModelOverrideMock: vi.fn(),
   clearReasoningEffortMock: vi.fn(),
   getPerChatModelOverrideMock: vi.fn(),
+  getPerChatReasoningEffortOverrideMock: vi.fn(),
   getReasoningEffortForChatMock: vi.fn(),
   refreshSessionContextMock: vi.fn(),
   switchModelMock: vi.fn(),
@@ -34,6 +36,7 @@ vi.mock("../agent.js", () => ({
   clearPerChatModelOverride: clearPerChatModelOverrideMock,
   clearReasoningEffort: clearReasoningEffortMock,
   getPerChatModelOverride: getPerChatModelOverrideMock,
+  getPerChatReasoningEffortOverride: getPerChatReasoningEffortOverrideMock,
   getReasoningEffortForChat: getReasoningEffortForChatMock,
   refreshSessionContext: refreshSessionContextMock,
   switchModel: switchModelMock,
@@ -80,6 +83,7 @@ const invocation = { sessionId: "test-session" };
 describe("system tool — set_chat_model", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    getPerChatReasoningEffortOverrideMock.mockReturnValue(undefined);
     loadModelCatalogMock.mockResolvedValue({
       models: [
         {
@@ -168,9 +172,11 @@ describe("system tool — set_chat_model", () => {
     expect(parsed.previousPerChatOverride).toBeUndefined();
   });
 
-  it("clears incompatible reasoning overrides when setting a channel default", async () => {
+  it("clears incompatible channel-default reasoning when setting a channel default", async () => {
     getPerChatModelOverrideMock.mockReturnValue(undefined);
+    getPerChatReasoningEffortOverrideMock.mockReturnValue(undefined);
     getReasoningEffortForChatMock.mockReturnValue("high");
+    getChannelConfigMock.mockReturnValue({ defaultReasoningEffort: "high" });
 
     const result = await handler(
       { action: "set_chat_model", chat_id: -200, model: "gpt-4.1" },
@@ -178,9 +184,12 @@ describe("system tool — set_chat_model", () => {
     );
     const parsed = JSON.parse(result);
 
-    expect(clearReasoningEffortMock).toHaveBeenCalledWith(-200);
+    expect(clearReasoningEffortMock).not.toHaveBeenCalled();
+    expect(upsertChannelConfigMock).toHaveBeenCalledWith(-200, { defaultReasoningEffort: null });
+    expect(refreshSessionContextMock).toHaveBeenCalledWith(-200);
     expect(parsed.previousReasoningEffort).toBe("high");
     expect(parsed.reasoningEffortCleared).toBe(true);
+    expect(parsed.reasoningEffortClearedFrom).toBe("channel");
   });
 
   it("sets per-chat override when scope is chat", async () => {
@@ -213,8 +222,9 @@ describe("system tool — set_chat_model", () => {
     expect(parsed.previousPerChatModel).toBeNull();
   });
 
-  it("clears incompatible reasoning overrides when setting a per-chat model", async () => {
+  it("clears incompatible per-chat reasoning overrides when setting a per-chat model", async () => {
     getPerChatModelOverrideMock.mockReturnValue(undefined);
+    getPerChatReasoningEffortOverrideMock.mockReturnValue("high");
     getReasoningEffortForChatMock.mockReturnValue("high");
 
     const result = await handler(
@@ -227,6 +237,7 @@ describe("system tool — set_chat_model", () => {
     expect(clearReasoningEffortMock).toHaveBeenCalledWith(456);
     expect(parsed.previousReasoningEffort).toBe("high");
     expect(parsed.reasoningEffortCleared).toBe(true);
+    expect(parsed.reasoningEffortClearedFrom).toBe("chat");
   });
 
   it("keeps compatible reasoning overrides when the new model supports them", async () => {

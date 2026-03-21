@@ -17,6 +17,7 @@ import {
   clearPerChatModelOverride,
   clearReasoningEffort,
   getPerChatModelOverride,
+  getPerChatReasoningEffortOverride,
   getReasoningEffortForChat,
   refreshSessionContext,
   switchModel,
@@ -53,11 +54,28 @@ async function clearIncompatibleReasoningOverride(chatId: number, model: Availab
     return null;
   }
 
-  await clearReasoningEffort(chatId);
-  return {
-    previousReasoningEffort: currentEffort,
-    reasoningEffortCleared: true,
-  };
+  const perChatEffortOverride = getPerChatReasoningEffortOverride(chatId);
+  if (perChatEffortOverride === currentEffort) {
+    await clearReasoningEffort(chatId);
+    return {
+      previousReasoningEffort: currentEffort,
+      reasoningEffortCleared: true,
+      reasoningEffortClearedFrom: "chat",
+    };
+  }
+
+  const channelConfig = getChannelConfig(chatId);
+  if (channelConfig?.defaultReasoningEffort === currentEffort) {
+    upsertChannelConfig(chatId, { defaultReasoningEffort: null });
+    await refreshSessionContext(chatId);
+    return {
+      previousReasoningEffort: currentEffort,
+      reasoningEffortCleared: true,
+      reasoningEffortClearedFrom: "channel",
+    };
+  }
+
+  return null;
 }
 
 export const systemTool = defineTool("system", {

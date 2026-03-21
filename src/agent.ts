@@ -420,9 +420,13 @@ export function getModelForChat(chatId: number): string {
   );
 }
 
+export function getPerChatReasoningEffortOverride(chatId: number): ReasoningEffort | undefined {
+  return sessionReasoningEfforts.get(chatId);
+}
+
 export function getReasoningEffortForChat(chatId: number): ReasoningEffort | undefined {
   const effort =
-    sessionReasoningEfforts.get(chatId) ??
+    getPerChatReasoningEffortOverride(chatId) ??
     getChannelConfig(chatId)?.defaultReasoningEffort ??
     undefined;
   return effort as ReasoningEffort | undefined;
