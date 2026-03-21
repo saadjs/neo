@@ -35,6 +35,12 @@ afterEach(() => {
 
 describe("handleModel", () => {
   it("switches directly and shows reasoning info", async () => {
+    loadModelCatalogMock.mockResolvedValue({
+      fetchedAt: "2026-03-13T10:00:00.000Z",
+      models: [{ id: "gpt-5", label: "GPT-5 [copilot]", provider: "copilot" }],
+      stale: false,
+      source: "cache",
+    });
     getModelReasoningInfoMock.mockResolvedValue({
       supported: true,
       levels: ["low", "medium", "high"],
@@ -57,6 +63,12 @@ describe("handleModel", () => {
   });
 
   it("ignores the bot mention in group-chat commands", async () => {
+    loadModelCatalogMock.mockResolvedValue({
+      fetchedAt: "2026-03-13T10:00:00.000Z",
+      models: [{ id: "gpt-5", label: "GPT-5 [copilot]", provider: "copilot" }],
+      stale: false,
+      source: "cache",
+    });
     getModelReasoningInfoMock.mockResolvedValue(null);
 
     const { handleModel } = await import("./model");
@@ -72,6 +84,29 @@ describe("handleModel", () => {
     const text = reply.mock.calls[0][0] as string;
     expect(text).toContain("Session model switched to `gpt-5` for this chat only.");
     expect(text).toContain("not supported by this model");
+  });
+
+  it("rejects models not in the catalog", async () => {
+    loadModelCatalogMock.mockResolvedValue({
+      fetchedAt: "2026-03-13T10:00:00.000Z",
+      models: [{ id: "gpt-5", label: "GPT-5 [copilot]", provider: "copilot" }],
+      stale: false,
+      source: "cache",
+    });
+
+    const { handleModel } = await import("./model");
+    const reply = vi.fn();
+
+    await handleModel({
+      chat: { id: 42 },
+      message: { text: "/model anthropic:claude-invalid-model" },
+      reply,
+    } as never);
+
+    expect(switchModelMock).not.toHaveBeenCalled();
+    const text = reply.mock.calls[0][0] as string;
+    expect(text).toContain("Unknown model");
+    expect(text).toContain("claude-invalid-model");
   });
 
   it("replies with a paginated picker when no model name is provided", async () => {

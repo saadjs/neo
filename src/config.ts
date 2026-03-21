@@ -154,6 +154,13 @@ function defaultSkillDirectories() {
   );
 }
 
+function parseOptionalProviderType(raw: string | undefined): "openai" | "anthropic" | undefined {
+  const trimmed = raw?.trim().toLowerCase();
+  if (!trimmed) return undefined;
+  if (trimmed === "openai" || trimmed === "anthropic") return trimmed;
+  throw new Error(`NEO_PROVIDER_TYPE must be "openai" or "anthropic", got "${raw}"`);
+}
+
 function detectSystemctlScope(): "system" | "user" {
   const configuredScope = process.env.NEO_SYSTEMCTL_SCOPE?.trim();
   if (configuredScope === "user" || configuredScope === "system") {
@@ -282,6 +289,17 @@ export interface Config {
   };
   logging: {
     level: LogLevel;
+  };
+  providers: {
+    anthropicApiKey: string | undefined;
+    openaiApiKey: string | undefined;
+    custom: {
+      name: string | undefined;
+      type: "openai" | "anthropic" | undefined;
+      baseUrl: string | undefined;
+      apiKey: string | undefined;
+      bearerToken: string | undefined;
+    };
   };
   service: {
     systemdUnit: string;
@@ -493,6 +511,17 @@ function loadConfig(): Config {
           bufferExhaustionThreshold: managed.NEO_CONTEXT_BUFFER_EXHAUSTION_THRESHOLD,
         },
       },
+      providers: {
+        anthropicApiKey: optionalString(process.env.ANTHROPIC_API_KEY),
+        openaiApiKey: optionalString(process.env.OPENAI_API_KEY),
+        custom: {
+          name: optionalString(process.env.NEO_PROVIDER_NAME),
+          type: parseOptionalProviderType(process.env.NEO_PROVIDER_TYPE),
+          baseUrl: optionalString(process.env.NEO_PROVIDER_BASE_URL),
+          apiKey: optionalString(process.env.NEO_PROVIDER_API_KEY),
+          bearerToken: optionalString(process.env.NEO_PROVIDER_BEARER_TOKEN),
+        },
+      },
       browser: {
         defaultHeadless: optionalBoolean(process.env.NEO_BROWSER_HEADLESS, true),
         launchArgs: (process.env.NEO_BROWSER_LAUNCH_ARGS || "")
@@ -547,3 +576,11 @@ export function redactSettingValue(key: ManagedConfigKey, value: unknown): unkno
 }
 
 export const config = loadConfig();
+
+export function hasAnyProvider(): boolean {
+  return !!(
+    config.providers.anthropicApiKey ||
+    config.providers.openaiApiKey ||
+    config.providers.custom.baseUrl
+  );
+}

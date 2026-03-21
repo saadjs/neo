@@ -1,6 +1,7 @@
 import { getModelForChat, getReasoningEffortForChat, type ReasoningEffort } from "../agent";
 import { config } from "../config";
 import { getChannelConfig } from "../memory/db";
+import { parseQualifiedModel, getConfiguredProviders } from "../providers";
 
 export type ChatModelContext = {
   defaultModel: string;
@@ -9,6 +10,8 @@ export type ChatModelContext = {
   overrideActive: boolean;
   reasoningEffort: ReasoningEffort | undefined;
   channelDefaultReasoningEffort: string | null;
+  provider: string;
+  configuredProviders: string[];
 };
 
 export function getChatModelContext(chatId: number): ChatModelContext {
@@ -18,9 +21,11 @@ export function getChatModelContext(chatId: number): ChatModelContext {
   const channelDefaultModel = channelConfig?.defaultModel ?? null;
   const channelDefaultReasoningEffort = channelConfig?.defaultReasoningEffort ?? null;
 
-  // Override is active when the resolved model differs from what
-  // the channel default (or global default) would give
   const effectiveDefault = channelDefaultModel ?? defaultModel;
+  const { providerKey } = parseQualifiedModel(currentModel);
+  const providers = getConfiguredProviders();
+  const allProviderKeys = ["copilot", ...providers.map((p) => p.key)];
+
   return {
     defaultModel,
     channelDefaultModel,
@@ -28,6 +33,8 @@ export function getChatModelContext(chatId: number): ChatModelContext {
     overrideActive: currentModel !== effectiveDefault,
     reasoningEffort: getReasoningEffortForChat(chatId),
     channelDefaultReasoningEffort,
+    provider: providerKey ?? "copilot",
+    configuredProviders: allProviderKeys,
   };
 }
 
@@ -43,6 +50,12 @@ export function formatChatModelContextMarkdown(context: ChatModelContext): strin
   } else {
     const source = context.channelDefaultModel ? "channel default" : "default";
     lines.push(`Current chat model: \`${context.currentModel}\` (using ${source})`);
+  }
+
+  lines.push(`Provider: ${context.provider}`);
+
+  if (context.configuredProviders.length > 1) {
+    lines.push(`Available providers: ${context.configuredProviders.join(", ")}`);
   }
 
   if (context.reasoningEffort) {

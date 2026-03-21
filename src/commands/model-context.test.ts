@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 const { getModelForChatMock, getReasoningEffortForChatMock, getChannelConfigMock } = vi.hoisted(
   () => ({
@@ -16,12 +16,29 @@ vi.mock("../agent.js", () => ({
 }));
 
 vi.mock("../config.js", () => ({
-  config: { copilot: { model: "gpt-4.1" } },
+  config: {
+    copilot: { model: "gpt-4.1" },
+    providers: {
+      anthropicApiKey: undefined,
+      openaiApiKey: undefined,
+      custom: {
+        name: undefined,
+        type: undefined,
+        baseUrl: undefined,
+        apiKey: undefined,
+        bearerToken: undefined,
+      },
+    },
+  },
 }));
 
 vi.mock("../memory/db.js", () => ({
   getChannelConfig: getChannelConfigMock,
 }));
+
+afterEach(() => {
+  vi.resetModules();
+});
 
 describe("formatChatModelContextMarkdown", () => {
   it("shows reasoning effort override when set", async () => {
@@ -34,6 +51,8 @@ describe("formatChatModelContextMarkdown", () => {
       overrideActive: true,
       reasoningEffort: "high",
       channelDefaultReasoningEffort: null,
+      provider: "copilot",
+      configuredProviders: ["copilot"],
     });
 
     expect(result).toContain("Reasoning effort: `high` (override active)");
@@ -49,6 +68,8 @@ describe("formatChatModelContextMarkdown", () => {
       overrideActive: false,
       reasoningEffort: undefined,
       channelDefaultReasoningEffort: null,
+      provider: "copilot",
+      configuredProviders: ["copilot"],
     });
 
     expect(result).toContain("Reasoning effort: model default");
@@ -64,6 +85,8 @@ describe("formatChatModelContextMarkdown", () => {
       overrideActive: false,
       reasoningEffort: undefined,
       channelDefaultReasoningEffort: null,
+      provider: "copilot",
+      configuredProviders: ["copilot"],
     });
 
     expect(result).toContain("Channel default: `gpt-5.4`");
@@ -80,6 +103,8 @@ describe("formatChatModelContextMarkdown", () => {
       overrideActive: true,
       reasoningEffort: undefined,
       channelDefaultReasoningEffort: null,
+      provider: "copilot",
+      configuredProviders: ["copilot"],
     });
 
     expect(result).toContain("Channel default: `gpt-5.4`");
@@ -96,9 +121,47 @@ describe("formatChatModelContextMarkdown", () => {
       overrideActive: false,
       reasoningEffort: "medium",
       channelDefaultReasoningEffort: "medium",
+      provider: "copilot",
+      configuredProviders: ["copilot"],
     });
 
     expect(result).toContain("Reasoning effort: `medium` (channel default)");
+  });
+
+  it("shows provider info and available providers", async () => {
+    const { formatChatModelContextMarkdown } = await import("./model-context");
+
+    const result = formatChatModelContextMarkdown({
+      defaultModel: "gpt-4.1",
+      channelDefaultModel: null,
+      currentModel: "anthropic:claude-opus-4-6",
+      overrideActive: true,
+      reasoningEffort: undefined,
+      channelDefaultReasoningEffort: null,
+      provider: "anthropic",
+      configuredProviders: ["copilot", "anthropic", "openai"],
+    });
+
+    expect(result).toContain("Provider: anthropic");
+    expect(result).toContain("Available providers: copilot, anthropic, openai");
+  });
+
+  it("hides available providers when only copilot", async () => {
+    const { formatChatModelContextMarkdown } = await import("./model-context");
+
+    const result = formatChatModelContextMarkdown({
+      defaultModel: "gpt-4.1",
+      channelDefaultModel: null,
+      currentModel: "gpt-4.1",
+      overrideActive: false,
+      reasoningEffort: undefined,
+      channelDefaultReasoningEffort: null,
+      provider: "copilot",
+      configuredProviders: ["copilot"],
+    });
+
+    expect(result).toContain("Provider: copilot");
+    expect(result).not.toContain("Available providers:");
   });
 });
 
@@ -117,5 +180,7 @@ describe("getChatModelContext", () => {
     expect(result.channelDefaultModel).toBe("gpt-5.4");
     expect(result.channelDefaultReasoningEffort).toBe("high");
     expect(result.overrideActive).toBe(false);
+    expect(result.provider).toBe("copilot");
+    expect(result.configuredProviders).toContain("copilot");
   });
 });

@@ -45,11 +45,10 @@ vi.mock("../logging/anomalies.js", () => ({
 
 import { preToolUse } from "./pre-tool";
 import { postToolUse } from "./post-tool";
-import { errorOccurred } from "./error";
+import { errorOccurred, resetModelCallFailures } from "./error";
 import { sessionEnd } from "./session-lifecycle";
 import { sessionStart } from "./session-start";
 import { isJobRunning } from "../scheduler/job-runner";
-import { consumeSessionErrorNotified } from "./error-state";
 import { readDailyMemory, isChannelChat } from "../memory/daily";
 import { getRuntimeContextSection } from "../runtime/state";
 import { formatAnomaliesForContext } from "../logging/anomalies";
@@ -132,17 +131,67 @@ describe("postToolUse", () => {
 describe("errorOccurred", () => {
   const handler = errorOccurred(CHAT_ID);
 
-  beforeEach(() => {
-    consumeSessionErrorNotified(INVOCATION.sessionId);
-  });
-
-  it("retries recoverable model_call errors", async () => {
+  it("retries transient model_call errors", async () => {
+    const invocation = { sessionId: "test-retry-transient" };
     const result = await handler(
-      baseInput({ error: "timeout", errorContext: "model_call", recoverable: true }),
-      INVOCATION,
+      baseInput({ error: new Error("timeout"), errorContext: "model_call", recoverable: true }),
+      invocation,
     );
 
-    expect(result).toEqual({ errorHandling: "retry", retryCount: 2 });
+    expect(result).toEqual({ errorHandling: "retry" });
+  });
+
+  it("aborts immediately for opaque model_call errors", async () => {
+    const invocation = { sessionId: "test-opaque" };
+    const result = await handler(
+      baseInput({ error: {}, errorContext: "model_call", recoverable: true }),
+      invocation,
+    );
+
+    expect(result).toEqual({ errorHandling: "abort" });
+  });
+
+  it("aborts after repeated transient model_call failures", async () => {
+    const invocation = { sessionId: "test-retry-exhaust" };
+    // First two calls retry
+    await handler(
+      baseInput({ error: new Error("timeout"), errorContext: "model_call", recoverable: true }),
+      invocation,
+    );
+    await handler(
+      baseInput({ error: new Error("timeout"), errorContext: "model_call", recoverable: true }),
+      invocation,
+    );
+
+    // Third call should abort
+    const result = await handler(
+      baseInput({ error: new Error("timeout"), errorContext: "model_call", recoverable: true }),
+      invocation,
+    );
+
+    expect(result).toEqual({ errorHandling: "abort" });
+  });
+
+  it("allows a fresh retry episode after the counter is reset", async () => {
+    const invocation = { sessionId: "test-retry-reset" };
+
+    await handler(
+      baseInput({ error: new Error("timeout"), errorContext: "model_call", recoverable: true }),
+      invocation,
+    );
+    await handler(
+      baseInput({ error: new Error("timeout"), errorContext: "model_call", recoverable: true }),
+      invocation,
+    );
+
+    resetModelCallFailures(invocation.sessionId);
+
+    const result = await handler(
+      baseInput({ error: new Error("timeout"), errorContext: "model_call", recoverable: true }),
+      invocation,
+    );
+
+    expect(result).toEqual({ errorHandling: "retry" });
   });
 
   it("does not retry non-recoverable model_call errors", async () => {
@@ -151,11 +200,7 @@ describe("errorOccurred", () => {
       INVOCATION,
     );
 
-    expect(result).toEqual({
-      errorHandling: "abort",
-      userNotification: expect.stringContaining("fatal"),
-    });
-    expect(consumeSessionErrorNotified(INVOCATION.sessionId)).toBe(true);
+    expect(result).toEqual({ errorHandling: "abort" });
   });
 
   it("does not notify user for tool_execution errors", async () => {
@@ -165,7 +210,6 @@ describe("errorOccurred", () => {
     );
 
     expect(result).toBeUndefined();
-    expect(consumeSessionErrorNotified(INVOCATION.sessionId)).toBe(false);
   });
 });
 

@@ -17,6 +17,7 @@ import {
 import { clearActiveSession, getActiveSessionId } from "./logging/conversations";
 import { VALID_REASONING_EFFORTS } from "./constants";
 import { getChannelConfig } from "./memory/db";
+import { parseQualifiedModel, buildProviderConfig } from "./providers";
 
 let client: CopilotClient | null = null;
 const sessions = new Map<number, CopilotSession>();
@@ -172,7 +173,8 @@ export async function getOrCreateSession(opts: CreateSessionOptions): Promise<Co
       );
 
       const desiredModel = getModelForChat(opts.chatId);
-      await resumed.setModel(desiredModel);
+      const { rawModel } = parseQualifiedModel(desiredModel);
+      await resumed.setModel(rawModel);
 
       sessions.set(opts.chatId, resumed);
       getLogger().info(
@@ -209,9 +211,14 @@ export async function createNewSession(opts: CreateSessionOptions): Promise<Copi
 
   const model = getModelForChat(opts.chatId);
 
-  log.info({ chatId: opts.chatId, model }, "Creating new Copilot session");
+  const sessionConfig = await buildSessionConfig(opts.chatId);
+  const { rawModel, providerKey } = parseQualifiedModel(model);
+  log.info(
+    { chatId: opts.chatId, model, rawModel, provider: providerKey ?? "copilot" },
+    "Creating new Copilot session",
+  );
 
-  const session = await client.createSession(await buildSessionConfig(opts.chatId));
+  const session = await client.createSession(sessionConfig);
 
   sessions.set(opts.chatId, session);
   log.info({ chatId: opts.chatId, sessionId: session.sessionId }, "Session created");
@@ -219,8 +226,12 @@ export async function createNewSession(opts: CreateSessionOptions): Promise<Copi
   return session;
 }
 
-export async function switchModel(chatId: number, model: string): Promise<void> {
-  sessionModels.set(chatId, model);
+export async function switchModel(chatId: number, qualifiedModel: string): Promise<void> {
+  const oldQualified = sessionModels.get(chatId) ?? getModelForChat(chatId);
+  const oldSelection = parseQualifiedModel(oldQualified);
+  const newSelection = parseQualifiedModel(qualifiedModel);
+
+  sessionModels.set(chatId, qualifiedModel);
   try {
     await persistSessionModelOverrides();
   } catch (err) {
@@ -228,18 +239,49 @@ export async function switchModel(chatId: number, model: string): Promise<void> 
   }
 
   const session = sessions.get(chatId);
-  if (session) {
-    await session.setModel(model);
-    getLogger().info({ chatId, model }, "Model switched");
+  if (!session) return;
+
+  // Same provider — just switch model in-place
+  if (oldSelection.providerKey === newSelection.providerKey) {
+    await session.setModel(newSelection.rawModel);
+    getLogger().info({ chatId, model: qualifiedModel }, "Model switched");
+    return;
   }
+
+  // Different provider — need session refresh (provider is session-level config)
+  getLogger().info(
+    {
+      chatId,
+      model: qualifiedModel,
+      oldProvider: oldSelection.providerKey,
+      newProvider: newSelection.providerKey,
+    },
+    "Provider changed, refreshing session",
+  );
+  await refreshSessionContext(chatId);
 }
 
 export async function switchDefaultModel(model: string): Promise<void> {
+  const previousSelections = new Map<number, ReturnType<typeof parseQualifiedModel>>();
+  for (const [chatId] of sessions) {
+    if (sessionModels.has(chatId)) continue;
+    if (getChannelConfig(chatId)?.defaultModel) continue;
+    previousSelections.set(chatId, parseQualifiedModel(getModelForChat(chatId)));
+  }
+
   config.copilot.model = model;
+  const { rawModel, providerKey } = parseQualifiedModel(model);
 
   for (const [chatId, session] of sessions) {
     if (sessionModels.has(chatId)) continue;
-    await session.setModel(model);
+    if (getChannelConfig(chatId)?.defaultModel) continue;
+    const oldSelection =
+      previousSelections.get(chatId) ?? parseQualifiedModel(getModelForChat(chatId));
+    if (oldSelection.providerKey !== providerKey) {
+      await refreshSessionContext(chatId);
+    } else {
+      await session.setModel(rawModel);
+    }
     getLogger().info({ chatId, model }, "Default model applied to active session");
   }
 }
@@ -517,7 +559,8 @@ export async function resumeSessionById(
   const resumed = await client.resumeSession(sessionId, await buildSessionConfig(chatId));
 
   const desiredModel = getModelForChat(chatId);
-  await resumed.setModel(desiredModel);
+  const { rawModel } = parseQualifiedModel(desiredModel);
+  await resumed.setModel(rawModel);
 
   sessions.set(chatId, resumed);
   log.info({ chatId, sessionId: resumed.sessionId }, "Resumed session via /sessions");
@@ -527,15 +570,18 @@ export async function resumeSessionById(
 
 async function buildSessionConfig(chatId: number) {
   const systemContext = await buildSystemContext(chatId);
-  const model = getModelForChat(chatId);
+  const qualifiedModel = getModelForChat(chatId);
+  const { rawModel, providerKey } = parseQualifiedModel(qualifiedModel);
+  const provider = providerKey ? buildProviderConfig(providerKey) : undefined;
 
   const reasoningEffort = getReasoningEffortForChat(chatId);
 
   return {
     clientName: "neo",
-    model,
+    model: rawModel,
     streaming: true,
     ...(reasoningEffort && { reasoningEffort }),
+    ...(provider && { provider }),
     systemMessage: { mode: "replace" as const, content: systemContext },
     tools: allTools,
     skillDirectories: config.copilot.skillDirectories,

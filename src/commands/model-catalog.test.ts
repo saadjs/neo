@@ -12,11 +12,29 @@ const { dataDir, listModelsMock, getClientMock } = vi.hoisted(() => ({
 vi.mock("../config.js", () => ({
   config: {
     paths: { data: dataDir },
+    providers: {
+      anthropicApiKey: undefined,
+      openaiApiKey: undefined,
+      custom: {
+        name: undefined,
+        type: undefined,
+        baseUrl: undefined,
+        apiKey: undefined,
+        bearerToken: undefined,
+      },
+    },
   },
 }));
 
 vi.mock("../agent.js", () => ({
   getClient: getClientMock,
+}));
+
+vi.mock("../logging/index.js", () => ({
+  getLogger: () => ({
+    info: vi.fn(),
+    warn: vi.fn(),
+  }),
 }));
 
 function createModel(
@@ -55,6 +73,7 @@ function createModel(
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
   vi.resetModules();
   rmSync(dataDir, { recursive: true, force: true });
   listModelsMock.mockReset();
@@ -77,6 +96,8 @@ describe("loadModelCatalog", () => {
     expect(result.source).toBe("network");
     expect(result.stale).toBe(false);
     expect(result.models.map((m) => m.id)).toEqual(["gpt-4.1", "claude-opus-4.6", "gpt-5.4"]);
+    expect(result.models[0].provider).toBe("copilot");
+    expect(result.models[0].label).toBe("GPT-4.1 [copilot]");
     expect(result.models[0].supportsReasoningEffort).toBe(true);
     expect(result.models[0].supportedReasoningEfforts).toEqual(["low", "medium", "high"]);
     expect(result.models[0].defaultReasoningEffort).toBe("medium");
@@ -89,7 +110,8 @@ describe("loadModelCatalog", () => {
       join(dataDir, "copilot-models-cache.json"),
       `${JSON.stringify({
         fetchedAt: "2026-03-13T10:00:00.000Z",
-        models: [{ id: "gpt-5.4", label: "GPT-5.4" }],
+        providerSignature: "[]",
+        models: [{ id: "gpt-5.4", label: "GPT-5.4 [copilot]", provider: "copilot" }],
       })}\n`,
       "utf-8",
     );
@@ -100,8 +122,45 @@ describe("loadModelCatalog", () => {
     const result = await loadModelCatalog({ now: Date.parse("2026-03-13T12:00:00.000Z") });
 
     expect(result.source).toBe("cache");
-    expect(result.models).toEqual([{ id: "gpt-5.4", label: "GPT-5.4" }]);
+    expect(result.models).toEqual([
+      { id: "gpt-5.4", label: "GPT-5.4 [copilot]", provider: "copilot" },
+    ]);
     expect(listModelsMock).not.toHaveBeenCalled();
+  });
+
+  it("refreshes a fresh cache when provider configuration changes", async () => {
+    mkdirSync(dataDir, { recursive: true });
+    writeFileSync(
+      join(dataDir, "copilot-models-cache.json"),
+      `${JSON.stringify({
+        fetchedAt: "2026-03-13T10:00:00.000Z",
+        models: [{ id: "gpt-5.4", label: "GPT-5.4 [copilot]", provider: "copilot" }],
+      })}\n`,
+      "utf-8",
+    );
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          data: [{ id: "gpt-4.1-mini" }],
+        }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { config } = await import("../config.js");
+    config.providers.openaiApiKey = "sk-openai-test";
+
+    listModelsMock.mockResolvedValue([createModel("gpt-5.4", "GPT-5.4")]);
+    getClientMock.mockReturnValue({ listModels: listModelsMock });
+
+    const { loadModelCatalog } = await import("./model-catalog");
+    const result = await loadModelCatalog({ now: Date.parse("2026-03-13T12:00:00.000Z") });
+
+    expect(result.source).toBe("network");
+    expect(result.models.map((m) => m.id)).toEqual(["gpt-5.4", "openai:gpt-4.1-mini"]);
+    expect(listModelsMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("refreshes stale cache from the Copilot SDK", async () => {
@@ -123,7 +182,7 @@ describe("loadModelCatalog", () => {
 
     expect(result.source).toBe("network");
     expect(result.models[0].id).toBe("gpt-5.4");
-    expect(result.models[0].label).toBe("GPT-5.4");
+    expect(result.models[0].label).toBe("GPT-5.4 [copilot]");
     expect(listModelsMock).toHaveBeenCalledTimes(1);
   });
 

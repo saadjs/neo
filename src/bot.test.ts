@@ -12,13 +12,19 @@ vi.mock("@github/copilot-sdk", () => ({
   defineTool: () => ({}),
 }));
 
-const { botHandlers, resolvePendingUserInputMock, getPendingUserInputMock, registerCommandsMock } =
-  vi.hoisted(() => ({
-    botHandlers: new Map<string, (ctx: any) => Promise<void>>(),
-    resolvePendingUserInputMock: vi.fn(),
-    getPendingUserInputMock: vi.fn(),
-    registerCommandsMock: vi.fn(async () => {}),
-  }));
+const {
+  botHandlers,
+  resolvePendingUserInputMock,
+  getPendingUserInputMock,
+  registerCommandsMock,
+  resetModelCallFailuresMock,
+} = vi.hoisted(() => ({
+  botHandlers: new Map<string, (ctx: any) => Promise<void>>(),
+  resolvePendingUserInputMock: vi.fn(),
+  getPendingUserInputMock: vi.fn(),
+  registerCommandsMock: vi.fn(async () => {}),
+  resetModelCallFailuresMock: vi.fn(),
+}));
 
 vi.mock("grammy", () => ({
   Bot: class MockBot {
@@ -95,6 +101,16 @@ vi.mock("./commands/reasoning.js", () => ({
   isReasoningCallback: vi.fn(() => false),
 }));
 
+vi.mock("./commands/session.js", () => ({
+  handleSessionCallback: vi.fn(),
+  isSessionCallback: vi.fn(() => false),
+}));
+
+vi.mock("./commands/jobs.js", () => ({
+  handleJobsCallback: vi.fn(),
+  isJobsCallback: vi.fn(() => false),
+}));
+
 vi.mock("./telegram/files.js", () => ({
   downloadTelegramFile: vi.fn(),
 }));
@@ -149,6 +165,10 @@ vi.mock("./hooks/error-state.js", () => ({
   consumeSessionErrorNotified: vi.fn(() => false),
 }));
 
+vi.mock("./hooks/error.js", () => ({
+  resetModelCallFailures: resetModelCallFailuresMock,
+}));
+
 afterEach(() => {
   botHandlers.clear();
   resolvePendingUserInputMock.mockReset();
@@ -187,5 +207,48 @@ describe("createBot", () => {
     expect(resolvePendingUserInputMock).toHaveBeenCalledWith(123, "/tmp/file");
     expect(reply).toHaveBeenCalledWith("Resuming task…");
     expect(replyWithChatAction).not.toHaveBeenCalled();
+  });
+
+  it("resets model-call retry state after a successful turn", async () => {
+    const { createBot } = await import("./bot");
+    const { getOrCreateSession } = await import("./agent.js");
+    await createBot();
+
+    const textHandler = botHandlers.get("message:text");
+    expect(textHandler).toBeTypeOf("function");
+
+    const sessionHandlers: Array<(event: any) => void> = [];
+    vi.mocked(getOrCreateSession).mockResolvedValue({
+      sessionId: "session-1",
+      on: vi.fn((handler: (event: any) => void) => {
+        sessionHandlers.push(handler);
+        return () => {};
+      }),
+      send: vi.fn(async () => {
+        for (const handler of sessionHandlers) {
+          handler({ type: "assistant.message", data: { content: "done" } });
+          handler({ type: "session.idle", data: {} });
+        }
+      }),
+    } as any);
+
+    const reply = vi.fn(async (text: string) => {
+      if (text === "Thinking...") return { message_id: 1 };
+      return {};
+    });
+    const replyWithChatAction = vi.fn(async () => {});
+
+    await textHandler?.({
+      chat: { id: 123 },
+      message: { text: "hello" },
+      reply,
+      replyWithChatAction,
+      api: {
+        editMessageText: vi.fn(async () => {}),
+        deleteMessage: vi.fn(async () => {}),
+      },
+    });
+
+    expect(resetModelCallFailuresMock).toHaveBeenCalledWith("session-1");
   });
 });
