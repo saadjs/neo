@@ -240,6 +240,27 @@ describe("system tool — set_chat_model", () => {
     expect(parsed.reasoningEffortClearedFrom).toBe("chat");
   });
 
+  it("preserves channel reasoning defaults when setting a per-chat model", async () => {
+    getPerChatModelOverrideMock.mockReturnValue(undefined);
+    getPerChatReasoningEffortOverrideMock.mockReturnValue(undefined);
+    getReasoningEffortForChatMock.mockReturnValue("high");
+    getChannelConfigMock.mockReturnValue({ defaultReasoningEffort: "high" });
+
+    const result = await handler(
+      { action: "set_chat_model", chat_id: 456, model: "gpt-5.4", scope: "chat" },
+      invocation,
+    );
+    const parsed = JSON.parse(result);
+
+    expect(switchModelMock).toHaveBeenCalledWith(456, "gpt-5.4");
+    expect(clearReasoningEffortMock).not.toHaveBeenCalled();
+    expect(upsertChannelConfigMock).not.toHaveBeenCalledWith(456, {
+      defaultReasoningEffort: null,
+    });
+    expect(refreshSessionContextMock).not.toHaveBeenCalledWith(456);
+    expect(parsed.reasoningEffortCleared).toBeUndefined();
+  });
+
   it("keeps compatible reasoning overrides when the new model supports them", async () => {
     getPerChatModelOverrideMock.mockReturnValue(undefined);
     getReasoningEffortForChatMock.mockReturnValue("medium");

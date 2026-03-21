@@ -44,7 +44,13 @@ async function loadValidatedModel(modelId: string): Promise<AvailableModel | nul
   return catalog.models.find((model) => model.id === modelId) ?? null;
 }
 
-async function clearIncompatibleReasoningOverride(chatId: number, model: AvailableModel) {
+async function clearIncompatibleReasoningOverride(
+  chatId: number,
+  model: AvailableModel,
+  options?: {
+    allowChannelDefaultMutation?: boolean;
+  },
+) {
   const currentEffort = getReasoningEffortForChat(chatId);
   if (!currentEffort) return null;
 
@@ -62,6 +68,10 @@ async function clearIncompatibleReasoningOverride(chatId: number, model: Availab
       reasoningEffortCleared: true,
       reasoningEffortClearedFrom: "chat",
     };
+  }
+
+  if (!options?.allowChannelDefaultMutation) {
+    return null;
   }
 
   const channelConfig = getChannelConfig(chatId);
@@ -288,6 +298,7 @@ export const systemTool = defineTool("system", {
             const reasoningChange = await clearIncompatibleReasoningOverride(
               chatId,
               validatedModel,
+              { allowChannelDefaultMutation: false },
             );
 
             const result = JSON.stringify(
@@ -318,7 +329,9 @@ export const systemTool = defineTool("system", {
             await refreshSessionContext(chatId);
           }
 
-          const reasoningChange = await clearIncompatibleReasoningOverride(chatId, validatedModel);
+          const reasoningChange = await clearIncompatibleReasoningOverride(chatId, validatedModel, {
+            allowChannelDefaultMutation: true,
+          });
           const resultPayload: Record<string, unknown> = {
             applied: true,
             chatId,
