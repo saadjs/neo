@@ -17,7 +17,7 @@ export const commandDefinitions = [
   {
     command: "channel",
     description: "Channel config (groups only)",
-    usage: "[label|topics|model|reasoning] [value]",
+    usage: "[label|topics|model|reasoning|soul|preferences] [value]",
   },
   {
     command: "context",

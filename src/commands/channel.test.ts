@@ -7,6 +7,7 @@ const {
   getPerChatModelOverrideMock,
   getModelForChatMock,
   getModelReasoningInfoMock,
+  loadModelCatalogMock,
 } = vi.hoisted(() => ({
   upsertChannelConfigMock: vi.fn(),
   getChannelConfigMock: vi.fn(),
@@ -14,6 +15,7 @@ const {
   getPerChatModelOverrideMock: vi.fn(),
   getModelForChatMock: vi.fn(),
   getModelReasoningInfoMock: vi.fn(),
+  loadModelCatalogMock: vi.fn(),
 }));
 
 vi.mock("../config.js", () => ({
@@ -40,9 +42,10 @@ vi.mock("../agent.js", () => ({
 
 vi.mock("./model-catalog.js", () => ({
   getModelReasoningInfo: getModelReasoningInfoMock,
+  loadModelCatalog: loadModelCatalogMock,
 }));
 
-import { handleChannel } from "./channel";
+import { handleChannel, isChannelCallback } from "./channel";
 
 describe("handleChannel", () => {
   beforeEach(() => {
@@ -52,6 +55,7 @@ describe("handleChannel", () => {
     getPerChatModelOverrideMock.mockReset();
     getModelForChatMock.mockReset();
     getModelReasoningInfoMock.mockReset();
+    loadModelCatalogMock.mockReset();
     getModelForChatMock.mockReturnValue("gpt-4.1");
     getModelReasoningInfoMock.mockResolvedValue({
       supported: true,
@@ -278,5 +282,157 @@ describe("handleChannel", () => {
 
     expect(reply).toHaveBeenCalledWith(expect.stringContaining("Default Model: gpt-4.1"));
     expect(reply).toHaveBeenCalledWith(expect.stringContaining("Default Reasoning: high"));
+  });
+
+  it("sets channel soul overlay", async () => {
+    const reply = vi.fn();
+
+    await handleChannel({
+      chat: { id: -100123 },
+      message: { text: "/channel soul You are a helpful DevOps assistant" },
+      reply,
+    } as never);
+
+    expect(upsertChannelConfigMock).toHaveBeenCalledWith(-100123, {
+      soulOverlay: "You are a helpful DevOps assistant",
+    });
+    expect(refreshSessionContextMock).toHaveBeenCalledWith(-100123);
+    expect(reply).toHaveBeenCalledWith("Channel soul overlay set.");
+  });
+
+  it("clears channel soul overlay", async () => {
+    const reply = vi.fn();
+
+    await handleChannel({
+      chat: { id: -100123 },
+      message: { text: "/channel soul clear" },
+      reply,
+    } as never);
+
+    expect(upsertChannelConfigMock).toHaveBeenCalledWith(-100123, { soulOverlay: null });
+    expect(refreshSessionContextMock).toHaveBeenCalledWith(-100123);
+    expect(reply).toHaveBeenCalledWith("Channel soul overlay cleared.");
+  });
+
+  it("sets channel preferences", async () => {
+    const reply = vi.fn();
+
+    await handleChannel({
+      chat: { id: -100123 },
+      message: { text: "/channel preferences Always respond in bullet points" },
+      reply,
+    } as never);
+
+    expect(upsertChannelConfigMock).toHaveBeenCalledWith(-100123, {
+      preferences: "Always respond in bullet points",
+    });
+    expect(refreshSessionContextMock).toHaveBeenCalledWith(-100123);
+    expect(reply).toHaveBeenCalledWith("Channel preferences set.");
+  });
+
+  it("clears channel preferences", async () => {
+    const reply = vi.fn();
+
+    await handleChannel({
+      chat: { id: -100123 },
+      message: { text: "/channel preferences clear" },
+      reply,
+    } as never);
+
+    expect(upsertChannelConfigMock).toHaveBeenCalledWith(-100123, { preferences: null });
+    expect(refreshSessionContextMock).toHaveBeenCalledWith(-100123);
+    expect(reply).toHaveBeenCalledWith("Channel preferences cleared.");
+  });
+
+  it("shows model picker when /channel model has no args", async () => {
+    const reply = vi.fn();
+    getChannelConfigMock.mockReturnValue({ defaultModel: "gpt-4.1" });
+    loadModelCatalogMock.mockResolvedValue({
+      fetchedAt: "2026-03-21T03:00:00Z",
+      models: [
+        { id: "gpt-4.1", label: "GPT 4.1", provider: "copilot" },
+        { id: "claude-sonnet-4", label: "Claude Sonnet 4", provider: "copilot" },
+      ],
+      source: "cache",
+      stale: false,
+    });
+
+    await handleChannel({
+      chat: { id: -100123 },
+      message: { text: "/channel model" },
+      reply,
+    } as never);
+
+    expect(loadModelCatalogMock).toHaveBeenCalled();
+    expect(reply).toHaveBeenCalledWith(
+      expect.stringContaining("Choose a default model for this channel"),
+      expect.objectContaining({ reply_markup: expect.anything() }),
+    );
+  });
+
+  it("shows reasoning picker when /channel reasoning has no args", async () => {
+    const reply = vi.fn();
+    getChannelConfigMock.mockReturnValue({ defaultReasoningEffort: "high" });
+    getModelReasoningInfoMock.mockResolvedValue({
+      supported: true,
+      levels: ["low", "medium", "high", "xhigh"],
+    });
+
+    await handleChannel({
+      chat: { id: -100123 },
+      message: { text: "/channel reasoning" },
+      reply,
+    } as never);
+
+    expect(reply).toHaveBeenCalledWith(
+      expect.stringContaining("Set default reasoning effort for this channel"),
+      expect.objectContaining({ reply_markup: expect.anything() }),
+    );
+  });
+
+  it("shows usage when /channel soul has no args", async () => {
+    const reply = vi.fn();
+
+    await handleChannel({
+      chat: { id: -100123 },
+      message: { text: "/channel soul" },
+      reply,
+    } as never);
+
+    expect(reply).toHaveBeenCalledWith("Usage: /channel soul <text> or /channel soul clear");
+    expect(upsertChannelConfigMock).not.toHaveBeenCalled();
+  });
+
+  it("shows usage when /channel preferences has no args", async () => {
+    const reply = vi.fn();
+
+    await handleChannel({
+      chat: { id: -100123 },
+      message: { text: "/channel preferences" },
+      reply,
+    } as never);
+
+    expect(reply).toHaveBeenCalledWith(
+      "Usage: /channel preferences <text> or /channel preferences clear",
+    );
+    expect(upsertChannelConfigMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("isChannelCallback", () => {
+  it("matches ch-model: prefix", () => {
+    expect(isChannelCallback("ch-model:set:abc:0")).toBe(true);
+  });
+
+  it("matches ch-reasoning: prefix", () => {
+    expect(isChannelCallback("ch-reasoning:set:abc:high")).toBe(true);
+  });
+
+  it("does not match model: prefix", () => {
+    expect(isChannelCallback("model:set:abc:0")).toBe(false);
+  });
+
+  it("does not match undefined", () => {
+    expect(isChannelCallback(undefined)).toBe(false);
   });
 });

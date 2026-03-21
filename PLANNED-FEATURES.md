@@ -61,9 +61,9 @@ Neo already transcribes incoming voice. Convert responses to audio and reply wit
 
 Extend beyond single `TELEGRAM_OWNER_ID`. Permission tiers: `owner` (full access), `trusted` (chat access with limited tools), `guest` (specific commands only). New `NEO_TRUSTED_USERS` config. Extend owner-only middleware in `bot.ts`, scope tool permissions per role in `pre-tool.ts`. Per-user session isolation or shared sessions depending on chat type.
 
-### - [ ] Channel-aware routing
+### - [x] Channel-aware routing
 
-Different default models, reasoning effort, and personas per group chat. Extend `channel_config` table in `src/memory/db.ts` with `model` and `reasoning_effort` columns. Update `/channel` command. Wire into `getModelForChat()` and `buildSessionConfig()` in `agent.ts`.
+Implemented. Different default models, reasoning effort, and personas per group chat. The `channel_config` table includes `default_model` and `default_reasoning_effort` columns (added via migration). `getModelForChat()` and `getReasoningEffortForChat()` in `agent.ts` implement a three-tier resolution: per-chat override → channel default → global default. `buildSessionConfig()` passes both into the SDK. The `/channel` command supports subcommands: `label`, `topics`, `model` (with inline keyboard picker), `reasoning` (with inline keyboard picker), `soul` (persona overlay), and `preferences`. Channel-scoped soul overlays, preferences, topics, weekly summaries, and daily memory are all injected into the system context by `buildSystemContext()` and session start hooks.
 
 ### - [ ] Proactive notifications
 
@@ -101,4 +101,4 @@ Auto-select model based on task complexity instead of one static default. Quick 
 
 - [ ] **`refreshSessionContext()`** — Destroys and recreates sessions to update the system prompt. Dynamic context (daily memory, anomalies, runtime state) is now injected via `onSessionStart`, but `refreshSessionContext` is still needed for reasoning effort changes because `reasoningEffort` is a session-level config parameter — no hook's `additionalContext` can change it.
 - [ ] **`post-tool.ts`** — One log line for browser screenshots. Consolidate into audit logging or expand.
-- [ ] **Model override persistence** — Separate `session-model-overrides.json` could move to the managed config system.
+- [ ] **Model override persistence** — Separate `session-model-overrides.json` and `session-reasoning-overrides.json` could move to a DB table for consistency with channel-level config stored in `channel_config`. Currently per-chat overrides use JSON files while channel defaults use SQLite.

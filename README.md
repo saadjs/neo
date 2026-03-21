@@ -132,6 +132,40 @@ systemctl --user start neo
 journalctl --user -u neo -f  # view logs
 ```
 
+After initial setup, the recommended update flow is a single command from the server-side Neo checkout:
+
+```bash
+./deploy/update.sh
+```
+
+What it does:
+
+- requires a clean Git worktree
+- fetches and fast-forwards the currently tracked branch
+- runs `npm ci`
+- runs `npm run build`
+- runs `./deploy/preflight.sh`
+- restarts the configured `systemd` unit only if all prior steps succeed
+
+Optional arguments:
+
+```bash
+./deploy/update.sh <service-name> <system|user>
+```
+
+Examples:
+
+```bash
+./deploy/update.sh neo system
+./deploy/update.sh neo user
+```
+
+Health check only:
+
+```bash
+./deploy/doctor.sh
+```
+
 Notes:
 
 - The setup script bootstraps system Node at `/usr/bin/node` and currently targets `v24.14.0`.
@@ -144,6 +178,7 @@ Notes:
 - User services run with the same filesystem permissions as the installing login user, so they can access files in that user's home directory such as shell dotfiles when needed.
 - `systemd` does not automatically source `.bashrc` or `.zshrc`; put required runtime settings in Neo's `.env` unless explicitly loading shell startup files.
 - `sudo loginctl enable-linger "$USER"` keeps a user service running after logout.
+- `deploy/update.sh` sources `.env` first, so `NEO_SYSTEMD_UNIT` and `NEO_SYSTEMCTL_SCOPE` can define the default restart target.
 
 ## Commands
 

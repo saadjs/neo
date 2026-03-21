@@ -24,6 +24,7 @@ import {
 import { registerCommands } from "./commands/index";
 import { handleModelCallback, isModelCallback } from "./commands/model";
 import { handleReasoningCallback, isReasoningCallback } from "./commands/reasoning";
+import { handleChannelCallback, isChannelCallback } from "./commands/channel";
 import { handleSessionCallback, isSessionCallback } from "./commands/session";
 import { handleJobsCallback, isJobsCallback } from "./commands/jobs";
 import { downloadTelegramFile } from "./telegram/files";
@@ -156,6 +157,10 @@ export async function createBot(): Promise<BotHandle> {
     }
     if (isJobsCallback(ctx.callbackQuery.data)) {
       await handleJobsCallback(ctx);
+      return;
+    }
+    if (isChannelCallback(ctx.callbackQuery.data)) {
+      await handleChannelCallback(ctx);
       return;
     }
     if (!isModelCallback(ctx.callbackQuery.data)) return;

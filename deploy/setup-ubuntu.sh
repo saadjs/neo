@@ -294,6 +294,7 @@ main() {
     echo "  sudo journalctl -u ${service_name} -f"
   fi
   echo "  cd ${SOURCE_ROOT} && git pull && ./deploy/setup-ubuntu.sh"
+  echo "  cd ${install_dir} && ./deploy/update.sh ${service_name} ${service_scope}"
 }
 
 main "$@"
