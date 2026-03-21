@@ -449,6 +449,17 @@ export async function clearReasoningEffort(chatId: number): Promise<void> {
   await refreshSessionContext(chatId);
 }
 
+export async function clearPerChatModelOverride(chatId: number): Promise<void> {
+  if (!sessionModels.has(chatId)) return;
+  sessionModels.delete(chatId);
+  try {
+    await persistSessionModelOverrides();
+  } catch (err) {
+    getLogger().warn({ chatId, err }, "Failed to persist model overrides");
+  }
+  await refreshSessionContext(chatId);
+}
+
 export function beginSessionTurn(chatId: number): void {
   activeSessionTurns.set(chatId, (activeSessionTurns.get(chatId) ?? 0) + 1);
 }

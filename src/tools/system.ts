@@ -13,6 +13,12 @@ import {
   planConfigChange,
   restartService,
 } from "../runtime/state";
+import {
+  clearPerChatModelOverride,
+  getPerChatModelOverride,
+  refreshSessionContext,
+} from "../agent";
+import { getChannelConfig, upsertChannelConfig } from "../memory/db";
 
 function formatUptime(seconds: number): string {
   const days = Math.floor(seconds / 86400);
@@ -30,7 +36,7 @@ function formatUptime(seconds: number): string {
 
 export const systemTool = defineTool("system", {
   description:
-    "Manage Neo through the governed control plane: inspect status, explain settings, plan or apply safe config changes, and restart the service.",
+    "Manage Neo through the governed control plane: inspect status, explain settings, plan or apply safe config changes, set per-chat or channel default models, and restart the service. Use set_chat_model (not apply_config_change with COPILOT_MODEL) when asked to change the model for a specific chat or group.",
   parameters: z.object({
     action: z
       .enum([
@@ -43,12 +49,29 @@ export const systemTool = defineTool("system", {
         "recent_changes",
         "recent_restarts",
         "uptime",
+        "set_chat_model",
+        "clear_chat_model",
       ])
       .describe("The system action to perform"),
     key: z.string().optional().describe("Managed config key for explain/plan/apply actions"),
     value: z.string().optional().describe("Desired config value for plan/apply actions"),
     reason: z.string().optional().describe("Why Neo should make the change or restart"),
-    chat_id: z.number().optional().describe("Telegram chat ID to notify after restart"),
+    chat_id: z
+      .number()
+      .optional()
+      .describe(
+        "Telegram chat ID. Required for set_chat_model/clear_chat_model. Also used to notify after restart.",
+      ),
+    model: z
+      .string()
+      .optional()
+      .describe("Model ID for set_chat_model (e.g. claude-opus-4-6, gpt-4.1)"),
+    clear_override: z
+      .boolean()
+      .optional()
+      .describe(
+        "For set_chat_model: also clear any per-chat model override so the new channel default takes effect. Defaults to true.",
+      ),
     allow_approval_required: z
       .boolean()
       .optional()
@@ -183,6 +206,92 @@ export const systemTool = defineTool("system", {
             {
               processUptime: formatUptime(process.uptime()),
               systemUptime: formatUptime(os.uptime()),
+            },
+            null,
+            2,
+          );
+          audit.complete(result);
+          return result;
+        }
+
+        case "set_chat_model": {
+          if (!args.chat_id) {
+            const result = "Error: chat_id is required for set_chat_model.";
+            audit.complete(result);
+            return result;
+          }
+          if (!args.model) {
+            const result = "Error: model is required for set_chat_model.";
+            audit.complete(result);
+            return result;
+          }
+
+          const chatId = args.chat_id;
+          const modelId = args.model;
+          const clearOverride = args.clear_override !== false;
+
+          // Set channel default model
+          upsertChannelConfig(chatId, { defaultModel: modelId });
+
+          // Clear per-chat override if requested so the channel default takes effect
+          const previousOverride = getPerChatModelOverride(chatId);
+          if (clearOverride && previousOverride) {
+            await clearPerChatModelOverride(chatId);
+          } else {
+            await refreshSessionContext(chatId);
+          }
+
+          const resultPayload: Record<string, unknown> = {
+            applied: true,
+            chatId,
+            channelDefaultModel: modelId,
+            restartTriggered: false,
+          };
+          if (previousOverride) {
+            resultPayload.previousPerChatOverride = previousOverride;
+            resultPayload.perChatOverrideCleared = clearOverride;
+            if (!clearOverride) {
+              resultPayload.warning =
+                "Per-chat override is still active and takes precedence over the channel default. Use clear_chat_model to remove it.";
+            }
+          }
+
+          const result = JSON.stringify(resultPayload, null, 2);
+          audit.complete(result);
+          return result;
+        }
+
+        case "clear_chat_model": {
+          if (!args.chat_id) {
+            const result = "Error: chat_id is required for clear_chat_model.";
+            audit.complete(result);
+            return result;
+          }
+
+          const chatId = args.chat_id;
+          const cleared: string[] = [];
+
+          const channelCfg = getChannelConfig(chatId);
+          if (channelCfg?.defaultModel) {
+            upsertChannelConfig(chatId, { defaultModel: null });
+            cleared.push("channel_default");
+          }
+
+          const perChatOverride = getPerChatModelOverride(chatId);
+          if (perChatOverride) {
+            await clearPerChatModelOverride(chatId);
+            cleared.push("per_chat_override");
+          } else {
+            await refreshSessionContext(chatId);
+          }
+
+          const result = JSON.stringify(
+            {
+              applied: true,
+              chatId,
+              cleared,
+              effectiveModel: "Will use global default after refresh.",
+              restartTriggered: false,
             },
             null,
             2,
