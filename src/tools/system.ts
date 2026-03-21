@@ -16,6 +16,7 @@ import {
 import {
   clearPerChatModelOverride,
   clearReasoningEffort,
+  getModelForChat,
   getPerChatModelOverride,
   getPerChatReasoningEffortOverride,
   getReasoningEffortForChat,
@@ -395,11 +396,30 @@ export const systemTool = defineTool("system", {
             }
           }
 
+          // Revalidate reasoning against the now-effective fallback model.
+          // The per-chat or channel model was removed above, so getModelForChat
+          // now returns whichever layer remains (channel default or global default).
+          let reasoningChange = null;
+          if (cleared.length > 0) {
+            const fallbackModelId = getModelForChat(clearChatId);
+            const fallbackModel = await loadValidatedModel(fallbackModelId);
+            if (fallbackModel) {
+              reasoningChange = await clearIncompatibleReasoningOverride(
+                clearChatId,
+                fallbackModel,
+                {
+                  allowChannelDefaultMutation: true,
+                },
+              );
+            }
+          }
+
           const result = JSON.stringify(
             {
               applied: true,
               chatId: clearChatId,
               cleared,
+              ...reasoningChange,
               restartTriggered: false,
             },
             null,

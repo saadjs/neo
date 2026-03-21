@@ -7,6 +7,7 @@ vi.mock("@github/copilot-sdk", () => ({
 const {
   clearPerChatModelOverrideMock,
   clearReasoningEffortMock,
+  getModelForChatMock,
   getPerChatModelOverrideMock,
   getPerChatReasoningEffortOverrideMock,
   getReasoningEffortForChatMock,
@@ -19,6 +20,7 @@ const {
 } = vi.hoisted(() => ({
   clearPerChatModelOverrideMock: vi.fn(),
   clearReasoningEffortMock: vi.fn(),
+  getModelForChatMock: vi.fn(),
   getPerChatModelOverrideMock: vi.fn(),
   getPerChatReasoningEffortOverrideMock: vi.fn(),
   getReasoningEffortForChatMock: vi.fn(),
@@ -35,6 +37,7 @@ const {
 vi.mock("../agent.js", () => ({
   clearPerChatModelOverride: clearPerChatModelOverrideMock,
   clearReasoningEffort: clearReasoningEffortMock,
+  getModelForChat: getModelForChatMock,
   getPerChatModelOverride: getPerChatModelOverrideMock,
   getPerChatReasoningEffortOverride: getPerChatReasoningEffortOverrideMock,
   getReasoningEffortForChat: getReasoningEffortForChatMock,
@@ -279,6 +282,28 @@ describe("system tool — set_chat_model", () => {
 describe("system tool — clear_chat_model", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    getReasoningEffortForChatMock.mockReturnValue(undefined);
+    getPerChatReasoningEffortOverrideMock.mockReturnValue(undefined);
+    getModelForChatMock.mockReturnValue("claude-opus-4-6");
+    loadModelCatalogMock.mockResolvedValue({
+      models: [
+        {
+          id: "claude-opus-4-6",
+          supportsReasoningEffort: true,
+          supportedReasoningEfforts: ["low", "medium", "high"],
+        },
+        {
+          id: "gpt-4.1",
+          supportsReasoningEffort: false,
+          supportedReasoningEfforts: [],
+        },
+        {
+          id: "gpt-5.4",
+          supportsReasoningEffort: false,
+          supportedReasoningEfforts: [],
+        },
+      ],
+    });
   });
 
   it("requires chat_id", async () => {
@@ -351,5 +376,71 @@ describe("system tool — clear_chat_model", () => {
 
     expect(parsed.cleared).toEqual([]);
     expect(refreshSessionContextMock).toHaveBeenCalledWith(-400);
+  });
+
+  it("clears incompatible per-chat reasoning when reverting to a fallback model that lacks support", async () => {
+    // per-chat override was "claude-opus-4-6" with per-chat reasoning "high"
+    // Fallback after clearing: "gpt-4.1" (no reasoning support)
+    getChannelConfigMock.mockReturnValue({ defaultModel: "gpt-4.1" });
+    getPerChatModelOverrideMock.mockReturnValue("claude-opus-4-6");
+    getReasoningEffortForChatMock.mockReturnValue("high");
+    getPerChatReasoningEffortOverrideMock.mockReturnValue("high");
+    getModelForChatMock.mockReturnValue("gpt-4.1"); // effective after per-chat model is cleared
+
+    const result = await handler(
+      { action: "clear_chat_model", chat_id: -500, scope: "chat" },
+      invocation,
+    );
+    const parsed = JSON.parse(result);
+
+    expect(clearPerChatModelOverrideMock).toHaveBeenCalledWith(-500);
+    expect(clearReasoningEffortMock).toHaveBeenCalledWith(-500);
+    expect(parsed.cleared).toEqual(["per_chat_override"]);
+    expect(parsed.reasoningEffortCleared).toBe(true);
+    expect(parsed.reasoningEffortClearedFrom).toBe("chat");
+  });
+
+  it("clears incompatible channel reasoning when clearing channel default that reverts to a model lacking support", async () => {
+    // channel default was "claude-opus-4-6" with channel reasoning "high"
+    // Fallback after clearing: global default "gpt-4.1" (no reasoning support)
+    getChannelConfigMock.mockReturnValue({
+      defaultModel: "claude-opus-4-6",
+      defaultReasoningEffort: "high",
+    });
+    getPerChatModelOverrideMock.mockReturnValue(undefined);
+    getReasoningEffortForChatMock.mockReturnValue("high");
+    getPerChatReasoningEffortOverrideMock.mockReturnValue(undefined);
+    getModelForChatMock.mockReturnValue("gpt-4.1"); // effective after channel default is cleared
+
+    const result = await handler(
+      { action: "clear_chat_model", chat_id: -600, scope: "channel" },
+      invocation,
+    );
+    const parsed = JSON.parse(result);
+
+    expect(upsertChannelConfigMock).toHaveBeenCalledWith(-600, { defaultModel: null });
+    expect(upsertChannelConfigMock).toHaveBeenCalledWith(-600, { defaultReasoningEffort: null });
+    expect(parsed.cleared).toEqual(["channel_default"]);
+    expect(parsed.reasoningEffortCleared).toBe(true);
+    expect(parsed.reasoningEffortClearedFrom).toBe("channel");
+  });
+
+  it("preserves reasoning when fallback model supports the active effort level", async () => {
+    // per-chat override was "gpt-4.1", fallback is "claude-opus-4-6" which supports "high"
+    getChannelConfigMock.mockReturnValue({ defaultModel: "claude-opus-4-6" });
+    getPerChatModelOverrideMock.mockReturnValue("gpt-4.1");
+    getReasoningEffortForChatMock.mockReturnValue("high");
+    getPerChatReasoningEffortOverrideMock.mockReturnValue(undefined);
+    getModelForChatMock.mockReturnValue("claude-opus-4-6");
+
+    const result = await handler(
+      { action: "clear_chat_model", chat_id: -700, scope: "chat" },
+      invocation,
+    );
+    const parsed = JSON.parse(result);
+
+    expect(clearPerChatModelOverrideMock).toHaveBeenCalledWith(-700);
+    expect(clearReasoningEffortMock).not.toHaveBeenCalled();
+    expect(parsed.reasoningEffortCleared).toBeUndefined();
   });
 });
