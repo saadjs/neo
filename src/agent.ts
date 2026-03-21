@@ -420,9 +420,13 @@ export function getModelForChat(chatId: number): string {
   );
 }
 
+export function getPerChatReasoningEffortOverride(chatId: number): ReasoningEffort | undefined {
+  return sessionReasoningEfforts.get(chatId);
+}
+
 export function getReasoningEffortForChat(chatId: number): ReasoningEffort | undefined {
   const effort =
-    sessionReasoningEfforts.get(chatId) ??
+    getPerChatReasoningEffortOverride(chatId) ??
     getChannelConfig(chatId)?.defaultReasoningEffort ??
     undefined;
   return effort as ReasoningEffort | undefined;
@@ -445,6 +449,17 @@ export async function clearReasoningEffort(chatId: number): Promise<void> {
     await persistSessionReasoningOverrides();
   } catch (err) {
     getLogger().warn({ chatId, err }, "Failed to persist reasoning effort overrides");
+  }
+  await refreshSessionContext(chatId);
+}
+
+export async function clearPerChatModelOverride(chatId: number): Promise<void> {
+  if (!sessionModels.has(chatId)) return;
+  sessionModels.delete(chatId);
+  try {
+    await persistSessionModelOverrides();
+  } catch (err) {
+    getLogger().warn({ chatId, err }, "Failed to persist model overrides");
   }
   await refreshSessionContext(chatId);
 }
