@@ -17,6 +17,7 @@ import {
   clearPerChatModelOverride,
   getPerChatModelOverride,
   refreshSessionContext,
+  switchModel,
 } from "../agent";
 import { getChannelConfig, upsertChannelConfig } from "../memory/db";
 
@@ -66,11 +67,11 @@ export const systemTool = defineTool("system", {
       .string()
       .optional()
       .describe("Model ID for set_chat_model (e.g. claude-opus-4-6, gpt-4.1)"),
-    clear_override: z
-      .boolean()
+    scope: z
+      .enum(["channel", "chat"])
       .optional()
       .describe(
-        "For set_chat_model: also clear any per-chat model override so the new channel default takes effect. Defaults to true.",
+        'For set_chat_model: "channel" sets the group default model (use for group chats), "chat" sets a per-chat override (use for DMs or temporary switches). Defaults to "channel". For clear_chat_model: "channel" clears the channel default, "chat" clears the per-chat override, omit to clear the per-chat override first (if it exists) or the channel default otherwise.',
       ),
     allow_approval_required: z
       .boolean()
@@ -228,14 +229,35 @@ export const systemTool = defineTool("system", {
 
           const chatId = args.chat_id;
           const modelId = args.model;
-          const clearOverride = args.clear_override !== false;
+          const scope = args.scope ?? "channel";
 
-          // Set channel default model
+          if (scope === "chat") {
+            // Per-chat override (like /model) — temporary, chat-specific
+            const previousOverride = getPerChatModelOverride(chatId);
+            await switchModel(chatId, modelId);
+
+            const result = JSON.stringify(
+              {
+                applied: true,
+                chatId,
+                scope: "chat",
+                perChatModel: modelId,
+                previousPerChatModel: previousOverride ?? null,
+                restartTriggered: false,
+              },
+              null,
+              2,
+            );
+            audit.complete(result);
+            return result;
+          }
+
+          // scope === "channel" — set channel default model
           upsertChannelConfig(chatId, { defaultModel: modelId });
 
-          // Clear per-chat override if requested so the channel default takes effect
+          // Clear per-chat override so the new channel default takes effect
           const previousOverride = getPerChatModelOverride(chatId);
-          if (clearOverride && previousOverride) {
+          if (previousOverride) {
             await clearPerChatModelOverride(chatId);
           } else {
             await refreshSessionContext(chatId);
@@ -244,16 +266,13 @@ export const systemTool = defineTool("system", {
           const resultPayload: Record<string, unknown> = {
             applied: true,
             chatId,
+            scope: "channel",
             channelDefaultModel: modelId,
             restartTriggered: false,
           };
           if (previousOverride) {
             resultPayload.previousPerChatOverride = previousOverride;
-            resultPayload.perChatOverrideCleared = clearOverride;
-            if (!clearOverride) {
-              resultPayload.warning =
-                "Per-chat override is still active and takes precedence over the channel default. Use clear_chat_model to remove it.";
-            }
+            resultPayload.perChatOverrideCleared = true;
           }
 
           const result = JSON.stringify(resultPayload, null, 2);
@@ -268,29 +287,49 @@ export const systemTool = defineTool("system", {
             return result;
           }
 
-          const chatId = args.chat_id;
+          const clearChatId = args.chat_id;
+          const clearScope = args.scope;
           const cleared: string[] = [];
 
-          const channelCfg = getChannelConfig(chatId);
-          if (channelCfg?.defaultModel) {
-            upsertChannelConfig(chatId, { defaultModel: null });
-            cleared.push("channel_default");
-          }
-
-          const perChatOverride = getPerChatModelOverride(chatId);
-          if (perChatOverride) {
-            await clearPerChatModelOverride(chatId);
-            cleared.push("per_chat_override");
+          if (clearScope === "channel") {
+            // Explicitly clear only the channel default
+            const channelCfg = getChannelConfig(clearChatId);
+            if (channelCfg?.defaultModel) {
+              upsertChannelConfig(clearChatId, { defaultModel: null });
+              cleared.push("channel_default");
+            }
+            await refreshSessionContext(clearChatId);
+          } else if (clearScope === "chat") {
+            // Explicitly clear only the per-chat override
+            const perChatOverride = getPerChatModelOverride(clearChatId);
+            if (perChatOverride) {
+              await clearPerChatModelOverride(clearChatId);
+              cleared.push("per_chat_override");
+            } else {
+              await refreshSessionContext(clearChatId);
+            }
           } else {
-            await refreshSessionContext(chatId);
+            // No scope specified: clear per-chat override first (most specific),
+            // fall back to clearing channel default if no override exists
+            const perChatOverride = getPerChatModelOverride(clearChatId);
+            if (perChatOverride) {
+              await clearPerChatModelOverride(clearChatId);
+              cleared.push("per_chat_override");
+            } else {
+              const channelCfg = getChannelConfig(clearChatId);
+              if (channelCfg?.defaultModel) {
+                upsertChannelConfig(clearChatId, { defaultModel: null });
+                cleared.push("channel_default");
+              }
+              await refreshSessionContext(clearChatId);
+            }
           }
 
           const result = JSON.stringify(
             {
               applied: true,
-              chatId,
+              chatId: clearChatId,
               cleared,
-              effectiveModel: "Will use global default after refresh.",
               restartTriggered: false,
             },
             null,
