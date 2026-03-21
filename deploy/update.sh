@@ -118,7 +118,8 @@ main() {
   run_as_checkout_owner "$checkout_owner" git -C "$ROOT_DIR" merge --ff-only "$upstream"
 
   echo "Installing dependencies..."
-  run_as_checkout_owner "$checkout_owner" bash -lc "cd '$ROOT_DIR' && npm ci"
+  run_as_checkout_owner "$checkout_owner" bash -lc \
+    "cd '$ROOT_DIR' && HUSKY=0 npm ci --include=dev"
 
   echo "Building Neo..."
   run_as_checkout_owner "$checkout_owner" bash -lc "cd '$ROOT_DIR' && npm run build"

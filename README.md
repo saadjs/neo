@@ -142,7 +142,7 @@ What it does:
 
 - requires a clean Git worktree
 - fetches and fast-forwards the currently tracked branch
-- runs `npm ci`
+- runs `HUSKY=0 npm ci --include=dev`
 - runs `npm run build`
 - runs `./deploy/preflight.sh`
 - restarts the configured `systemd` unit only if all prior steps succeed
