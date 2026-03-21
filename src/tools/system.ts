@@ -15,10 +15,13 @@ import {
 } from "../runtime/state";
 import {
   clearPerChatModelOverride,
+  clearReasoningEffort,
   getPerChatModelOverride,
+  getReasoningEffortForChat,
   refreshSessionContext,
   switchModel,
 } from "../agent";
+import { loadModelCatalog, type AvailableModel } from "../commands/model-catalog";
 import { getChannelConfig, upsertChannelConfig } from "../memory/db";
 
 function formatUptime(seconds: number): string {
@@ -33,6 +36,28 @@ function formatUptime(seconds: number): string {
   if (minutes > 0) parts.push(`${minutes}m`);
   parts.push(`${secs}s`);
   return parts.join(" ");
+}
+
+async function loadValidatedModel(modelId: string): Promise<AvailableModel | null> {
+  const catalog = await loadModelCatalog();
+  return catalog.models.find((model) => model.id === modelId) ?? null;
+}
+
+async function clearIncompatibleReasoningOverride(chatId: number, model: AvailableModel) {
+  const currentEffort = getReasoningEffortForChat(chatId);
+  if (!currentEffort) return null;
+
+  const supportedLevels = model.supportedReasoningEfforts ?? [];
+  const supportsReasoningEffort = model.supportsReasoningEffort ?? false;
+  if (supportsReasoningEffort && supportedLevels.includes(currentEffort)) {
+    return null;
+  }
+
+  await clearReasoningEffort(chatId);
+  return {
+    previousReasoningEffort: currentEffort,
+    reasoningEffortCleared: true,
+  };
 }
 
 export const systemTool = defineTool("system", {
@@ -230,11 +255,22 @@ export const systemTool = defineTool("system", {
           const chatId = args.chat_id;
           const modelId = args.model;
           const scope = args.scope ?? "channel";
+          const validatedModel = await loadValidatedModel(modelId);
+
+          if (!validatedModel) {
+            const result = `Error: unknown model: ${modelId}. Use /model to see available models.`;
+            audit.complete(result);
+            return result;
+          }
 
           if (scope === "chat") {
             // Per-chat override (like /model) — temporary, chat-specific
             const previousOverride = getPerChatModelOverride(chatId);
             await switchModel(chatId, modelId);
+            const reasoningChange = await clearIncompatibleReasoningOverride(
+              chatId,
+              validatedModel,
+            );
 
             const result = JSON.stringify(
               {
@@ -243,6 +279,7 @@ export const systemTool = defineTool("system", {
                 scope: "chat",
                 perChatModel: modelId,
                 previousPerChatModel: previousOverride ?? null,
+                ...reasoningChange,
                 restartTriggered: false,
               },
               null,
@@ -263,11 +300,13 @@ export const systemTool = defineTool("system", {
             await refreshSessionContext(chatId);
           }
 
+          const reasoningChange = await clearIncompatibleReasoningOverride(chatId, validatedModel);
           const resultPayload: Record<string, unknown> = {
             applied: true,
             chatId,
             scope: "channel",
             channelDefaultModel: modelId,
+            ...reasoningChange,
             restartTriggered: false,
           };
           if (previousOverride) {
