@@ -43,7 +43,7 @@ Implemented. Removed the 5-minute hard timeout — jobs now run to completion, l
 Revisit as needs evolve or the SDK stabilizes.
 
 - [ ] **`onUserPromptSubmitted`** — Per-turn dynamic context injection. Deferred because `onSessionStart` already covers the primary use case: daily memory is too expensive for per-turn injection (and the model can use the `memory` tool for live reads), while runtime state and anomalies rarely change mid-session. Revisit when a concrete per-turn need arises (smart model routing, multi-user permission context, prompt augmentation).
-- [ ] **BYOK / `ProviderConfig`** — Fall back to a self-hosted model when Copilot quota runs out. Needs quota detection.
+- [x] **BYOK / `ProviderConfig`** — Multi-provider model access. Set `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` to enable additional providers. Models appear in the `/model` picker with provider tags (e.g., `[anthropic]`, `[copilot]`). Custom OpenAI-compatible endpoints (Ollama, etc.) supported via `NEO_PROVIDER_*` env vars. Provider changes trigger session refresh. Auto-fallback on quota exhaustion is out of scope for now.
 - [ ] **Telemetry / `TelemetryConfig`** — OTLP export for observability beyond SQLite audit logs.
 - [ ] **`cliUrl`** — Connect to a remote CLI server instead of managing the process locally.
 

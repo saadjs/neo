@@ -62,6 +62,17 @@ vi.mock("./config.js", () => ({
       root: "/tmp/neo",
       data: "/tmp/neo-data",
     },
+    providers: {
+      anthropicApiKey: undefined,
+      openaiApiKey: undefined,
+      custom: {
+        name: undefined,
+        type: undefined,
+        baseUrl: undefined,
+        apiKey: undefined,
+        bearerToken: undefined,
+      },
+    },
   },
 }));
 
@@ -116,6 +127,15 @@ afterEach(async () => {
   cancelPendingUserInputMock.mockReset();
   cancelAllPendingUserInputsMock.mockReset();
   getChannelConfigMock.mockReset();
+  const { config } = await import("./config.js");
+  config.copilot.model = "gpt-4.1";
+  config.providers.anthropicApiKey = undefined;
+  config.providers.openaiApiKey = undefined;
+  config.providers.custom.name = undefined;
+  config.providers.custom.type = undefined;
+  config.providers.custom.baseUrl = undefined;
+  config.providers.custom.apiKey = undefined;
+  config.providers.custom.bearerToken = undefined;
 });
 
 describe("refreshSessionContext", () => {
@@ -577,6 +597,76 @@ describe("getModelForChat", () => {
     await startAgent();
 
     expect(getModelForChat(-200002)).toBe("gpt-4.1");
+  });
+
+  it("refreshes active default sessions when the default provider changes", async () => {
+    const session = {
+      sessionId: "session-default-provider",
+      setModel: vi.fn().mockResolvedValue(undefined),
+      disconnect: vi.fn().mockResolvedValue(undefined),
+    };
+    createSessionMock.mockResolvedValue(session);
+    buildSystemContextMock.mockResolvedValue("context");
+    getActiveSessionIdMock.mockReturnValue(null);
+
+    const { config } = await import("./config.js");
+    config.providers.anthropicApiKey = "sk-ant-test";
+
+    const { createNewSession, getSessionForChat, startAgent, switchDefaultModel } =
+      await import("./agent");
+
+    await startAgent();
+    await createNewSession({ chatId: -200005 });
+    await switchDefaultModel("anthropic:claude-opus-4-6");
+
+    expect(session.setModel).not.toHaveBeenCalled();
+    expect(session.disconnect).toHaveBeenCalledTimes(1);
+    expect(deleteSessionMock).toHaveBeenCalledWith("session-default-provider");
+    expect(getSessionForChat(-200005)).toBeUndefined();
+  });
+
+  it("switches active default sessions in place when the provider stays the same", async () => {
+    const session = {
+      sessionId: "session-default-model",
+      setModel: vi.fn().mockResolvedValue(undefined),
+      disconnect: vi.fn().mockResolvedValue(undefined),
+    };
+    createSessionMock.mockResolvedValue(session);
+    buildSystemContextMock.mockResolvedValue("context");
+    getActiveSessionIdMock.mockReturnValue(null);
+
+    const { createNewSession, startAgent, switchDefaultModel } = await import("./agent");
+
+    await startAgent();
+    await createNewSession({ chatId: -200006 });
+    await switchDefaultModel("gpt-5.4");
+
+    expect(session.setModel).toHaveBeenCalledWith("gpt-5.4");
+    expect(session.disconnect).not.toHaveBeenCalled();
+  });
+
+  it("skips active sessions that inherit a channel default model", async () => {
+    const session = {
+      sessionId: "session-channel-default",
+      setModel: vi.fn().mockResolvedValue(undefined),
+      disconnect: vi.fn().mockResolvedValue(undefined),
+    };
+    createSessionMock.mockResolvedValue(session);
+    buildSystemContextMock.mockResolvedValue("context");
+    getActiveSessionIdMock.mockReturnValue(null);
+    getChannelConfigMock.mockReturnValue({ defaultModel: "gpt-4.1" });
+
+    const { createNewSession, getSessionForChat, startAgent, switchDefaultModel } =
+      await import("./agent");
+
+    await startAgent();
+    await createNewSession({ chatId: -200007 });
+    await switchDefaultModel("anthropic:claude-opus-4-6");
+
+    expect(session.setModel).not.toHaveBeenCalled();
+    expect(session.disconnect).not.toHaveBeenCalled();
+    expect(deleteSessionMock).not.toHaveBeenCalledWith("session-channel-default");
+    expect(getSessionForChat(-200007)).toBe(session);
   });
 });
 

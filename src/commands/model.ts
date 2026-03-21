@@ -21,6 +21,7 @@ interface ModelPickerState {
   fetchedAt: string;
   models: AvailableModel[];
   stale: boolean;
+  providers: string[];
 }
 
 const modelPickers = new Map<string, ModelPickerState>();
@@ -49,13 +50,16 @@ function buildModelPickerText(
   page: number,
   totalPages: number,
   stale: boolean,
+  providers: string[],
 ): string {
-  const lines = [
-    "Choose a model for this chat.",
-    `Current: ${currentModel}`,
-    `Catalog fetched: ${fetchedAt}`,
-    `Page ${page + 1} of ${totalPages}`,
-  ];
+  const lines = ["Choose a model for this chat.", `Current: ${currentModel}`];
+
+  if (providers.length > 0) {
+    lines.push(`Providers: ${providers.join(", ")}`);
+  }
+
+  lines.push(`Catalog fetched: ${fetchedAt}`);
+  lines.push(`Page ${page + 1} of ${totalPages}`);
 
   if (stale) {
     lines.push("Using stale cached catalog because GitHub refresh failed.");
@@ -132,6 +136,14 @@ function parseModelCallbackData(
   return null;
 }
 
+function uniqueProviders(models: AvailableModel[]): string[] {
+  const seen = new Set<string>();
+  for (const m of models) {
+    if (m.provider) seen.add(m.provider);
+  }
+  return [...seen];
+}
+
 function registerModelPicker(catalog: ModelCatalogResult, currentModel: string): string {
   pruneExpiredPickers();
   const pickerId = createPickerId();
@@ -141,6 +153,7 @@ function registerModelPicker(catalog: ModelCatalogResult, currentModel: string):
     fetchedAt: catalog.fetchedAt,
     models: catalog.models,
     stale: catalog.stale,
+    providers: uniqueProviders(catalog.models),
   });
   return pickerId;
 }
@@ -159,6 +172,7 @@ function getModelPickerMessage(pickerId: string, page: number) {
       safePage,
       totalPages,
       picker.stale,
+      picker.providers,
     ),
     reply_markup: buildModelPickerMarkup(pickerId, picker.models, safePage),
   };
@@ -221,9 +235,18 @@ export async function handleModel(ctx: Context) {
   }
 
   try {
-    await switchModel(ctx.chat!.id, model);
-    let reply = `Session model switched to \`${model}\` for this chat only.`;
-    reply += await buildReasoningNote(ctx.chat!.id, model);
+    const catalog = await loadModelCatalog();
+    const match = catalog.models.find((m) => m.id === model);
+    if (!match) {
+      await ctx.reply(`Unknown model: \`${model}\`\nUse /model to see available models.`, {
+        parse_mode: "Markdown",
+      });
+      return;
+    }
+
+    await switchModel(ctx.chat!.id, match.id);
+    let reply = `Session model switched to \`${match.id}\` for this chat only.`;
+    reply += await buildReasoningNote(ctx.chat!.id, match.id);
     await ctx.reply(reply, { parse_mode: "Markdown" });
   } catch (err) {
     await ctx.reply(`Failed to switch model: ${err}`);
@@ -276,6 +299,7 @@ export async function handleModelCallback(ctx: Context): Promise<boolean> {
       picker.models = catalog.models;
       picker.fetchedAt = catalog.fetchedAt;
       picker.stale = catalog.stale;
+      picker.providers = uniqueProviders(catalog.models);
 
       const nextMessage = getModelPickerMessage(parsed.pickerId, 0);
       if (nextMessage) {

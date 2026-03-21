@@ -183,6 +183,33 @@ Neo auto-compacts long conversations before they fall out of context. Session su
 
 Send a voice message in Telegram and Neo will transcribe it via Deepgram and respond. Requires `DEEPGRAM_API_KEY` in `.env`.
 
+## BYOK (Bring Your Own Key)
+
+Neo supports multiple model providers alongside GitHub Copilot. Set API keys in `.env` to enable additional providers — their models appear in the `/model` picker with provider tags.
+
+**Quick setup:**
+
+```bash
+# Add to .env — models from these providers appear automatically
+ANTHROPIC_API_KEY=sk-ant-...    # Enables Claude models via Anthropic API
+OPENAI_API_KEY=sk-...           # Enables GPT models via OpenAI API
+```
+
+**Usage:**
+- `/model` — Picker shows all models tagged with their provider: `claude-opus-4-6 [anthropic]`, `gpt-4.1 [copilot]`
+- `/model anthropic:claude-opus-4-6` — Switch directly using `provider:model` syntax
+- `/whichmodel` — Shows the active provider
+
+**Custom providers** (Ollama, other OpenAI-compatible endpoints):
+
+```bash
+NEO_PROVIDER_NAME=ollama
+NEO_PROVIDER_TYPE=openai
+NEO_PROVIDER_BASE_URL=http://localhost:11434/v1
+```
+
+Switching between providers triggers a session refresh (the SDK's `provider` config is session-level). Switching models within the same provider is instant.
+
 ## Environment Variables
 
 See [`.env.example`](.env.example) for all options.
@@ -192,6 +219,13 @@ See [`.env.example`](.env.example) for all options.
 | `TELEGRAM_BOT_TOKEN`           | Yes      | From @BotFather                                   |
 | `TELEGRAM_OWNER_ID`            | Yes      | Telegram user ID                                  |
 | `GITHUB_TOKEN`                 | Yes      | GitHub PAT with Copilot access                    |
+| `ANTHROPIC_API_KEY`            | No       | Anthropic API key (enables Claude via direct API) |
+| `OPENAI_API_KEY`               | No       | OpenAI API key (enables GPT via direct API)       |
+| `NEO_PROVIDER_NAME`            | No       | Custom provider display name (e.g., "ollama")     |
+| `NEO_PROVIDER_TYPE`            | No       | Custom provider type: `openai` or `anthropic`     |
+| `NEO_PROVIDER_BASE_URL`        | No       | Custom provider API base URL                      |
+| `NEO_PROVIDER_API_KEY`         | No       | Custom provider API key                           |
+| `NEO_PROVIDER_BEARER_TOKEN`    | No       | Custom provider bearer token                      |
 | `DEEPGRAM_API_KEY`             | No       | Enable voice transcription                        |
 | `NEO_BROWSER_HEADLESS`         | No       | Browser mode (default: `true`)                    |
 | `NEO_BROWSER_LAUNCH_ARGS`      | No       | Extra Chromium flags                              |

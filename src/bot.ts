@@ -56,6 +56,7 @@ import {
 } from "./telegram/user-input";
 import { shouldSilenceSessionError } from "./telegram/session-errors";
 import { consumeSessionErrorNotified } from "./hooks/error-state";
+import { resetModelCallFailures } from "./hooks/error";
 
 async function sendAndWaitForSessionIdle(
   chatId: number,
@@ -559,6 +560,7 @@ async function handleMessage(
     await sendAndWaitForSessionIdle(chatId, session, async () => {
       await session.send({ prompt: text, attachments });
     });
+    resetModelCallFailures(sessionId);
 
     if (consumeAbortFlag(chatId)) {
       await clearLiveStatus();

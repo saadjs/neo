@@ -81,6 +81,10 @@ async function main() {
   process.on("SIGINT", () => shutdown("SIGINT"));
   process.on("SIGTERM", () => shutdown("SIGTERM"));
 
+  process.on("unhandledRejection", (reason) => {
+    log.error({ err: reason }, "Unhandled promise rejection");
+  });
+
   log.info("Neo is online. Listening for messages.");
 }
 
