@@ -73,6 +73,7 @@ vi.mock("./config.js", () => ({
         bearerToken: undefined,
       },
     },
+    service: { systemdUnit: "neo", systemctlScope: "user" },
   },
 }));
 

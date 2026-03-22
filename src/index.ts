@@ -12,6 +12,7 @@ import {
   getSystemStatus,
   logAutonomyStartup,
 } from "./runtime/state";
+import { markShuttingDown } from "./lifecycle";
 
 async function main() {
   // Initialize logger first
@@ -69,6 +70,7 @@ async function main() {
   // Graceful shutdown
   const shutdown = async (signal: string) => {
     log.info({ signal }, "Shutting down...");
+    markShuttingDown();
     stopScheduler();
     bot.runner.stop();
     await closeAllBrowserSessions();

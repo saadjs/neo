@@ -58,6 +58,7 @@ import {
 import { shouldSilenceSessionError } from "./telegram/session-errors";
 import { consumeSessionErrorNotified } from "./hooks/error-state";
 import { resetModelCallFailures } from "./hooks/error";
+import { isShuttingDown } from "./lifecycle";
 
 async function sendAndWaitForSessionIdle(
   chatId: number,
@@ -97,6 +98,8 @@ async function sendAndWaitForSessionIdle(
     }
   });
 
+  let clearHealthCheck: (() => void) | undefined;
+
   const connectionPromise = new Promise<void>((_, reject) => {
     const interval = setInterval(() => {
       const state = getClient()?.getState();
@@ -110,15 +113,16 @@ async function sendAndWaitForSessionIdle(
       reject(error);
     }, SESSION_HEALTH_POLL_MS);
 
-    void idlePromise.finally(() => {
-      clearInterval(interval);
-    });
+    clearHealthCheck = () => clearInterval(interval);
+
+    void idlePromise.finally(clearHealthCheck);
   });
 
   try {
     await send();
     await Promise.race([idlePromise, connectionPromise]);
   } finally {
+    clearHealthCheck?.();
     unsubscribe();
   }
 }
@@ -632,7 +636,24 @@ async function handleMessage(
     }
 
     log.error({ err, chatId }, "Error handling message");
-    await ctx.reply("⚠️ Something went wrong. Try /new to start a fresh session.");
+    try {
+      if (isShuttingDown()) {
+        await ctx.reply("Restarting — back in a moment.");
+      } else {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        const maxDetail = 200;
+        const truncated =
+          errMsg && errMsg !== "Session error"
+            ? errMsg.length > maxDetail
+              ? `${errMsg.slice(0, maxDetail)}…`
+              : errMsg
+            : "";
+        const detail = truncated ? `\n\n\`${truncated}\`` : "";
+        await ctx.reply(`⚠️ Something went wrong.${detail}\n\nTry /new to start a fresh session.`);
+      }
+    } catch {
+      // best-effort; process may be dying
+    }
   } finally {
     unsubscribe();
     unwatchPendingInput();

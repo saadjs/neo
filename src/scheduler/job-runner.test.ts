@@ -39,6 +39,7 @@ vi.mock("../config.js", () => ({
     copilot: { model: "gpt-4.1" },
     paths: { root: "/tmp/neo" },
     telegram: { ownerId: 123 },
+    service: { systemdUnit: "neo", systemctlScope: "user" },
   },
 }));
 

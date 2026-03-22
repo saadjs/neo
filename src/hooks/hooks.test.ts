@@ -61,7 +61,7 @@ function baseInput(overrides: Record<string, unknown> = {}): any {
 }
 
 describe("preToolUse", () => {
-  const handler = preToolUse(CHAT_ID);
+  const handler = preToolUse(CHAT_ID, "neo");
 
   beforeEach(() => {
     vi.mocked(isJobRunning).mockReturnValue(false);

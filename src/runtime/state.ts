@@ -16,6 +16,7 @@ import {
 import { switchDefaultModel } from "../agent";
 import { getLogLevel, getLogger, setLogLevel } from "../logging/index";
 import { GIT_COMMIT, GIT_COMMIT_DATE } from "../version";
+import { markShuttingDown } from "../lifecycle";
 
 const execFileAsync = promisify(execFile);
 const RESTART_MARKER_FILE = ".restart-marker";
@@ -433,6 +434,7 @@ export async function restartService(params: {
     status: "requested",
   } satisfies RestartRecord);
 
+  markShuttingDown();
   setTimeout(() => process.exit(0), 250);
   return {
     message: `Restart requested for ${config.service.systemdUnit}; exiting for supervisor restart.`,

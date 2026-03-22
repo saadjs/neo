@@ -83,7 +83,7 @@ export async function executeJob(job: Job, api: Api): Promise<void> {
       tools: allTools,
       onPermissionRequest: approveAll,
       hooks: {
-        onPreToolUse: preToolUse(config.telegram.ownerId),
+        onPreToolUse: preToolUse(config.telegram.ownerId, config.service.systemdUnit),
       },
       workingDirectory: config.paths.root,
     });
