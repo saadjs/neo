@@ -65,6 +65,7 @@ vi.mock("./config.js", () => ({
     providers: {
       anthropicApiKey: undefined,
       openaiApiKey: undefined,
+      vercelAiGatewayApiKey: undefined,
       custom: {
         name: undefined,
         type: undefined,
@@ -132,6 +133,7 @@ afterEach(async () => {
   config.copilot.model = "gpt-4.1";
   config.providers.anthropicApiKey = undefined;
   config.providers.openaiApiKey = undefined;
+  config.providers.vercelAiGatewayApiKey = undefined;
   config.providers.custom.name = undefined;
   config.providers.custom.type = undefined;
   config.providers.custom.baseUrl = undefined;

@@ -15,6 +15,7 @@ vi.mock("../config.js", () => ({
     providers: {
       anthropicApiKey: undefined,
       openaiApiKey: undefined,
+      vercelAiGatewayApiKey: undefined,
       custom: {
         name: undefined,
         type: undefined,
@@ -161,6 +162,47 @@ describe("loadModelCatalog", () => {
     expect(result.models.map((m) => m.id)).toEqual(["gpt-5.4", "openai:gpt-4.1-mini"]);
     expect(listModelsMock).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("adds Vercel AI Gateway models to the catalog", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          data: [
+            {
+              id: "anthropic/claude-sonnet-4.5",
+              name: "Claude Sonnet 4.5",
+              type: "language",
+            },
+            {
+              id: "openai/text-embedding-3-large",
+              name: "text-embedding-3-large",
+              type: "embedding",
+            },
+          ],
+        }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { config } = await import("../config.js");
+    config.providers.vercelAiGatewayApiKey = "vercel-token";
+
+    listModelsMock.mockResolvedValue([createModel("gpt-5.4", "GPT-5.4")]);
+    getClientMock.mockReturnValue({ listModels: listModelsMock });
+
+    const { loadModelCatalog } = await import("./model-catalog");
+    const result = await loadModelCatalog();
+
+    expect(result.models.map((m) => m.id)).toEqual([
+      "gpt-5.4",
+      "vercel:anthropic/claude-sonnet-4.5",
+    ]);
+    expect(result.models[1]).toEqual({
+      id: "vercel:anthropic/claude-sonnet-4.5",
+      label: "Claude Sonnet 4.5 [vercel]",
+      provider: "vercel",
+    });
   });
 
   it("refreshes stale cache from the Copilot SDK", async () => {

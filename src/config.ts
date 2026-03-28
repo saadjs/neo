@@ -293,6 +293,7 @@ export interface Config {
   providers: {
     anthropicApiKey: string | undefined;
     openaiApiKey: string | undefined;
+    vercelAiGatewayApiKey: string | undefined;
     custom: {
       name: string | undefined;
       type: "openai" | "anthropic" | undefined;
@@ -514,6 +515,7 @@ function loadConfig(): Config {
       providers: {
         anthropicApiKey: optionalString(process.env.ANTHROPIC_API_KEY),
         openaiApiKey: optionalString(process.env.OPENAI_API_KEY),
+        vercelAiGatewayApiKey: optionalString(process.env.AI_GATEWAY_API_KEY),
         custom: {
           name: optionalString(process.env.NEO_PROVIDER_NAME),
           type: parseOptionalProviderType(process.env.NEO_PROVIDER_TYPE),
@@ -581,6 +583,7 @@ export function hasAnyProvider(): boolean {
   return !!(
     config.providers.anthropicApiKey ||
     config.providers.openaiApiKey ||
+    config.providers.vercelAiGatewayApiKey ||
     config.providers.custom.baseUrl
   );
 }

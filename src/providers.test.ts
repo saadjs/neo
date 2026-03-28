@@ -5,6 +5,7 @@ const { configMock } = vi.hoisted(() => ({
     providers: {
       anthropicApiKey: undefined as string | undefined,
       openaiApiKey: undefined as string | undefined,
+      vercelAiGatewayApiKey: undefined as string | undefined,
       custom: {
         name: undefined as string | undefined,
         type: undefined as "openai" | "anthropic" | undefined,
@@ -31,6 +32,7 @@ afterEach(() => {
   vi.resetModules();
   configMock.providers.anthropicApiKey = undefined;
   configMock.providers.openaiApiKey = undefined;
+  configMock.providers.vercelAiGatewayApiKey = undefined;
   configMock.providers.custom.name = undefined;
   configMock.providers.custom.type = undefined;
   configMock.providers.custom.baseUrl = undefined;
@@ -89,6 +91,21 @@ describe("detectProviders", () => {
       baseUrl: "http://localhost:11434/v1",
       apiKey: undefined,
       bearerToken: undefined,
+    });
+  });
+
+  it("detects Vercel AI Gateway from API key", async () => {
+    configMock.providers.vercelAiGatewayApiKey = "vercel-token";
+    const { detectProviders } = await import("./providers");
+    const providers = detectProviders();
+
+    expect(providers).toHaveLength(1);
+    expect(providers[0]).toEqual({
+      key: "vercel",
+      label: "vercel",
+      type: "openai",
+      baseUrl: "https://ai-gateway.vercel.sh/v1",
+      bearerToken: "vercel-token",
     });
   });
 
@@ -174,6 +191,19 @@ describe("buildProviderConfig", () => {
       type: "openai",
       baseUrl: "http://localhost:8080",
       bearerToken: "my-token",
+    });
+  });
+
+  it("builds provider config for Vercel AI Gateway", async () => {
+    configMock.providers.vercelAiGatewayApiKey = "vercel-token";
+    const { buildProviderConfig, resetProviderCache } = await import("./providers");
+    resetProviderCache();
+    const providerConfig = buildProviderConfig("vercel");
+
+    expect(providerConfig).toEqual({
+      type: "openai",
+      baseUrl: "https://ai-gateway.vercel.sh/v1",
+      bearerToken: "vercel-token",
     });
   });
 });
@@ -302,6 +332,62 @@ describe("fetchProviderModels", () => {
     expect(models).toEqual([
       { id: "llama3", name: "llama3" },
       { id: "codellama", name: "codellama" },
+    ]);
+
+    vi.unstubAllGlobals();
+  });
+
+  it("fetches only language models for Vercel AI Gateway", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          data: [
+            {
+              id: "anthropic/claude-sonnet-4.5",
+              name: "Claude Sonnet 4.5",
+              type: "language",
+            },
+            {
+              id: "openai/text-embedding-3-large",
+              name: "text-embedding-3-large",
+              type: "embedding",
+            },
+            {
+              id: "openai/gpt-4.1-mini",
+              type: "language",
+            },
+          ],
+        }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { fetchProviderModels } = await import("./providers");
+    const models = await fetchProviderModels({
+      key: "vercel",
+      label: "vercel",
+      type: "openai",
+      baseUrl: "https://ai-gateway.vercel.sh/v1",
+      bearerToken: "vercel-token",
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://ai-gateway.vercel.sh/v1/models",
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: "Bearer vercel-token",
+        }),
+      }),
+    );
+    expect(models).toEqual([
+      {
+        id: "anthropic/claude-sonnet-4.5",
+        name: "Claude Sonnet 4.5",
+      },
+      {
+        id: "openai/gpt-4.1-mini",
+        name: "openai/gpt-4.1-mini",
+      },
     ]);
 
     vi.unstubAllGlobals();

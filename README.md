@@ -228,11 +228,13 @@ Neo supports multiple model providers alongside GitHub Copilot. Set API keys in 
 # Add to .env — models from these providers appear automatically
 ANTHROPIC_API_KEY=sk-ant-...    # Enables Claude models via Anthropic API
 OPENAI_API_KEY=sk-...           # Enables GPT models via OpenAI API
+AI_GATEWAY_API_KEY=vercel_...   # Enables Vercel AI Gateway models
 ```
 
 **Usage:**
 - `/model` — Picker shows all models tagged with their provider: `claude-opus-4-6 [anthropic]`, `gpt-4.1 [copilot]`
 - `/model anthropic:claude-opus-4-6` — Switch directly using `provider:model` syntax
+- `/model vercel:anthropic/claude-sonnet-4.5` — Switch to a Vercel gateway model using its `provider/model` ID
 - `/whichmodel` — Shows the active provider
 
 **Custom providers** (Ollama, other OpenAI-compatible endpoints):
@@ -256,6 +258,7 @@ See [`.env.example`](.env.example) for all options.
 | `GITHUB_TOKEN`                 | Yes      | GitHub PAT with Copilot access                    |
 | `ANTHROPIC_API_KEY`            | No       | Anthropic API key (enables Claude via direct API) |
 | `OPENAI_API_KEY`               | No       | OpenAI API key (enables GPT via direct API)       |
+| `AI_GATEWAY_API_KEY`           | No       | Vercel AI Gateway API key                         |
 | `NEO_PROVIDER_NAME`            | No       | Custom provider display name (e.g., "ollama")     |
 | `NEO_PROVIDER_TYPE`            | No       | Custom provider type: `openai` or `anthropic`     |
 | `NEO_PROVIDER_BASE_URL`        | No       | Custom provider API base URL                      |

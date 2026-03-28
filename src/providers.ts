@@ -28,6 +28,14 @@ export interface ProviderModelInfo {
   name: string;
 }
 
+interface OpenAIModelListResponse {
+  data?: { id: string }[];
+}
+
+interface VercelModelListResponse {
+  data?: { id: string; name?: string; type?: string }[];
+}
+
 let cachedProviders: ProviderEntry[] | null = null;
 
 export function detectProviders(): ProviderEntry[] {
@@ -50,6 +58,16 @@ export function detectProviders(): ProviderEntry[] {
       type: "openai",
       baseUrl: "https://api.openai.com/v1",
       apiKey: config.providers.openaiApiKey,
+    });
+  }
+
+  if (config.providers.vercelAiGatewayApiKey) {
+    providers.push({
+      key: "vercel",
+      label: "vercel",
+      type: "openai",
+      baseUrl: "https://ai-gateway.vercel.sh/v1",
+      bearerToken: config.providers.vercelAiGatewayApiKey,
     });
   }
 
@@ -125,6 +143,9 @@ export async function fetchProviderModels(provider: ProviderEntry): Promise<Prov
   const log = getLogger();
 
   try {
+    if (provider.key === "vercel") {
+      return await fetchVercelModels(provider);
+    }
     if (provider.type === "anthropic") {
       return await fetchAnthropicModels(provider);
     }
@@ -176,7 +197,7 @@ async function fetchOpenAIModels(provider: ProviderEntry): Promise<ProviderModel
     throw new Error(`OpenAI-compatible API returned ${response.status}`);
   }
 
-  const body = (await response.json()) as { data?: { id: string }[] };
+  const body = (await response.json()) as OpenAIModelListResponse;
   if (!body.data || !Array.isArray(body.data)) return [];
 
   // For well-known OpenAI, filter to chat models; for custom providers, return all
@@ -189,4 +210,29 @@ async function fetchOpenAIModels(provider: ProviderEntry): Promise<ProviderModel
   return body.data
     .filter((m) => m.id && typeof m.id === "string")
     .map((m) => ({ id: m.id, name: m.id }));
+}
+
+async function fetchVercelModels(provider: ProviderEntry): Promise<ProviderModelInfo[]> {
+  const url = `${provider.baseUrl}/models`;
+  const headers: Record<string, string> = {};
+  if (provider.bearerToken) {
+    headers["Authorization"] = `Bearer ${provider.bearerToken}`;
+  } else if (provider.apiKey) {
+    headers["Authorization"] = `Bearer ${provider.apiKey}`;
+  }
+
+  const response = await fetch(url, { headers, signal: AbortSignal.timeout(10_000) });
+  if (!response.ok) {
+    throw new Error(`Vercel AI Gateway API returned ${response.status}`);
+  }
+
+  const body = (await response.json()) as VercelModelListResponse;
+  if (!body.data || !Array.isArray(body.data)) return [];
+
+  return body.data
+    .filter((model) => model.id && typeof model.id === "string" && model.type === "language")
+    .map((model) => ({
+      id: model.id,
+      name: typeof model.name === "string" && model.name.trim() ? model.name : model.id,
+    }));
 }

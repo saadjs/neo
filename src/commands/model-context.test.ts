@@ -21,6 +21,7 @@ vi.mock("../config.js", () => ({
     providers: {
       anthropicApiKey: undefined,
       openaiApiKey: undefined,
+      vercelAiGatewayApiKey: undefined,
       custom: {
         name: undefined,
         type: undefined,
