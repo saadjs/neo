@@ -7,10 +7,15 @@ import {
   consumeAbortFlag,
   discardSession,
   endSessionTurn,
+  getPerChatReasoningEffortOverride,
+  getReasoningEffortForChat,
   getClient,
   getModelForChat,
   getOrCreateSession,
   hasTrackedSession,
+  refreshSessionContext,
+  switchModel,
+  clearReasoningEffort,
 } from "./agent";
 import { getLogger } from "./logging/index";
 import {
@@ -30,6 +35,7 @@ import { handleJobsCallback, isJobsCallback } from "./commands/jobs";
 import { downloadTelegramFile } from "./telegram/files";
 import { splitMessage } from "./telegram/messages";
 import { appendCompactionMemory } from "./memory/index";
+import { getChannelConfig, upsertChannelConfig } from "./memory/db";
 import { recordCompactionTokens, recordMessageEstimate } from "./logging/cost";
 import { extractTags } from "./memory/tagging";
 import { isVoiceEnabled, transcribeFile } from "./voice/transcribe";
@@ -57,9 +63,15 @@ import {
 } from "./telegram/user-input";
 import { shouldSilenceSessionError } from "./telegram/session-errors";
 import { consumeSessionErrorNotified, consumeSessionErrorSummary } from "./hooks/error-state";
+import {
+  clearFallbackAttemptState,
+  consumePendingFailover,
+  markFallbackModelAttempted,
+} from "./hooks/error-state";
 import { resetModelCallFailures } from "./hooks/error";
 import { isShuttingDown } from "./lifecycle";
 import { summarizeSessionError } from "./session-errors";
+import { getModelReasoningInfo } from "./commands/model-catalog";
 
 async function sendAndWaitForSessionIdle(
   chatId: number,
@@ -133,6 +145,31 @@ async function sendAndWaitForSessionIdle(
     clearHealthCheck?.();
     unsubscribe();
   }
+}
+
+async function clearIncompatibleReasoningForModel(
+  chatId: number,
+  modelId: string,
+): Promise<string> {
+  const currentEffort = getReasoningEffortForChat(chatId);
+  if (!currentEffort) return "";
+
+  const info = await getModelReasoningInfo(modelId);
+  if (!info || !info.supported || !info.levels.includes(currentEffort)) {
+    if (getPerChatReasoningEffortOverride(chatId) === currentEffort) {
+      await clearReasoningEffort(chatId);
+      return `\nReasoning effort override cleared while switching to \`${modelId}\`.`;
+    }
+
+    const channelConfig = getChannelConfig(chatId);
+    if (channelConfig?.defaultReasoningEffort === currentEffort) {
+      upsertChannelConfig(chatId, { defaultReasoningEffort: null });
+      await refreshSessionContext(chatId);
+      return `\nChannel reasoning default cleared while switching to \`${modelId}\`.`;
+    }
+  }
+
+  return "";
 }
 
 export interface BotHandle {
@@ -420,177 +457,232 @@ async function handleMessage(
   await setProgress("thinking", "", true);
 
   let unsubscribe = () => {};
-  let unwatchPendingInput = () => {};
   let sessionTurnStarted = false;
+  const failoverNotes: string[] = [];
 
   try {
-    let responseBuffer = "";
-    let sessionId = "";
-    let lastAssistantMessage: SessionEvent | undefined;
-    const toolStartTimes = new Map<string, number>();
+    clearFallbackAttemptState(chatId);
     beginSessionTurn(chatId);
     sessionTurnStarted = true;
-    const session = await getOrCreateSession({ chatId });
-    activeSession = session;
-    sessionId = session.sessionId;
 
-    unwatchPendingInput = watchPendingUserInput(chatId, (pending) => {
-      if (pending?.sessionId === sessionId) {
-        typingActive = false;
-        stopTypingLoop();
-        stopProgressLoop();
-        void setProgress("waiting", "", true);
-        return;
-      }
+    let loggedUserPromptSessionId: string | null = null;
+    let finalContent = "";
+    let finalAssistantMessage: SessionEvent | undefined;
+    let finalSessionId = "";
 
-      if (progressPhase !== "waiting") return;
+    for (;;) {
+      let responseBuffer = "";
+      let sessionId = "";
+      let lastAssistantMessage: SessionEvent | undefined;
+      const toolStartTimes = new Map<string, number>();
+      let unwatchPendingInput = () => {};
+      const session = await getOrCreateSession({ chatId });
+      activeSession = session;
+      sessionId = session.sessionId;
+      finalSessionId = sessionId;
+      markFallbackModelAttempted(chatId, getModelForChat(chatId));
 
-      typingActive = true;
-      startTypingLoop();
-      startProgressLoop();
-      void setProgress("thinking", "", true);
-    });
-
-    const onEvent = async (event: SessionEvent) => {
-      if (event.type === "assistant.message_delta") {
-        const delta = (event.data as { deltaContent?: string }).deltaContent;
-        if (delta) {
-          streamBuffer += delta;
-          progressPhase = "streaming";
-          progressDetail = "";
-          void updateStreamingMessage();
-        }
-      }
-
-      if (event.type === "assistant.message") {
-        lastAssistantMessage = event;
-        const content = (event.data as { content?: string }).content;
-        if (content) responseBuffer = content;
-      }
-
-      if (event.type === "assistant.reasoning") {
-        const reasoning = (event.data as { content?: string }).content;
-        if (reasoning) {
-          log.debug(
-            { chatId, reasoning: reasoning.slice(0, LOG_REASONING_MAX_CHARS) },
-            "Agent reasoning",
-          );
-        }
-        await setProgress("reasoning");
-      }
-
-      if (event.type === "tool.execution_start") {
-        const d = event.data as { toolCallId?: string; toolName?: string; arguments?: unknown };
-        if (d.toolCallId && d.toolName) {
-          toolStartTimes.set(d.toolCallId, Date.now());
-          await setProgress("tool", formatProgressName(d.toolName));
-          try {
-            logToolCall(sessionId, d.toolCallId, d.toolName, d.arguments);
-          } catch {}
-        }
-      }
-
-      if (event.type === "tool.execution_complete") {
-        const d = event.data as {
-          toolCallId?: string;
-          toolName?: string;
-          success?: boolean;
-          result?: unknown;
-        };
-        if (d.toolCallId) {
-          const startTime = toolStartTimes.get(d.toolCallId);
-          const duration = startTime ? Date.now() - startTime : undefined;
-          const toolName = d.toolName ? formatProgressName(d.toolName) : "tool";
-
-          await setProgress("done-tool", toolName);
-
-          try {
-            completeToolCall(d.toolCallId, d.result, d.success ?? true, duration);
-          } catch {}
-        }
-      }
-
-      if (event.type === "skill.invoked") {
-        const d = event.data as { name?: string; path?: string };
-        log.info({ chatId, skill: d.name, path: d.path }, "Skill invoked");
-        await setProgress("skill", formatProgressName(d.name));
-      }
-
-      if (event.type === "session.compaction_start") {
-        log.info({ chatId, sessionId }, "Session compaction started");
-        await setProgress("compacting");
-      }
-
-      if (event.type === "session.compaction_complete") {
-        const data = event.data;
-        if (!data.success || !data.summaryContent?.trim()) {
-          log.warn({ chatId, sessionId, data }, "Session compaction finished without summary");
-          return;
-        }
-
-        if (getLastCompactionEventId(chatId) === event.id) {
-          return;
-        }
-
+      if (loggedUserPromptSessionId !== sessionId) {
         try {
-          await appendCompactionMemory({
-            timestamp: event.timestamp,
-            chatId,
+          logMessage(sessionId, "user", text);
+          recordMessageEstimate({
             sessionId,
             model: getModelForChat(chatId),
-            preCompactionTokens: data.preCompactionTokens,
-            postCompactionTokens: data.postCompactionTokens,
-            messagesRemoved: data.messagesRemoved,
-            checkpointNumber: data.checkpointNumber,
-            checkpointPath: data.checkpointPath,
-            summaryContent: data.summaryContent,
+            role: "user",
+            content: text,
           });
-          recordCompactionTokens({
-            sessionId,
-            model: getModelForChat(chatId),
-            preCompactionTokens: data.preCompactionTokens,
-            postCompactionTokens: data.postCompactionTokens,
-          });
-          setLastCompactionEventId(chatId, event.id);
-          const tags = extractTags(data.summaryContent);
-          setSessionTags(sessionId, tags);
-          log.info({ chatId, sessionId, tags }, "Session tagged from compaction summary");
-          await ctx.reply("Context summary saved to today's memory.");
-        } catch (err) {
-          log.error({ err, chatId, sessionId, eventId: event.id }, "Failed to persist compaction");
-        }
+          loggedUserPromptSessionId = sessionId;
+        } catch {}
       }
-    };
 
-    unsubscribe = session.on(onEvent);
+      unwatchPendingInput = watchPendingUserInput(chatId, (pending) => {
+        if (pending?.sessionId === sessionId) {
+          typingActive = false;
+          stopTypingLoop();
+          stopProgressLoop();
+          void setProgress("waiting", "", true);
+          return;
+        }
 
-    try {
-      logMessage(sessionId, "user", text);
-      recordMessageEstimate({
-        sessionId,
-        model: getModelForChat(chatId),
-        role: "user",
-        content: text,
+        if (progressPhase !== "waiting") return;
+
+        typingActive = true;
+        startTypingLoop();
+        startProgressLoop();
+        void setProgress("thinking", "", true);
       });
-    } catch {}
 
-    await sendAndWaitForSessionIdle(chatId, session, async () => {
-      await session.send({ prompt: text, attachments });
-    });
-    resetModelCallFailures(sessionId);
+      const onEvent = async (event: SessionEvent) => {
+        if (event.type === "assistant.message_delta") {
+          const delta = (event.data as { deltaContent?: string }).deltaContent;
+          if (delta) {
+            streamBuffer += delta;
+            progressPhase = "streaming";
+            progressDetail = "";
+            void updateStreamingMessage();
+          }
+        }
 
-    if (consumeAbortFlag(chatId)) {
-      await clearLiveStatus();
-      return;
+        if (event.type === "assistant.message") {
+          lastAssistantMessage = event;
+          const content = (event.data as { content?: string }).content;
+          if (content) responseBuffer = content;
+        }
+
+        if (event.type === "assistant.reasoning") {
+          const reasoning = (event.data as { content?: string }).content;
+          if (reasoning) {
+            log.debug(
+              { chatId, reasoning: reasoning.slice(0, LOG_REASONING_MAX_CHARS) },
+              "Agent reasoning",
+            );
+          }
+          await setProgress("reasoning");
+        }
+
+        if (event.type === "tool.execution_start") {
+          const d = event.data as { toolCallId?: string; toolName?: string; arguments?: unknown };
+          if (d.toolCallId && d.toolName) {
+            toolStartTimes.set(d.toolCallId, Date.now());
+            await setProgress("tool", formatProgressName(d.toolName));
+            try {
+              logToolCall(sessionId, d.toolCallId, d.toolName, d.arguments);
+            } catch {}
+          }
+        }
+
+        if (event.type === "tool.execution_complete") {
+          const d = event.data as {
+            toolCallId?: string;
+            toolName?: string;
+            success?: boolean;
+            result?: unknown;
+          };
+          if (d.toolCallId) {
+            const startTime = toolStartTimes.get(d.toolCallId);
+            const duration = startTime ? Date.now() - startTime : undefined;
+            const toolName = d.toolName ? formatProgressName(d.toolName) : "tool";
+
+            await setProgress("done-tool", toolName);
+
+            try {
+              completeToolCall(d.toolCallId, d.result, d.success ?? true, duration);
+            } catch {}
+          }
+        }
+
+        if (event.type === "skill.invoked") {
+          const d = event.data as { name?: string; path?: string };
+          log.info({ chatId, skill: d.name, path: d.path }, "Skill invoked");
+          await setProgress("skill", formatProgressName(d.name));
+        }
+
+        if (event.type === "session.compaction_start") {
+          log.info({ chatId, sessionId }, "Session compaction started");
+          await setProgress("compacting");
+        }
+
+        if (event.type === "session.compaction_complete") {
+          const data = event.data;
+          if (!data.success || !data.summaryContent?.trim()) {
+            log.warn({ chatId, sessionId, data }, "Session compaction finished without summary");
+            return;
+          }
+
+          if (getLastCompactionEventId(chatId) === event.id) {
+            return;
+          }
+
+          try {
+            await appendCompactionMemory({
+              timestamp: event.timestamp,
+              chatId,
+              sessionId,
+              model: getModelForChat(chatId),
+              preCompactionTokens: data.preCompactionTokens,
+              postCompactionTokens: data.postCompactionTokens,
+              messagesRemoved: data.messagesRemoved,
+              checkpointNumber: data.checkpointNumber,
+              checkpointPath: data.checkpointPath,
+              summaryContent: data.summaryContent,
+            });
+            recordCompactionTokens({
+              sessionId,
+              model: getModelForChat(chatId),
+              preCompactionTokens: data.preCompactionTokens,
+              postCompactionTokens: data.postCompactionTokens,
+            });
+            setLastCompactionEventId(chatId, event.id);
+            const tags = extractTags(data.summaryContent);
+            setSessionTags(sessionId, tags);
+            log.info({ chatId, sessionId, tags }, "Session tagged from compaction summary");
+            await ctx.reply("Context summary saved to today's memory.");
+          } catch (err) {
+            log.error(
+              { err, chatId, sessionId, eventId: event.id },
+              "Failed to persist compaction",
+            );
+          }
+        }
+      };
+
+      unsubscribe = session.on(onEvent);
+
+      try {
+        streamBuffer = "";
+        await sendAndWaitForSessionIdle(chatId, session, async () => {
+          await session.send({ prompt: text, attachments });
+        });
+        unsubscribe();
+        unsubscribe = () => {};
+        unwatchPendingInput();
+        unwatchPendingInput = () => {};
+        resetModelCallFailures(sessionId);
+
+        if (consumeAbortFlag(chatId)) {
+          await clearLiveStatus();
+          clearFallbackAttemptState(chatId);
+          return;
+        }
+
+        finalContent =
+          (lastAssistantMessage?.data as { content?: string } | undefined)?.content ??
+          responseBuffer;
+        finalAssistantMessage = lastAssistantMessage;
+        break;
+      } catch (err) {
+        const failover = consumePendingFailover(chatId);
+        consumeSessionErrorSummary(sessionId);
+        unsubscribe();
+        unsubscribe = () => {};
+        unwatchPendingInput();
+        unwatchPendingInput = () => {};
+
+        if (failover) {
+          await switchModel(chatId, failover.toModel);
+          const reasoningNote = await clearIncompatibleReasoningForModel(chatId, failover.toModel);
+          failoverNotes.push(
+            `Automatic fallback: \`${failover.fromModel}\` → \`${failover.toModel}\`. Retrying.${reasoningNote}`,
+          );
+          progressPhase = "thinking";
+          progressDetail = `fallback to ${failover.toModel}`;
+          await setProgress("thinking", `fallback to ${failover.toModel}`, true);
+          continue;
+        }
+
+        throw err;
+      }
     }
 
-    const finalContent =
-      (lastAssistantMessage?.data as { content?: string } | undefined)?.content ?? responseBuffer;
-
     try {
-      logMessage(sessionId, "assistant", finalContent || "(no response)", lastAssistantMessage?.id);
+      logMessage(
+        finalSessionId,
+        "assistant",
+        finalContent || "(no response)",
+        finalAssistantMessage?.id,
+      );
       recordMessageEstimate({
-        sessionId,
+        sessionId: finalSessionId,
         model: getModelForChat(chatId),
         role: "assistant",
         content: finalContent || "",
@@ -598,10 +690,15 @@ async function handleMessage(
     } catch {}
 
     await clearLiveStatus();
+    clearFallbackAttemptState(chatId);
 
     if (!finalContent || finalContent.trim() === "") {
       await ctx.reply("_(no response)_", { parse_mode: "Markdown" });
       return;
+    }
+
+    if (failoverNotes.length > 0) {
+      await ctx.reply(failoverNotes.join("\n"), { parse_mode: "Markdown" });
     }
 
     const chunks = splitMessage(finalContent);
@@ -629,6 +726,8 @@ async function handleMessage(
       discardSession(chatId, activeSession);
     }
 
+    clearFallbackAttemptState(chatId);
+
     if (
       shouldSilenceSessionError(err, {
         hasActiveSession,
@@ -650,8 +749,10 @@ async function handleMessage(
       if (isShuttingDown()) {
         await ctx.reply("Restarting — back in a moment.");
       } else if (sessionErrorSummary?.userFacingMessage || directErrorSummary?.userFacingMessage) {
+        const failoverSuffix =
+          failoverNotes.length > 0 ? `\n\nFailover attempts:\n${failoverNotes.join("\n")}` : "";
         await ctx.reply(
-          `⚠️ ${sessionErrorSummary?.userFacingMessage ?? directErrorSummary?.userFacingMessage}`,
+          `⚠️ ${sessionErrorSummary?.userFacingMessage ?? directErrorSummary?.userFacingMessage}${failoverSuffix}`,
         );
       } else {
         const errMsg = err instanceof Error ? err.message : String(err);
@@ -663,14 +764,17 @@ async function handleMessage(
               : errMsg
             : "";
         const detail = truncated ? `\n\n\`${truncated}\`` : "";
-        await ctx.reply(`⚠️ Something went wrong.${detail}\n\nTry /new to start a fresh session.`);
+        const failoverSuffix =
+          failoverNotes.length > 0 ? `\n\nFailover attempts:\n${failoverNotes.join("\n")}` : "";
+        await ctx.reply(
+          `⚠️ Something went wrong.${detail}${failoverSuffix}\n\nTry /new to start a fresh session.`,
+        );
       }
     } catch {
       // best-effort; process may be dying
     }
   } finally {
     unsubscribe();
-    unwatchPendingInput();
     if (sessionTurnStarted) {
       await endSessionTurn(chatId);
     }

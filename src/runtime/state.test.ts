@@ -57,6 +57,7 @@ vi.mock("../config.js", () => ({
   },
   defaultManagedConfig: () => ({
     COPILOT_MODEL: "gpt-4.1",
+    MODEL_SHORTLIST: [],
     NEO_LOG_LEVEL: "info",
     NEO_SKILL_DIRS: [],
     NEO_CONTEXT_COMPACTION_ENABLED: true,
@@ -65,7 +66,10 @@ vi.mock("../config.js", () => ({
   }),
   getManagedConfigDefinition: (key: string) => ({
     parse: (value: unknown) => value,
-    mutability: key === "COPILOT_MODEL" || key === "NEO_LOG_LEVEL" ? "runtime" : "restart_required",
+    mutability:
+      key === "COPILOT_MODEL" || key === "MODEL_SHORTLIST" || key === "NEO_LOG_LEVEL"
+        ? "runtime"
+        : "restart_required",
     autonomy: key === "NEO_SKILL_DIRS" ? "approval_required" : "auto_apply_allowed",
     summary: key,
     behavior: key,
@@ -74,6 +78,7 @@ vi.mock("../config.js", () => ({
   isManagedConfigKey: (value: string) =>
     [
       "COPILOT_MODEL",
+      "MODEL_SHORTLIST",
       "NEO_LOG_LEVEL",
       "NEO_SKILL_DIRS",
       "NEO_CONTEXT_COMPACTION_ENABLED",
@@ -82,6 +87,7 @@ vi.mock("../config.js", () => ({
     ].includes(value),
   loadManagedConfigFile: () => ({
     COPILOT_MODEL: "gpt-4.1",
+    MODEL_SHORTLIST: [],
     NEO_LOG_LEVEL: "info",
     NEO_SKILL_DIRS: [],
     NEO_CONTEXT_COMPACTION_ENABLED: true,

@@ -18,12 +18,20 @@ const {
   getPendingUserInputMock,
   registerCommandsMock,
   resetModelCallFailuresMock,
+  getModelReasoningInfoMock,
+  watchPendingUserInputMock,
+  getChannelConfigMock,
+  upsertChannelConfigMock,
 } = vi.hoisted(() => ({
   botHandlers: new Map<string, (ctx: any) => Promise<void>>(),
   resolvePendingUserInputMock: vi.fn(),
   getPendingUserInputMock: vi.fn(),
   registerCommandsMock: vi.fn(async () => {}),
   resetModelCallFailuresMock: vi.fn(),
+  getModelReasoningInfoMock: vi.fn(),
+  watchPendingUserInputMock: vi.fn(() => () => {}),
+  getChannelConfigMock: vi.fn(() => null),
+  upsertChannelConfigMock: vi.fn(),
 }));
 
 vi.mock("grammy", () => ({
@@ -60,13 +68,18 @@ vi.mock("./config.js", () => ({
 
 vi.mock("./agent.js", () => ({
   beginSessionTurn: vi.fn(),
+  clearReasoningEffort: vi.fn(),
   consumeAbortFlag: vi.fn(() => false),
   discardSession: vi.fn(),
   endSessionTurn: vi.fn(),
   getClient: vi.fn(),
   getModelForChat: vi.fn(),
   getOrCreateSession: vi.fn(),
+  getPerChatReasoningEffortOverride: vi.fn(() => undefined),
+  getReasoningEffortForChat: vi.fn(() => undefined),
   hasTrackedSession: vi.fn(),
+  refreshSessionContext: vi.fn(),
+  switchModel: vi.fn(),
 }));
 
 vi.mock("./logging/index.js", () => ({
@@ -96,6 +109,10 @@ vi.mock("./commands/model.js", () => ({
   isModelCallback: vi.fn(() => false),
 }));
 
+vi.mock("./commands/model-catalog.js", () => ({
+  getModelReasoningInfo: getModelReasoningInfoMock,
+}));
+
 vi.mock("./commands/reasoning.js", () => ({
   handleReasoningCallback: vi.fn(),
   isReasoningCallback: vi.fn(() => false),
@@ -121,6 +138,11 @@ vi.mock("./telegram/messages.js", () => ({
 
 vi.mock("./memory/index.js", () => ({
   appendCompactionMemory: vi.fn(),
+}));
+
+vi.mock("./memory/db.js", () => ({
+  getChannelConfig: getChannelConfigMock,
+  upsertChannelConfig: upsertChannelConfigMock,
 }));
 
 vi.mock("./logging/cost.js", () => ({
@@ -154,7 +176,7 @@ vi.mock("./telegram/user-input.js", () => ({
   cancelPendingUserInputForSession: vi.fn(),
   getPendingUserInput: getPendingUserInputMock,
   resolvePendingUserInput: resolvePendingUserInputMock,
-  watchPendingUserInput: vi.fn(() => () => {}),
+  watchPendingUserInput: watchPendingUserInputMock,
 }));
 
 vi.mock("./telegram/session-errors.js", () => ({
@@ -162,7 +184,11 @@ vi.mock("./telegram/session-errors.js", () => ({
 }));
 
 vi.mock("./hooks/error-state.js", () => ({
+  clearFallbackAttemptState: vi.fn(),
+  consumePendingFailover: vi.fn(() => null),
   consumeSessionErrorNotified: vi.fn(() => false),
+  consumeSessionErrorSummary: vi.fn(() => null),
+  markFallbackModelAttempted: vi.fn(),
 }));
 
 vi.mock("./hooks/error.js", () => ({
@@ -174,6 +200,14 @@ afterEach(() => {
   resolvePendingUserInputMock.mockReset();
   getPendingUserInputMock.mockReset();
   registerCommandsMock.mockClear();
+  resetModelCallFailuresMock.mockReset();
+  getModelReasoningInfoMock.mockReset();
+  getModelReasoningInfoMock.mockResolvedValue(null);
+  watchPendingUserInputMock.mockReset();
+  watchPendingUserInputMock.mockImplementation(() => () => {});
+  getChannelConfigMock.mockReset();
+  getChannelConfigMock.mockReturnValue(null);
+  upsertChannelConfigMock.mockReset();
   vi.resetModules();
 });
 
@@ -250,5 +284,227 @@ describe("createBot", () => {
     });
 
     expect(resetModelCallFailuresMock).toHaveBeenCalledWith("session-1");
+  });
+
+  it("unregisters the pending-input watcher after a successful turn", async () => {
+    const { createBot } = await import("./bot");
+    const { getOrCreateSession } = await import("./agent.js");
+    await createBot();
+
+    const textHandler = botHandlers.get("message:text");
+    expect(textHandler).toBeTypeOf("function");
+
+    const sessionHandlers: Array<(event: any) => void> = [];
+    const unwatchPendingInput = vi.fn();
+    watchPendingUserInputMock.mockReturnValue(unwatchPendingInput);
+    vi.mocked(getOrCreateSession).mockResolvedValue({
+      sessionId: "session-1",
+      on: vi.fn((handler: (event: any) => void) => {
+        sessionHandlers.push(handler);
+        return () => {};
+      }),
+      send: vi.fn(async () => {
+        for (const handler of sessionHandlers) {
+          handler({ type: "assistant.message", data: { content: "done" } });
+          handler({ type: "session.idle", data: {} });
+        }
+      }),
+    } as any);
+
+    const reply = vi.fn(async (text: string) => {
+      if (text === "Thinking...") return { message_id: 1 };
+      return {};
+    });
+    const replyWithChatAction = vi.fn(async () => {});
+
+    await textHandler?.({
+      chat: { id: 123 },
+      message: { text: "hello" },
+      reply,
+      replyWithChatAction,
+      api: {
+        editMessageText: vi.fn(async () => {}),
+        deleteMessage: vi.fn(async () => {}),
+      },
+    });
+
+    expect(unwatchPendingInput).toHaveBeenCalledTimes(1);
+  });
+
+  it("clears channel-default reasoning before retrying a failover model", async () => {
+    const { createBot } = await import("./bot");
+    const { getOrCreateSession, getReasoningEffortForChat, switchModel, refreshSessionContext } =
+      await import("./agent.js");
+    const { consumePendingFailover } = await import("./hooks/error-state.js");
+    await createBot();
+
+    const textHandler = botHandlers.get("message:text");
+    expect(textHandler).toBeTypeOf("function");
+
+    vi.mocked(getReasoningEffortForChat).mockReturnValue("high");
+    getChannelConfigMock.mockReturnValue({ defaultReasoningEffort: "high" } as any);
+    getModelReasoningInfoMock.mockResolvedValue({
+      supported: false,
+      levels: [],
+    });
+
+    const firstAttemptHandlers: Array<(event: any) => void> = [];
+    const secondAttemptHandlers: Array<(event: any) => void> = [];
+    let attempt = 0;
+    vi.mocked(getOrCreateSession).mockImplementation(async () => {
+      attempt += 1;
+      if (attempt === 1) {
+        return {
+          sessionId: "session-1",
+          on: vi.fn((handler: (event: any) => void) => {
+            firstAttemptHandlers.push(handler);
+            return () => {};
+          }),
+          send: vi.fn(async () => {
+            for (const handler of firstAttemptHandlers) {
+              handler({ type: "session.error", data: { message: "boom" } });
+            }
+          }),
+        } as any;
+      }
+
+      return {
+        sessionId: "session-2",
+        on: vi.fn((handler: (event: any) => void) => {
+          secondAttemptHandlers.push(handler);
+          return () => {};
+        }),
+        send: vi.fn(async () => {
+          for (const handler of secondAttemptHandlers) {
+            handler({ type: "assistant.message", data: { content: "done" } });
+            handler({ type: "session.idle", data: {} });
+          }
+        }),
+      } as any;
+    });
+
+    vi.mocked(consumePendingFailover)
+      .mockReturnValueOnce({
+        fromModel: "claude-opus-4-6",
+        toModel: "gpt-4.1",
+      } as any)
+      .mockReturnValue(null);
+
+    const reply = vi.fn(async (text: string) => {
+      if (text === "Thinking...") return { message_id: 1 };
+      return {};
+    });
+    const replyWithChatAction = vi.fn(async () => {});
+
+    await textHandler?.({
+      chat: { id: -100123 },
+      message: { text: "hello" },
+      reply,
+      replyWithChatAction,
+      api: {
+        editMessageText: vi.fn(async () => {}),
+        deleteMessage: vi.fn(async () => {}),
+      },
+    });
+
+    expect(switchModel).toHaveBeenCalledWith(-100123, "gpt-4.1");
+    expect(upsertChannelConfigMock).toHaveBeenCalledWith(-100123, {
+      defaultReasoningEffort: null,
+    });
+    expect(refreshSessionContext).toHaveBeenCalledWith(-100123);
+  });
+
+  it("re-logs the user prompt when failover retries on a new session", async () => {
+    const { createBot } = await import("./bot");
+    const { getOrCreateSession } = await import("./agent.js");
+    const { consumePendingFailover } = await import("./hooks/error-state.js");
+    const { logMessage } = await import("./logging/conversations.js");
+    const { recordMessageEstimate } = await import("./logging/cost.js");
+    vi.mocked(logMessage).mockClear();
+    vi.mocked(recordMessageEstimate).mockClear();
+    await createBot();
+
+    const textHandler = botHandlers.get("message:text");
+    expect(textHandler).toBeTypeOf("function");
+
+    const firstAttemptHandlers: Array<(event: any) => void> = [];
+    const secondAttemptHandlers: Array<(event: any) => void> = [];
+    let attempt = 0;
+    vi.mocked(getOrCreateSession).mockImplementation(async () => {
+      attempt += 1;
+      if (attempt === 1) {
+        return {
+          sessionId: "session-1",
+          on: vi.fn((handler: (event: any) => void) => {
+            firstAttemptHandlers.push(handler);
+            return () => {};
+          }),
+          send: vi.fn(async () => {
+            for (const handler of firstAttemptHandlers) {
+              handler({ type: "session.error", data: { message: "boom" } });
+            }
+          }),
+        } as any;
+      }
+
+      return {
+        sessionId: "session-2",
+        on: vi.fn((handler: (event: any) => void) => {
+          secondAttemptHandlers.push(handler);
+          return () => {};
+        }),
+        send: vi.fn(async () => {
+          for (const handler of secondAttemptHandlers) {
+            handler({ type: "assistant.message", data: { content: "done" } });
+            handler({ type: "session.idle", data: {} });
+          }
+        }),
+      } as any;
+    });
+
+    vi.mocked(consumePendingFailover)
+      .mockReturnValueOnce({
+        fromModel: "claude-opus-4-6",
+        toModel: "gpt-4.1",
+      } as any)
+      .mockReturnValue(null);
+
+    const reply = vi.fn(async (text: string) => {
+      if (text === "Thinking...") return { message_id: 1 };
+      return {};
+    });
+    const replyWithChatAction = vi.fn(async () => {});
+
+    await textHandler?.({
+      chat: { id: 123 },
+      message: { text: "hello" },
+      reply,
+      replyWithChatAction,
+      api: {
+        editMessageText: vi.fn(async () => {}),
+        deleteMessage: vi.fn(async () => {}),
+      },
+    });
+
+    expect(
+      vi
+        .mocked(logMessage)
+        .mock.calls.filter(([sessionId, role]) => sessionId === "session-1" && role === "user"),
+    ).toHaveLength(1);
+    expect(
+      vi
+        .mocked(logMessage)
+        .mock.calls.filter(([sessionId, role]) => sessionId === "session-2" && role === "user"),
+    ).toHaveLength(1);
+    expect(
+      vi
+        .mocked(recordMessageEstimate)
+        .mock.calls.filter(([entry]) => entry.sessionId === "session-1" && entry.role === "user"),
+    ).toHaveLength(1);
+    expect(
+      vi
+        .mocked(recordMessageEstimate)
+        .mock.calls.filter(([entry]) => entry.sessionId === "session-2" && entry.role === "user"),
+    ).toHaveLength(1);
   });
 });

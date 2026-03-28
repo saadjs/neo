@@ -34,6 +34,7 @@ export interface ManagedConfigDefinition<T> {
 
 export interface ManagedConfigValues {
   COPILOT_MODEL: string;
+  MODEL_SHORTLIST: string[];
   NEO_LOG_LEVEL: LogLevel;
   NEO_SKILL_DIRS: string[];
   NEO_CONTEXT_COMPACTION_ENABLED: boolean;
@@ -105,6 +106,23 @@ function parseStringArray(name: string, value: unknown) {
     throw new Error(`${name} must be an array of non-empty strings`);
   }
   return value.map((item) => resolve(item));
+}
+
+function parseModelShortlist(value: unknown) {
+  if (!Array.isArray(value) || value.some((item) => typeof item !== "string" || !item.trim())) {
+    throw new Error("MODEL_SHORTLIST must be an array of non-empty strings");
+  }
+
+  const seen = new Set<string>();
+  const normalized: string[] = [];
+  for (const item of value) {
+    const trimmed = item.trim();
+    if (seen.has(trimmed)) continue;
+    seen.add(trimmed);
+    normalized.push(trimmed);
+  }
+
+  return normalized;
 }
 
 export function parseBrowserCredentials(
@@ -196,6 +214,16 @@ export const managedConfigDefinitions: Record<
     summary: "Default model",
     behavior: "Sets Neo's default model for chats that are not using a session-specific override.",
   },
+  MODEL_SHORTLIST: {
+    defaultValue: [] as string[],
+    parse: parseModelShortlist,
+    redact: false,
+    mutability: "runtime",
+    autonomy: "auto_apply_allowed",
+    summary: "Model shortlist",
+    behavior:
+      "Stores Neo's ordered global shortlist of preferred models. The first entry is primary and later entries are fallback candidates.",
+  },
   NEO_LOG_LEVEL: {
     defaultValue: "info" as LogLevel,
     parse: parseLogLevel,
@@ -257,6 +285,7 @@ export interface Config {
   };
   copilot: {
     model: string;
+    modelShortlist: string[];
     skillDirectories: string[];
     contextCompaction: {
       enabled: boolean;
@@ -311,6 +340,7 @@ export interface Config {
 export function defaultManagedConfig(): ManagedConfigValues {
   return {
     COPILOT_MODEL: managedConfigDefinitions.COPILOT_MODEL.defaultValue as string,
+    MODEL_SHORTLIST: managedConfigDefinitions.MODEL_SHORTLIST.defaultValue as string[],
     NEO_LOG_LEVEL: managedConfigDefinitions.NEO_LOG_LEVEL.defaultValue as LogLevel,
     NEO_SKILL_DIRS: managedConfigDefinitions.NEO_SKILL_DIRS.defaultValue as string[],
     NEO_CONTEXT_COMPACTION_ENABLED: managedConfigDefinitions.NEO_CONTEXT_COMPACTION_ENABLED
@@ -505,6 +535,7 @@ function loadConfig(): Config {
       },
       copilot: {
         model: managed.COPILOT_MODEL,
+        modelShortlist: managed.MODEL_SHORTLIST,
         skillDirectories: managed.NEO_SKILL_DIRS,
         contextCompaction: {
           enabled: managed.NEO_CONTEXT_COMPACTION_ENABLED,

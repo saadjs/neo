@@ -1,5 +1,12 @@
 import type { ErrorOccurredHandler } from "./types";
 import { getLogger } from "../logging/index";
+import { getModelForChat } from "../agent";
+import { getNextFallbackModel } from "../commands/model-catalog";
+import {
+  getAttemptedFallbackModels,
+  storePendingFailover,
+  clearFallbackAttemptState,
+} from "./error-state";
 
 function serializeError(error: unknown): Record<string, unknown> {
   if (!error || typeof error !== "object") {
@@ -66,13 +73,28 @@ export function errorOccurred(chatId: number): ErrorOccurredHandler {
         return { errorHandling: "retry" as const };
       }
 
-      // Retries exhausted — abort so the session error surfaces to the user
+      const currentModel = getModelForChat(chatId);
+      const attemptedModels = getAttemptedFallbackModels(chatId);
+      const nextModel = await getNextFallbackModel(currentModel, attemptedModels);
+
+      if (nextModel) {
+        storePendingFailover(chatId, {
+          fromModel: currentModel,
+          toModel: nextModel,
+          attemptedModels,
+        });
+      }
+
+      // Retries exhausted — abort so the bot layer can either fail over or surface the error
       resetModelCallFailures(key);
       return { errorHandling: "abort" as const };
     }
 
     // Reset counter on non-model-call events
     resetModelCallFailures(invocation.sessionId);
+    if (input.errorContext !== "model_call") {
+      clearFallbackAttemptState(chatId);
+    }
 
     if (!input.recoverable && input.errorContext !== "tool_execution") {
       return { errorHandling: "abort" as const };

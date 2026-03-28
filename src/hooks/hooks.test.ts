@@ -1,5 +1,15 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
+vi.mock("vscode-jsonrpc/node", () => ({
+  StreamMessageReader: class {},
+  StreamMessageWriter: class {},
+  MessageConnection: { listen: () => ({}) },
+}));
+
+vi.mock("@github/copilot-sdk", () => ({
+  CopilotClient: class {},
+}));
+
 const { cancelPendingUserInputForSessionMock, setActiveSessionMock, logSessionMock } = vi.hoisted(
   () => ({
     cancelPendingUserInputForSessionMock: vi.fn(),
@@ -7,6 +17,14 @@ const { cancelPendingUserInputForSessionMock, setActiveSessionMock, logSessionMo
     logSessionMock: vi.fn(),
   }),
 );
+
+vi.mock("../agent.js", () => ({
+  getModelForChat: vi.fn(() => "gpt-4.1"),
+}));
+
+vi.mock("../commands/model-catalog.js", () => ({
+  getNextFallbackModel: vi.fn().mockResolvedValue(null),
+}));
 
 vi.mock("../logging/index.js", () => ({
   getLogger: () => ({

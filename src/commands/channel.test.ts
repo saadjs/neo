@@ -7,7 +7,8 @@ const {
   getPerChatModelOverrideMock,
   getModelForChatMock,
   getModelReasoningInfoMock,
-  loadModelCatalogMock,
+  loadShortlistModelsMock,
+  loadCatalogModelsOutsideShortlistMock,
 } = vi.hoisted(() => ({
   upsertChannelConfigMock: vi.fn(),
   getChannelConfigMock: vi.fn(),
@@ -15,7 +16,8 @@ const {
   getPerChatModelOverrideMock: vi.fn(),
   getModelForChatMock: vi.fn(),
   getModelReasoningInfoMock: vi.fn(),
-  loadModelCatalogMock: vi.fn(),
+  loadShortlistModelsMock: vi.fn(),
+  loadCatalogModelsOutsideShortlistMock: vi.fn(),
 }));
 
 vi.mock("../config.js", () => ({
@@ -42,7 +44,8 @@ vi.mock("../agent.js", () => ({
 
 vi.mock("./model-catalog.js", () => ({
   getModelReasoningInfo: getModelReasoningInfoMock,
-  loadModelCatalog: loadModelCatalogMock,
+  loadShortlistModels: loadShortlistModelsMock,
+  loadCatalogModelsOutsideShortlist: loadCatalogModelsOutsideShortlistMock,
 }));
 
 import { handleChannel, isChannelCallback } from "./channel";
@@ -55,11 +58,23 @@ describe("handleChannel", () => {
     getPerChatModelOverrideMock.mockReset();
     getModelForChatMock.mockReset();
     getModelReasoningInfoMock.mockReset();
-    loadModelCatalogMock.mockReset();
+    loadShortlistModelsMock.mockReset();
+    loadCatalogModelsOutsideShortlistMock.mockReset();
     getModelForChatMock.mockReturnValue("gpt-4.1");
     getModelReasoningInfoMock.mockResolvedValue({
       supported: true,
       levels: ["low", "medium", "high", "xhigh"],
+    });
+    loadShortlistModelsMock.mockResolvedValue({
+      fetchedAt: "2026-03-13T10:00:00.000Z",
+      models: [{ id: "gpt-4.1", label: "GPT-4.1 [copilot]", provider: "copilot", available: true }],
+      stale: false,
+    });
+    loadCatalogModelsOutsideShortlistMock.mockResolvedValue({
+      fetchedAt: "2026-03-13T10:00:00.000Z",
+      models: [{ id: "gpt-5", label: "GPT-5 [copilot]", provider: "copilot" }],
+      stale: false,
+      source: "cache",
     });
   });
 
@@ -347,12 +362,17 @@ describe("handleChannel", () => {
   it("shows model picker when /channel model has no args", async () => {
     const reply = vi.fn();
     getChannelConfigMock.mockReturnValue({ defaultModel: "gpt-4.1" });
-    loadModelCatalogMock.mockResolvedValue({
+    loadShortlistModelsMock.mockResolvedValue({
       fetchedAt: "2026-03-21T03:00:00Z",
       models: [
-        { id: "gpt-4.1", label: "GPT 4.1", provider: "copilot" },
-        { id: "claude-sonnet-4", label: "Claude Sonnet 4", provider: "copilot" },
+        { id: "gpt-4.1", label: "GPT 4.1", provider: "copilot", available: true },
+        { id: "claude-sonnet-4", label: "Claude Sonnet 4", provider: "copilot", available: true },
       ],
+      stale: false,
+    });
+    loadCatalogModelsOutsideShortlistMock.mockResolvedValue({
+      fetchedAt: "2026-03-21T03:00:00Z",
+      models: [],
       source: "cache",
       stale: false,
     });
@@ -363,9 +383,9 @@ describe("handleChannel", () => {
       reply,
     } as never);
 
-    expect(loadModelCatalogMock).toHaveBeenCalled();
+    expect(loadShortlistModelsMock).toHaveBeenCalled();
     expect(reply).toHaveBeenCalledWith(
-      expect.stringContaining("Choose a default model for this channel"),
+      expect.stringContaining("Choose a default model for this channel from your shortlist"),
       expect.objectContaining({ reply_markup: expect.anything() }),
     );
   });

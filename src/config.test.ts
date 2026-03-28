@@ -134,6 +134,7 @@ describe("parseBrowserCredentials", () => {
       `${JSON.stringify(
         {
           COPILOT_MODEL: "gpt-4.1",
+          MODEL_SHORTLIST: [],
           NEO_LOG_LEVEL: "info",
           NEO_SKILL_DIRS: [skillsDir],
           NEO_CONTEXT_COMPACTION_ENABLED: true,

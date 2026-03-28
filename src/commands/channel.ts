@@ -9,7 +9,13 @@ import {
 } from "../constants";
 import { getChannelConfig, upsertChannelConfig } from "../memory/db";
 import { getModelForChat, getPerChatModelOverride, refreshSessionContext } from "../agent";
-import { getModelReasoningInfo, loadModelCatalog, type AvailableModel } from "./model-catalog";
+import {
+  getModelReasoningInfo,
+  loadCatalogModelsOutsideShortlist,
+  loadShortlistModels,
+  type AvailableModel,
+  type ShortlistModel,
+} from "./model-catalog";
 import type { ReasoningEffort } from "../agent";
 
 export async function handleChannel(ctx: Context) {
@@ -177,9 +183,12 @@ interface ChannelModelPickerState {
   chatId: number;
   currentDefault: string | null;
   fetchedAt: string;
-  models: AvailableModel[];
+  shortlistModels: ShortlistModel[];
+  allModels: AvailableModel[];
   stale: boolean;
   providers: string[];
+  view: "shortlist" | "all";
+  page: number;
 }
 
 const channelModelPickers = new Map<string, ChannelModelPickerState>();
@@ -199,7 +208,7 @@ function createPickerId(): string {
   return Math.random().toString(36).slice(2, 10);
 }
 
-function uniqueProviders(models: AvailableModel[]): string[] {
+function uniqueProviders(models: Array<Pick<AvailableModel, "provider">>): string[] {
   const seen = new Set<string>();
   for (const m of models) {
     if (m.provider) seen.add(m.provider);
@@ -207,42 +216,47 @@ function uniqueProviders(models: AvailableModel[]): string[] {
   return [...seen];
 }
 
-function buildChannelModelPickerText(
-  currentDefault: string | null,
-  fetchedAt: string,
-  page: number,
-  totalPages: number,
-  stale: boolean,
-  providers: string[],
-): string {
+function buildChannelModelPickerText(picker: ChannelModelPickerState): string {
   const lines = [
-    "Choose a default model for this channel.",
-    `Current channel default: ${currentDefault || "(global)"}`,
+    picker.view === "shortlist"
+      ? "Choose a default model for this channel from your shortlist."
+      : "Browse all available models not already in your shortlist.",
+    `Current channel default: ${picker.currentDefault || "(global)"}`,
   ];
-  if (providers.length > 0) lines.push(`Providers: ${providers.join(", ")}`);
-  lines.push(`Catalog fetched: ${fetchedAt}`);
-  lines.push(`Page ${page + 1} of ${totalPages}`);
-  if (stale) lines.push("Using stale cached catalog because GitHub refresh failed.");
+  if (picker.providers.length > 0) lines.push(`Providers: ${picker.providers.join(", ")}`);
+  if (picker.view === "shortlist" && picker.shortlistModels.length === 0) {
+    lines.push("No shortlisted models yet. Use Show All to browse the live catalog.");
+  }
+  if (picker.view === "all" && picker.allModels.length === 0) {
+    lines.push("Every currently available model is already in your shortlist.");
+  }
+  lines.push(`Catalog fetched: ${picker.fetchedAt}`);
+  const total =
+    picker.view === "shortlist" ? picker.shortlistModels.length : picker.allModels.length;
+  lines.push(`Page ${picker.page + 1} of ${Math.max(1, Math.ceil(total / MODELS_PER_PAGE))}`);
+  if (picker.stale) lines.push("Using stale cached catalog because GitHub refresh failed.");
   return lines.join("\n");
 }
 
 function buildChannelModelPickerMarkup(
   pickerId: string,
-  models: AvailableModel[],
-  page: number,
+  picker: ChannelModelPickerState,
 ): InlineKeyboard {
+  const models = picker.view === "shortlist" ? picker.shortlistModels : picker.allModels;
   const totalPages = Math.max(1, Math.ceil(models.length / MODELS_PER_PAGE));
-  const safePage = Math.min(Math.max(page, 0), totalPages - 1);
+  const safePage = Math.min(Math.max(picker.page, 0), totalPages - 1);
   const startIndex = safePage * MODELS_PER_PAGE;
   const pageModels = models.slice(startIndex, startIndex + MODELS_PER_PAGE);
   const keyboard = new InlineKeyboard();
 
   for (let i = 0; i < pageModels.length; i += 2) {
     const left = pageModels[i];
-    keyboard.text(left.label, `ch-model:set:${pickerId}:${startIndex + i}`);
+    const leftLabel = "available" in left && !left.available ? `⚠ ${left.id}` : left.label;
+    keyboard.text(leftLabel, `ch-model:set:${picker.view}:${pickerId}:${startIndex + i}`);
     const right = pageModels[i + 1];
     if (right) {
-      keyboard.text(right.label, `ch-model:set:${pickerId}:${startIndex + i + 1}`);
+      const rightLabel = "available" in right && !right.available ? `⚠ ${right.id}` : right.label;
+      keyboard.text(rightLabel, `ch-model:set:${picker.view}:${pickerId}:${startIndex + i + 1}`);
     }
     keyboard.row();
   }
@@ -254,48 +268,53 @@ function buildChannelModelPickerMarkup(
     keyboard.row();
   }
 
+  if (picker.view === "shortlist") {
+    keyboard.text("Show All", `ch-model:view:all:${pickerId}`);
+  } else {
+    keyboard.text("Back", `ch-model:view:shortlist:${pickerId}`);
+  }
+  keyboard.row();
   keyboard.text("Clear default", `ch-model:clear:${pickerId}`);
   keyboard.text("Refresh", `ch-model:refresh:${pickerId}`);
   return keyboard;
 }
 
-function getChannelModelPickerMessage(pickerId: string, page: number) {
+function getChannelModelPickerMessage(pickerId: string) {
   const picker = channelModelPickers.get(pickerId);
   if (!picker) return null;
 
-  const totalPages = Math.max(1, Math.ceil(picker.models.length / MODELS_PER_PAGE));
-  const safePage = Math.min(Math.max(page, 0), totalPages - 1);
-
   return {
-    text: buildChannelModelPickerText(
-      picker.currentDefault,
-      picker.fetchedAt,
-      safePage,
-      totalPages,
-      picker.stale,
-      picker.providers,
-    ),
-    reply_markup: buildChannelModelPickerMarkup(pickerId, picker.models, safePage),
+    text: buildChannelModelPickerText(picker),
+    reply_markup: buildChannelModelPickerMarkup(pickerId, picker),
   };
 }
 
 async function showChannelModelPicker(ctx: Context, chatId: number) {
   try {
     const cfg = getChannelConfig(chatId);
-    const catalog = await loadModelCatalog();
+    const [shortlist, allCatalog] = await Promise.all([
+      loadShortlistModels(),
+      loadCatalogModelsOutsideShortlist(),
+    ]);
     pruneChannelModelPickers();
     const pickerId = createPickerId();
     channelModelPickers.set(pickerId, {
       createdAt: Date.now(),
       chatId,
       currentDefault: cfg?.defaultModel ?? null,
-      fetchedAt: catalog.fetchedAt,
-      models: catalog.models,
-      stale: catalog.stale,
-      providers: uniqueProviders(catalog.models),
+      fetchedAt: allCatalog.fetchedAt,
+      shortlistModels: shortlist.models,
+      allModels: allCatalog.models,
+      stale: allCatalog.stale,
+      providers: uniqueProviders([
+        ...shortlist.models.filter((model) => model.available),
+        ...allCatalog.models,
+      ]),
+      view: "shortlist",
+      page: 0,
     });
 
-    const message = getChannelModelPickerMessage(pickerId, 0);
+    const message = getChannelModelPickerMessage(pickerId);
     if (!message) {
       await ctx.reply("Failed to build the model picker. Try again.");
       return;
@@ -400,18 +419,20 @@ export function isChannelCallback(data: string | undefined): boolean {
 function parseChannelModelCallback(
   data: string,
 ):
-  | { action: "set"; pickerId: string; index: number }
+  | { action: "set"; source: "shortlist" | "all"; pickerId: string; index: number }
   | { action: "page"; pickerId: string; page: number }
   | { action: "clear"; pickerId: string }
   | { action: "refresh"; pickerId: string }
+  | { action: "view"; pickerId: string; view: "shortlist" | "all" }
   | null {
   const parts = data.split(":");
   if (parts[0] !== "ch-model") return null;
 
-  if (parts[1] === "set" && parts.length === 4) {
-    const index = Number(parts[3]);
+  if (parts[1] === "set" && parts.length === 5) {
+    const index = Number(parts[4]);
     if (!Number.isInteger(index) || index < 0) return null;
-    return { action: "set", pickerId: parts[2], index };
+    if (parts[2] !== "shortlist" && parts[2] !== "all") return null;
+    return { action: "set", source: parts[2], pickerId: parts[3], index };
   }
   if (parts[1] === "page" && parts.length === 4) {
     const page = Number(parts[3]);
@@ -423,6 +444,10 @@ function parseChannelModelCallback(
   }
   if (parts[1] === "refresh" && parts.length === 3) {
     return { action: "refresh", pickerId: parts[2] };
+  }
+  if (parts[1] === "view" && parts.length === 4) {
+    if (parts[2] !== "shortlist" && parts[2] !== "all") return null;
+    return { action: "view", pickerId: parts[3], view: parts[2] };
   }
   return null;
 }
@@ -472,9 +497,16 @@ async function handleChannelModelCallback(ctx: Context, data: string): Promise<b
 
   try {
     if (parsed.action === "set") {
-      const selected = picker.models[parsed.index];
+      const selected =
+        parsed.source === "shortlist"
+          ? picker.shortlistModels[parsed.index]
+          : picker.allModels[parsed.index];
       if (!selected) {
         await ctx.answerCallbackQuery({ text: "That model is no longer available." });
+        return true;
+      }
+      if ("available" in selected && !selected.available) {
+        await ctx.answerCallbackQuery({ text: "That shortlisted model is unavailable right now." });
         return true;
       }
       upsertChannelConfig(picker.chatId, { defaultModel: selected.id });
@@ -505,13 +537,21 @@ async function handleChannelModelCallback(ctx: Context, data: string): Promise<b
     }
 
     if (parsed.action === "refresh") {
-      const catalog = await loadModelCatalog({ forceRefresh: true });
-      picker.models = catalog.models;
-      picker.fetchedAt = catalog.fetchedAt;
-      picker.stale = catalog.stale;
-      picker.providers = uniqueProviders(catalog.models);
+      const [shortlist, allCatalog] = await Promise.all([
+        loadShortlistModels({ forceRefresh: true }),
+        loadCatalogModelsOutsideShortlist({ forceRefresh: true }),
+      ]);
+      picker.shortlistModels = shortlist.models;
+      picker.allModels = allCatalog.models;
+      picker.fetchedAt = allCatalog.fetchedAt;
+      picker.stale = allCatalog.stale;
+      picker.providers = uniqueProviders([
+        ...shortlist.models.filter((model) => model.available),
+        ...allCatalog.models,
+      ]);
+      picker.page = 0;
 
-      const next = getChannelModelPickerMessage(parsed.pickerId, 0);
+      const next = getChannelModelPickerMessage(parsed.pickerId);
       if (next) {
         await ctx.api.editMessageText(ctx.chat.id, message.message_id, next.text, {
           reply_markup: next.reply_markup,
@@ -521,8 +561,22 @@ async function handleChannelModelCallback(ctx: Context, data: string): Promise<b
       return true;
     }
 
+    if (parsed.action === "view") {
+      picker.view = parsed.view;
+      picker.page = 0;
+      const next = getChannelModelPickerMessage(parsed.pickerId);
+      if (next) {
+        await ctx.api.editMessageText(ctx.chat.id, message.message_id, next.text, {
+          reply_markup: next.reply_markup,
+        });
+      }
+      await ctx.answerCallbackQuery();
+      return true;
+    }
+
     // page
-    const next = getChannelModelPickerMessage(parsed.pickerId, parsed.page);
+    picker.page = parsed.page;
+    const next = getChannelModelPickerMessage(parsed.pickerId);
     if (next) {
       await ctx.api.editMessageText(ctx.chat.id, message.message_id, next.text, {
         reply_markup: next.reply_markup,

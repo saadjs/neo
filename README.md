@@ -186,7 +186,7 @@ Send `/start` or `/help` in Telegram to see all available commands.
 
 Key commands:
 - `/new` — Start a fresh conversation
-- `/model` — Switch models with a clickable picker (cached daily)
+- `/model` — Switch models from a curated shortlist, with Show All for the full catalog
 - `/cancel` — Stop the current task
 - `/memory` — View or search memory
 - `/reasoning` — Set reasoning effort level
@@ -232,10 +232,12 @@ AI_GATEWAY_API_KEY=vercel_...   # Enables Vercel AI Gateway models
 ```
 
 **Usage:**
-- `/model` — Picker shows all models tagged with their provider: `claude-opus-4-6 [anthropic]`, `gpt-4.1 [copilot]`
+- `/model` — Opens your ordered shortlist first; use `Show All` to browse the full live catalog
 - `/model anthropic:claude-opus-4-6` — Switch directly using `provider:model` syntax
 - `/model vercel:anthropic/claude-sonnet-4.5` — Switch to a Vercel gateway model using its `provider/model` ID
 - `/whichmodel` — Shows the active provider
+
+The shortlist is stored in Neo's managed `config.json`. The first entry is primary and later entries are fallback candidates. If a transient model-call failure exhausts retries, Neo will automatically switch to the next available fallback and replay the turn.
 
 **Custom providers** (Ollama, other OpenAI-compatible endpoints):
 

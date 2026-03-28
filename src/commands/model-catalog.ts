@@ -24,6 +24,17 @@ export interface AvailableModel {
   defaultReasoningEffort?: ReasoningEffort;
 }
 
+export interface ShortlistModel {
+  id: string;
+  label: string;
+  provider: string;
+  available: boolean;
+  missing?: boolean;
+  supportsReasoningEffort?: boolean;
+  supportedReasoningEfforts?: ReasoningEffort[];
+  defaultReasoningEffort?: ReasoningEffort;
+}
+
 interface ModelCatalogCache {
   fetchedAt: string;
   providerSignature?: string;
@@ -35,6 +46,14 @@ export interface ModelCatalogResult {
   models: AvailableModel[];
   source: "network" | "cache" | "stale-cache";
   stale: boolean;
+}
+
+export function getModelShortlist(): string[] {
+  return [...config.copilot.modelShortlist];
+}
+
+export function isModelShortlisted(modelId: string): boolean {
+  return config.copilot.modelShortlist.includes(modelId);
 }
 
 function isAvailableModel(value: unknown): value is AvailableModel {
@@ -247,4 +266,79 @@ export async function getModelReasoningInfo(modelId: string): Promise<{
   } catch {
     return null;
   }
+}
+
+export async function loadShortlistModels(options?: {
+  forceRefresh?: boolean;
+  now?: number;
+}): Promise<{
+  fetchedAt: string;
+  models: ShortlistModel[];
+  stale: boolean;
+}> {
+  const catalog = await loadModelCatalog(options);
+  const modelMap = new Map(catalog.models.map((model) => [model.id, model]));
+
+  const models = getModelShortlist().map((modelId) => {
+    const match = modelMap.get(modelId);
+    if (!match) {
+      return {
+        id: modelId,
+        label: `${modelId} [unavailable]`,
+        provider: "unknown",
+        available: false,
+        missing: true,
+      } satisfies ShortlistModel;
+    }
+
+    return {
+      ...match,
+      available: true,
+    } satisfies ShortlistModel;
+  });
+
+  return {
+    fetchedAt: catalog.fetchedAt,
+    models,
+    stale: catalog.stale,
+  };
+}
+
+export async function loadCatalogModelsOutsideShortlist(options?: {
+  forceRefresh?: boolean;
+  now?: number;
+}): Promise<ModelCatalogResult> {
+  const catalog = await loadModelCatalog(options);
+  const shortlist = new Set(getModelShortlist());
+
+  return {
+    ...catalog,
+    models: catalog.models.filter((model) => !shortlist.has(model.id)),
+  };
+}
+
+export async function getNextFallbackModel(
+  currentModel: string,
+  attemptedModels: Iterable<string>,
+): Promise<string | null> {
+  const shortlist = getModelShortlist();
+  if (shortlist.length === 0) return null;
+
+  const attempted = new Set(attemptedModels);
+  const catalog = await loadModelCatalog();
+  const available = new Set(catalog.models.map((model) => model.id));
+  const currentIndex = shortlist.indexOf(currentModel);
+  if (currentIndex === -1) return null;
+  const orderedCandidates = [
+    ...shortlist.slice(currentIndex + 1),
+    ...shortlist.slice(0, currentIndex),
+  ];
+
+  for (const candidate of orderedCandidates) {
+    if (attempted.has(candidate)) continue;
+    if (!available.has(candidate)) continue;
+    return candidate;
+  }
+
+  return null;
 }

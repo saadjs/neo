@@ -35,8 +35,9 @@ describe("buildHelpText", () => {
     expect(buildHelpText()).toContain("/whichmodel — Show default and current chat model");
     expect(buildHelpText()).toContain("/usage — Show Copilot monthly usage");
     expect(buildHelpText()).toContain(
-      "/model opens a clickable picker; /model <name> still switches directly",
+      "/model opens your shortlisted models first; use Show All to browse the full live catalog",
     );
+    expect(buildHelpText()).toContain("/model <name> still switches directly for this chat");
     expect(buildHelpText()).toContain(
       "/memory supports full-text search, /memory recent N, and /memory #tag",
     );

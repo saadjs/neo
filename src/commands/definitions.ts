@@ -107,7 +107,8 @@ ${commandLines.join("\n")}
 
 Notes:
 - /start and /help both show this command list
-- /model opens a clickable picker; /model <name> still switches directly
+- /model opens your shortlisted models first; use Show All to browse the full live catalog
+- /model <name> still switches directly for this chat
 - /memory supports full-text search, /memory recent N, and /memory #tag
 - /whichmodel shows default model vs this chat's active model
 - /new keeps this chat's model override if you set one with /model

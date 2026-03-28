@@ -132,6 +132,7 @@ async function detectSystemdState() {
 function getManagedValuesSnapshot(): ManagedConfigValues {
   return {
     COPILOT_MODEL: config.copilot.model,
+    MODEL_SHORTLIST: config.copilot.modelShortlist,
     NEO_LOG_LEVEL: getLogLevel(),
     NEO_SKILL_DIRS: config.copilot.skillDirectories,
     NEO_CONTEXT_COMPACTION_ENABLED: config.copilot.contextCompaction.enabled,
@@ -145,6 +146,9 @@ async function applyRuntimeValue(key: ManagedConfigKey, value: unknown) {
   switch (key) {
     case "COPILOT_MODEL":
       await switchDefaultModel(String(value));
+      break;
+    case "MODEL_SHORTLIST":
+      config.copilot.modelShortlist = value as string[];
       break;
     case "NEO_LOG_LEVEL":
       config.logging.level = String(value) as typeof config.logging.level;
@@ -272,6 +276,7 @@ function normalizeInputValue(key: ManagedConfigKey, value: string) {
     case "COPILOT_MODEL":
     case "NEO_LOG_LEVEL":
       return getManagedConfigDefinition(key).parse(value);
+    case "MODEL_SHORTLIST":
     case "NEO_SKILL_DIRS":
       return getManagedConfigDefinition(key).parse(JSON.parse(value));
     case "NEO_CONTEXT_COMPACTION_ENABLED":

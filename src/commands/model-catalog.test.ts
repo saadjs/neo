@@ -1,17 +1,27 @@
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ModelInfo } from "@github/copilot-sdk";
 
-const { dataDir, listModelsMock, getClientMock } = vi.hoisted(() => ({
-  dataDir: "/tmp/neo-model-catalog-test",
+const { testState, listModelsMock, getClientMock } = vi.hoisted(() => ({
+  testState: {
+    dataDir: "",
+  },
   listModelsMock: vi.fn(),
   getClientMock: vi.fn(),
 }));
 
 vi.mock("../config.js", () => ({
   config: {
-    paths: { data: dataDir },
+    copilot: {
+      modelShortlist: [],
+    },
+    paths: {
+      get data() {
+        return testState.dataDir;
+      },
+    },
     providers: {
       anthropicApiKey: undefined,
       openaiApiKey: undefined,
@@ -72,11 +82,16 @@ function createModel(
   };
 }
 
+beforeEach(() => {
+  testState.dataDir = mkdtempSync(join(tmpdir(), "neo-model-catalog-test-"));
+});
+
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   vi.resetModules();
-  rmSync(dataDir, { recursive: true, force: true });
+  rmSync(testState.dataDir, { recursive: true, force: true });
+  testState.dataDir = "";
   listModelsMock.mockReset();
   getClientMock.mockReset();
 });
@@ -106,9 +121,9 @@ describe("loadModelCatalog", () => {
   });
 
   it("uses fresh cache without calling the SDK", async () => {
-    mkdirSync(dataDir, { recursive: true });
+    mkdirSync(testState.dataDir, { recursive: true });
     writeFileSync(
-      join(dataDir, "copilot-models-cache.json"),
+      join(testState.dataDir, "copilot-models-cache.json"),
       `${JSON.stringify({
         fetchedAt: "2026-03-13T10:00:00.000Z",
         providerSignature: "[]",
@@ -130,9 +145,9 @@ describe("loadModelCatalog", () => {
   });
 
   it("refreshes a fresh cache when provider configuration changes", async () => {
-    mkdirSync(dataDir, { recursive: true });
+    mkdirSync(testState.dataDir, { recursive: true });
     writeFileSync(
-      join(dataDir, "copilot-models-cache.json"),
+      join(testState.dataDir, "copilot-models-cache.json"),
       `${JSON.stringify({
         fetchedAt: "2026-03-13T10:00:00.000Z",
         models: [{ id: "gpt-5.4", label: "GPT-5.4 [copilot]", provider: "copilot" }],
@@ -206,9 +221,9 @@ describe("loadModelCatalog", () => {
   });
 
   it("refreshes stale cache from the Copilot SDK", async () => {
-    mkdirSync(dataDir, { recursive: true });
+    mkdirSync(testState.dataDir, { recursive: true });
     writeFileSync(
-      join(dataDir, "copilot-models-cache.json"),
+      join(testState.dataDir, "copilot-models-cache.json"),
       `${JSON.stringify({
         fetchedAt: "2026-03-11T10:00:00.000Z",
         models: [{ id: "old-model", label: "Old model" }],
@@ -253,9 +268,9 @@ describe("loadModelCatalog", () => {
   });
 
   it("falls back to stale cache when SDK refresh fails", async () => {
-    mkdirSync(dataDir, { recursive: true });
+    mkdirSync(testState.dataDir, { recursive: true });
     writeFileSync(
-      join(dataDir, "copilot-models-cache.json"),
+      join(testState.dataDir, "copilot-models-cache.json"),
       `${JSON.stringify({
         fetchedAt: "2026-03-11T10:00:00.000Z",
         models: [{ id: "cached-model", label: "Cached model" }],
@@ -336,5 +351,23 @@ describe("getModelReasoningInfo", () => {
     const info = await getModelReasoningInfo("nonexistent-model");
 
     expect(info).toBeNull();
+  });
+});
+
+describe("getNextFallbackModel", () => {
+  it("returns null when the current model is outside the shortlist", async () => {
+    const { config } = await import("../config.js");
+    config.copilot.modelShortlist = ["gpt-5.4", "claude-sonnet-4"];
+
+    listModelsMock.mockResolvedValue([
+      createModel("gpt-5.4", "GPT-5.4"),
+      createModel("claude-sonnet-4", "Claude Sonnet 4"),
+      createModel("openai:gpt-4.1", "GPT-4.1"),
+    ]);
+    getClientMock.mockReturnValue({ listModels: listModelsMock });
+
+    const { getNextFallbackModel } = await import("./model-catalog");
+
+    await expect(getNextFallbackModel("openai:gpt-4.1", ["openai:gpt-4.1"])).resolves.toBeNull();
   });
 });
