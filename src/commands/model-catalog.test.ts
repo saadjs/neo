@@ -84,6 +84,17 @@ function createModel(
 
 beforeEach(() => {
   testState.dataDir = mkdtempSync(join(tmpdir(), "neo-model-catalog-test-"));
+  return import("../config.js").then(({ config }) => {
+    config.copilot.modelShortlist = [];
+    config.providers.anthropicApiKey = undefined;
+    config.providers.openaiApiKey = undefined;
+    config.providers.vercelAiGatewayApiKey = undefined;
+    config.providers.custom.name = undefined;
+    config.providers.custom.type = undefined;
+    config.providers.custom.baseUrl = undefined;
+    config.providers.custom.apiKey = undefined;
+    config.providers.custom.bearerToken = undefined;
+  });
 });
 
 afterEach(() => {
