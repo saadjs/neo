@@ -83,7 +83,7 @@ export const commandDefinitions = [
   },
   {
     command: "usage",
-    description: "Show Copilot monthly usage",
+    description: "Show provider usage stats",
   },
   {
     command: "whichmodel",

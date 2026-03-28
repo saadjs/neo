@@ -1,3 +1,6 @@
+import { COPILOT_USAGE_FETCH_TIMEOUT_MS } from "../constants";
+import type { ProviderEntry } from "../providers";
+
 export interface CopilotQuotaSnapshot {
   percentRemaining: number;
   remaining: number | null;
@@ -12,13 +15,67 @@ export interface CopilotUsageSnapshot {
   plan: string | null;
 }
 
+export interface TokenUsageSnapshot {
+  inputTokens: number;
+  outputTokens: number;
+  requestCount: number | null;
+  windowStart: string;
+  windowEnd: string;
+}
+
+export interface VercelCreditsSnapshot {
+  balance: string | null;
+  totalUsed: string | null;
+}
+
+export type ProviderUsageSnapshot =
+  | { kind: "copilot"; usage: CopilotUsageSnapshot }
+  | { kind: "anthropic"; usage: TokenUsageSnapshot }
+  | { kind: "openai"; usage: TokenUsageSnapshot }
+  | { kind: "vercel"; usage: VercelCreditsSnapshot };
+
+export interface ProviderUsageReport {
+  providerKey: string;
+  label: string;
+  ok: boolean;
+  snapshot?: ProviderUsageSnapshot;
+  error?: string;
+}
+
 export interface RequestConfig {
   fetchFn?: typeof fetch;
   timeoutMs?: number;
   nowMs?: number;
 }
 
-import { COPILOT_USAGE_FETCH_TIMEOUT_MS } from "../constants";
+interface OpenAiUsageBucketResult {
+  input_tokens?: unknown;
+  output_tokens?: unknown;
+  num_model_requests?: unknown;
+  input_cached_tokens?: unknown;
+  input_uncached_tokens?: unknown;
+  input_text_tokens?: unknown;
+  output_text_tokens?: unknown;
+  input_cached_text_tokens?: unknown;
+  input_audio_tokens?: unknown;
+  input_cached_audio_tokens?: unknown;
+  output_audio_tokens?: unknown;
+  input_image_tokens?: unknown;
+  input_cached_image_tokens?: unknown;
+  output_image_tokens?: unknown;
+}
+
+interface AnthropicUsageBucketResult {
+  requests?: unknown;
+  uncached_input_tokens?: unknown;
+  cache_creation_input_tokens?: unknown;
+  cache_read_input_tokens?: unknown;
+  cache_creation?: Record<string, unknown>;
+  output_tokens?: unknown;
+  server_tool_use?: {
+    web_search_requests?: unknown;
+  };
+}
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
@@ -66,7 +123,7 @@ async function requestJson(
   }
 }
 
-function readCopilotNumber(value: unknown): number | null {
+function readNumber(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) return value;
 
   if (typeof value === "string") {
@@ -130,11 +187,11 @@ function copilotResetCountdown(resetAt: string, nowMs = Date.now()): string {
 }
 
 function readPercentRemaining(snapshot: Record<string, unknown>): number | null {
-  const direct = readCopilotNumber(snapshot.percent_remaining);
+  const direct = readNumber(snapshot.percent_remaining);
   if (direct != null) return clampPercent(direct);
 
-  const entitlement = readCopilotNumber(snapshot.entitlement);
-  const remaining = readCopilotNumber(snapshot.remaining);
+  const entitlement = readNumber(snapshot.entitlement);
+  const remaining = readNumber(snapshot.remaining);
   if (entitlement != null && entitlement > 0 && remaining != null) {
     return clampPercent((remaining / entitlement) * 100);
   }
@@ -154,15 +211,15 @@ function getCopilotSnapshot(
   const limitedUserQuotas = asRecord(data.limited_user_quotas);
 
   if (key === "premium_interactions") {
-    const entitlement = monthlyQuotas ? readCopilotNumber(monthlyQuotas.completions) : null;
-    const remaining = limitedUserQuotas ? readCopilotNumber(limitedUserQuotas.completions) : null;
+    const entitlement = monthlyQuotas ? readNumber(monthlyQuotas.completions) : null;
+    const remaining = limitedUserQuotas ? readNumber(limitedUserQuotas.completions) : null;
     if (entitlement != null || remaining != null) {
       return { entitlement, remaining };
     }
   }
 
-  const entitlement = monthlyQuotas ? readCopilotNumber(monthlyQuotas.chat) : null;
-  const remaining = limitedUserQuotas ? readCopilotNumber(limitedUserQuotas.chat) : null;
+  const entitlement = monthlyQuotas ? readNumber(monthlyQuotas.chat) : null;
+  const remaining = limitedUserQuotas ? readNumber(limitedUserQuotas.chat) : null;
   if (entitlement != null || remaining != null) {
     return { entitlement, remaining };
   }
@@ -178,8 +235,8 @@ function parseQuotaSnapshot(snapshot: Record<string, unknown> | null): CopilotQu
 
   return {
     percentRemaining,
-    remaining: readCopilotNumber(snapshot.remaining),
-    entitlement: readCopilotNumber(snapshot.entitlement),
+    remaining: readNumber(snapshot.remaining),
+    entitlement: readNumber(snapshot.entitlement),
   };
 }
 
@@ -197,12 +254,208 @@ export function parseCopilotUsageSnapshot(
 
   if (!premiumInteractions && !chat) return null;
 
+  const resetAt = resolveCopilotResetAt(record, nowMs);
   return {
     premiumInteractions,
     chat,
-    resetAt: resolveCopilotResetAt(record, nowMs),
-    resetsIn: copilotResetCountdown(resolveCopilotResetAt(record, nowMs), nowMs),
+    resetAt,
+    resetsIn: copilotResetCountdown(resetAt, nowMs),
     plan: typeof record.copilot_plan === "string" ? record.copilot_plan : null,
+  };
+}
+
+function readString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+function windowRange(nowMs = Date.now(), days = 30): { startMs: number; endMs: number } {
+  const endMs = nowMs;
+  const startMs = endMs - days * 24 * 60 * 60 * 1000;
+  return { startMs, endMs };
+}
+
+function buildEmptyTokenUsageSnapshot(
+  startMs: number,
+  endMs: number,
+  requestCount: number | null,
+): TokenUsageSnapshot {
+  return {
+    inputTokens: 0,
+    outputTokens: 0,
+    requestCount,
+    windowStart: new Date(startMs).toISOString(),
+    windowEnd: new Date(endMs).toISOString(),
+  };
+}
+
+function readDataArray(data: unknown): unknown[] | null {
+  const record = asRecord(data);
+  return Array.isArray(record?.data) ? record.data : null;
+}
+
+function sumNumbers(values: Array<unknown>): number {
+  let total = 0;
+
+  for (const value of values) {
+    total += readNumber(value) ?? 0;
+  }
+
+  return total;
+}
+
+function sumAnthropicCacheCreationTokens(cacheCreation: unknown): number {
+  const record = asRecord(cacheCreation);
+  if (!record) return 0;
+
+  let total = 0;
+  for (const value of Object.values(record)) {
+    total += readNumber(value) ?? 0;
+  }
+
+  return total;
+}
+
+function readOpenAiInputTokens(usage: OpenAiUsageBucketResult): number {
+  const total = readNumber(usage.input_tokens);
+  const detailedTotal = sumNumbers([
+    usage.input_uncached_tokens,
+    usage.input_cached_tokens,
+    usage.input_audio_tokens,
+    usage.input_cached_audio_tokens,
+    usage.input_image_tokens,
+    usage.input_cached_image_tokens,
+  ]);
+
+  if (total != null) {
+    return Math.max(total, detailedTotal);
+  }
+
+  if (detailedTotal > 0) {
+    return detailedTotal;
+  }
+
+  return sumNumbers([usage.input_text_tokens, usage.input_audio_tokens, usage.input_image_tokens]);
+}
+
+function readOpenAiOutputTokens(usage: OpenAiUsageBucketResult): number {
+  const total = readNumber(usage.output_tokens);
+  const detailedTotal = sumNumbers([
+    usage.output_text_tokens,
+    usage.output_audio_tokens,
+    usage.output_image_tokens,
+  ]);
+
+  if (total != null) {
+    return Math.max(total, detailedTotal);
+  }
+
+  return detailedTotal;
+}
+
+function sumOpenAiUsageBuckets(data: unknown): TokenUsageSnapshot | null {
+  const buckets = readDataArray(data);
+  if (!buckets) return null;
+
+  let inputTokens = 0;
+  let outputTokens = 0;
+  let requestCount = 0;
+  let windowStart: string | null = null;
+  let windowEnd: string | null = null;
+
+  for (const bucket of buckets) {
+    const bucketRecord = asRecord(bucket);
+    if (!bucketRecord) continue;
+
+    const startTime = readNumber(bucketRecord.start_time);
+    const endTime = readNumber(bucketRecord.end_time);
+    if (windowStart == null && startTime != null) {
+      windowStart = new Date(startTime * 1000).toISOString();
+    }
+    if (endTime != null) {
+      windowEnd = new Date(endTime * 1000).toISOString();
+    }
+
+    const results = Array.isArray(bucketRecord.results) ? bucketRecord.results : [];
+    for (const result of results) {
+      const usage = result as OpenAiUsageBucketResult;
+      inputTokens += readOpenAiInputTokens(usage);
+      outputTokens += readOpenAiOutputTokens(usage);
+      requestCount += readNumber(usage.num_model_requests) ?? 0;
+    }
+  }
+
+  if (windowStart == null || windowEnd == null) return null;
+
+  return {
+    inputTokens,
+    outputTokens,
+    requestCount,
+    windowStart,
+    windowEnd,
+  };
+}
+
+function sumAnthropicUsageBuckets(data: unknown): TokenUsageSnapshot | null {
+  const buckets = readDataArray(data);
+  if (!buckets) return null;
+
+  let inputTokens = 0;
+  let outputTokens = 0;
+  let requestCount: number | null = 0;
+  let windowStart: string | null = null;
+  let windowEnd: string | null = null;
+
+  for (const bucket of buckets) {
+    const bucketRecord = asRecord(bucket);
+    if (!bucketRecord) continue;
+
+    const bucketStart = readString(bucketRecord.starting_at);
+    const bucketEnd = readString(bucketRecord.ending_at);
+    if (windowStart == null && bucketStart) windowStart = bucketStart;
+    if (bucketEnd) windowEnd = bucketEnd;
+
+    const results = Array.isArray(bucketRecord.results) ? bucketRecord.results : [];
+    for (const result of results) {
+      const usage = result as AnthropicUsageBucketResult;
+      inputTokens += sumNumbers([
+        usage.uncached_input_tokens,
+        usage.cache_creation_input_tokens,
+        usage.cache_read_input_tokens,
+      ]);
+      inputTokens += sumAnthropicCacheCreationTokens(usage.cache_creation);
+      outputTokens += readNumber(usage.output_tokens) ?? 0;
+
+      const requests = readNumber(usage.requests);
+      if (requests == null) {
+        requestCount = null;
+      } else if (requestCount != null) {
+        requestCount += requests;
+      }
+    }
+  }
+
+  if (windowStart == null || windowEnd == null) return null;
+
+  return {
+    inputTokens,
+    outputTokens,
+    requestCount,
+    windowStart,
+    windowEnd,
+  };
+}
+
+function parseVercelCreditsSnapshot(data: unknown): VercelCreditsSnapshot | null {
+  const record = asRecord(data);
+  if (!record) return null;
+
+  const balance = readString(record.balance);
+  const totalUsed = readString(record.total_used);
+  if (balance == null && totalUsed == null) return null;
+
+  return {
+    balance,
+    totalUsed,
   };
 }
 
@@ -236,4 +489,223 @@ export async function fetchCopilotUsage(
   }
 
   return { ok: true, usage };
+}
+
+export async function fetchVercelUsage(
+  provider: ProviderEntry,
+  config: RequestConfig = {},
+): Promise<ProviderUsageReport> {
+  const token = provider.bearerToken ?? provider.apiKey;
+  if (!token) {
+    return {
+      providerKey: provider.key,
+      label: provider.label,
+      ok: false,
+      error: "missing API token",
+    };
+  }
+
+  const result = await requestJson(
+    "https://ai-gateway.vercel.sh/v1/credits",
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    },
+    config,
+  );
+
+  if (!result.ok) {
+    return {
+      providerKey: provider.key,
+      label: provider.label,
+      ok: false,
+      error: result.error,
+    };
+  }
+
+  const usage = parseVercelCreditsSnapshot(result.data);
+  if (!usage) {
+    return {
+      providerKey: provider.key,
+      label: provider.label,
+      ok: false,
+      error: "unrecognized response shape",
+    };
+  }
+
+  return {
+    providerKey: provider.key,
+    label: provider.label,
+    ok: true,
+    snapshot: { kind: "vercel", usage },
+  };
+}
+
+export async function fetchAnthropicUsage(
+  provider: ProviderEntry,
+  config: RequestConfig = {},
+): Promise<ProviderUsageReport> {
+  const apiKey = provider.apiKey ?? provider.bearerToken;
+  if (!apiKey) {
+    return {
+      providerKey: provider.key,
+      label: provider.label,
+      ok: false,
+      error: "missing API key",
+    };
+  }
+
+  const { startMs, endMs } = windowRange(config.nowMs);
+  const url = new URL("https://api.anthropic.com/v1/organizations/usage_report/messages");
+  url.searchParams.set("starting_at", new Date(startMs).toISOString());
+  url.searchParams.set("ending_at", new Date(endMs).toISOString());
+  url.searchParams.set("bucket_width", "1d");
+  url.searchParams.set("limit", "30");
+
+  const result = await requestJson(
+    url.toString(),
+    {
+      headers: {
+        "anthropic-version": "2023-06-01",
+        "x-api-key": apiKey,
+      },
+    },
+    config,
+  );
+
+  if (!result.ok) {
+    return {
+      providerKey: provider.key,
+      label: provider.label,
+      ok: false,
+      error: result.error,
+    };
+  }
+
+  const usage = sumAnthropicUsageBuckets(result.data);
+  if (!usage) {
+    const buckets = readDataArray(result.data);
+    if (buckets?.length === 0) {
+      return {
+        providerKey: provider.key,
+        label: provider.label,
+        ok: true,
+        snapshot: {
+          kind: "anthropic",
+          usage: buildEmptyTokenUsageSnapshot(startMs, endMs, 0),
+        },
+      };
+    }
+
+    return {
+      providerKey: provider.key,
+      label: provider.label,
+      ok: false,
+      error: "unrecognized response shape",
+    };
+  }
+
+  return {
+    providerKey: provider.key,
+    label: provider.label,
+    ok: true,
+    snapshot: { kind: "anthropic", usage },
+  };
+}
+
+export async function fetchOpenAiUsage(
+  provider: ProviderEntry,
+  config: RequestConfig = {},
+): Promise<ProviderUsageReport> {
+  const apiKey = provider.apiKey ?? provider.bearerToken;
+  if (!apiKey) {
+    return {
+      providerKey: provider.key,
+      label: provider.label,
+      ok: false,
+      error: "missing API key",
+    };
+  }
+
+  const { startMs, endMs } = windowRange(config.nowMs);
+  const url = new URL("https://api.openai.com/v1/organization/usage/completions");
+  url.searchParams.set("start_time", String(Math.floor(startMs / 1000)));
+  url.searchParams.set("end_time", String(Math.floor(endMs / 1000)));
+  url.searchParams.set("bucket_width", "1d");
+  url.searchParams.set("limit", "30");
+
+  const result = await requestJson(
+    url.toString(),
+    {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+      },
+    },
+    config,
+  );
+
+  if (!result.ok) {
+    return {
+      providerKey: provider.key,
+      label: provider.label,
+      ok: false,
+      error: result.error,
+    };
+  }
+
+  const usage = sumOpenAiUsageBuckets(result.data);
+  if (!usage) {
+    const buckets = readDataArray(result.data);
+    if (buckets?.length === 0) {
+      return {
+        providerKey: provider.key,
+        label: provider.label,
+        ok: true,
+        snapshot: {
+          kind: "openai",
+          usage: buildEmptyTokenUsageSnapshot(startMs, endMs, 0),
+        },
+      };
+    }
+
+    return {
+      providerKey: provider.key,
+      label: provider.label,
+      ok: false,
+      error: "unrecognized response shape",
+    };
+  }
+
+  return {
+    providerKey: provider.key,
+    label: provider.label,
+    ok: true,
+    snapshot: { kind: "openai", usage },
+  };
+}
+
+export async function fetchProviderUsage(
+  provider: ProviderEntry,
+  config: RequestConfig = {},
+): Promise<ProviderUsageReport> {
+  if (provider.key === "vercel") {
+    return fetchVercelUsage(provider, config);
+  }
+
+  if (provider.key === "anthropic") {
+    return fetchAnthropicUsage(provider, config);
+  }
+
+  if (provider.key === "openai") {
+    return fetchOpenAiUsage(provider, config);
+  }
+
+  return {
+    providerKey: provider.key,
+    label: provider.label,
+    ok: false,
+    error: "usage API not supported",
+  };
 }

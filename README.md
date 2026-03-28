@@ -236,6 +236,7 @@ AI_GATEWAY_API_KEY=vercel_...   # Enables Vercel AI Gateway models
 - `/model anthropic:claude-opus-4-6` — Switch directly using `provider:model` syntax
 - `/model vercel:anthropic/claude-sonnet-4.5` — Switch to a Vercel gateway model using its `provider/model` ID
 - `/whichmodel` — Shows the active provider
+- `/usage` — Shows Copilot plus any configured provider usage Neo can fetch
 
 The shortlist is stored in Neo's managed `config.json`. The first entry is primary and later entries are fallback candidates. If a transient model-call failure exhausts retries, Neo will automatically switch to the next available fallback and replay the turn.
 

@@ -21,7 +21,7 @@ describe("getTelegramCommands", () => {
       { command: "soul", description: "Show current persona" },
       { command: "start", description: "Show available commands" },
       { command: "status", description: "Show runtime status" },
-      { command: "usage", description: "Show Copilot monthly usage" },
+      { command: "usage", description: "Show provider usage stats" },
       { command: "whichmodel", description: "Show default and current chat model" },
     ]);
   });
@@ -33,7 +33,7 @@ describe("buildHelpText", () => {
     expect(buildHelpText()).toContain("/model [name] — Switch the model for this chat only");
     expect(buildHelpText()).toContain("/memory [query] — View, search, or filter memory");
     expect(buildHelpText()).toContain("/whichmodel — Show default and current chat model");
-    expect(buildHelpText()).toContain("/usage — Show Copilot monthly usage");
+    expect(buildHelpText()).toContain("/usage — Show provider usage stats");
     expect(buildHelpText()).toContain(
       "/model opens your shortlisted models first; use Show All to browse the full live catalog",
     );
