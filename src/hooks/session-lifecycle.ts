@@ -1,6 +1,8 @@
 import type { SessionEndHandler } from "./types";
 import { getLogger } from "../logging/index";
 import { cancelPendingUserInputForSession } from "../telegram/user-input";
+import { storeSessionErrorSummary } from "./error-state";
+import { summarizeSessionError } from "../session-errors";
 
 export function sessionEnd(chatId: number): SessionEndHandler {
   return async (input, invocation) => {
@@ -12,6 +14,10 @@ export function sessionEnd(chatId: number): SessionEndHandler {
 
     if (input.reason === "error") {
       log.warn({ chatId, error: input.error }, "hook:session-end error");
+      const summary = summarizeSessionError(input.error);
+      if (summary) {
+        storeSessionErrorSummary(invocation.sessionId, summary);
+      }
     }
 
     if (input.reason !== "complete") {

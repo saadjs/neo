@@ -56,9 +56,10 @@ import {
   watchPendingUserInput,
 } from "./telegram/user-input";
 import { shouldSilenceSessionError } from "./telegram/session-errors";
-import { consumeSessionErrorNotified } from "./hooks/error-state";
+import { consumeSessionErrorNotified, consumeSessionErrorSummary } from "./hooks/error-state";
 import { resetModelCallFailures } from "./hooks/error";
 import { isShuttingDown } from "./lifecycle";
+import { summarizeSessionError } from "./session-errors";
 
 async function sendAndWaitForSessionIdle(
   chatId: number,
@@ -91,9 +92,16 @@ async function sendAndWaitForSessionIdle(
     }
 
     if (event.type === "session.error") {
-      const data = event.data as { message?: string; stack?: string };
-      const error = new Error(data.message || "Session error");
-      error.stack = data.stack;
+      const summary = summarizeSessionError(event.data);
+      const error = Object.assign(new Error(summary?.message || "Session error"), {
+        statusCode: summary?.statusCode,
+        code: summary?.code,
+      });
+      error.name = "SessionError";
+      if ("data" in event && event.data && typeof event.data === "object") {
+        const data = event.data as { stack?: string };
+        error.stack = data.stack;
+      }
       settle(rejectWhenIdle, error);
     }
   });
@@ -115,7 +123,7 @@ async function sendAndWaitForSessionIdle(
 
     clearHealthCheck = () => clearInterval(interval);
 
-    void idlePromise.finally(clearHealthCheck);
+    idlePromise.then(clearHealthCheck, clearHealthCheck);
   });
 
   try {
@@ -606,6 +614,8 @@ async function handleMessage(
     const hasActiveSession = activeSession !== null;
     const isTrackedSession = activeSession ? hasTrackedSession(chatId, activeSession) : false;
     const sessionId = activeSession?.sessionId;
+    const sessionErrorSummary = sessionId ? consumeSessionErrorSummary(sessionId) : null;
+    const directErrorSummary = summarizeSessionError(err);
 
     if (sessionId) {
       await cancelPendingUserInputForSession(
@@ -639,6 +649,10 @@ async function handleMessage(
     try {
       if (isShuttingDown()) {
         await ctx.reply("Restarting — back in a moment.");
+      } else if (sessionErrorSummary?.userFacingMessage || directErrorSummary?.userFacingMessage) {
+        await ctx.reply(
+          `⚠️ ${sessionErrorSummary?.userFacingMessage ?? directErrorSummary?.userFacingMessage}`,
+        );
       } else {
         const errMsg = err instanceof Error ? err.message : String(err);
         const maxDetail = 200;
