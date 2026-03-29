@@ -14,7 +14,7 @@ import {
 import { getConversationDb } from "../logging/conversations";
 import { isValidCron } from "../scheduler/cron";
 import { createAuditTimer } from "../logging/audit";
-import { cancelRunningJob } from "../scheduler/job-runner";
+import { cancelRunningJob } from "../scheduler/job-state";
 
 function resolveJob(args: { id?: number; name?: string }) {
   if (args.id != null) return getJob(args.id);

@@ -10,37 +10,23 @@ import { preToolUse } from "../hooks/pre-tool";
 import { splitMessage } from "../telegram/messages";
 import { createJobRun, completeJobRun, failJobRun } from "./jobs-db";
 import type { Job } from "./jobs-db";
+import {
+  isJobRunning,
+  getRunningJob,
+  setRunningJob,
+  setRunningJobSession,
+  setRunningJobResponse,
+  isRunningJobCancelled,
+  clearRunningJob,
+  cancelRunningJob,
+} from "./job-state";
 
-let runningJob: {
-  jobId: number;
-  jobName: string;
-  session: { abort(): Promise<void>; destroy(): Promise<void> };
-  responseBuffer: string;
-  cancelled: boolean;
-} | null = null;
-
-export function isJobRunning(): boolean {
-  return runningJob !== null;
-}
-
-export function getRunningJob(): { jobId: number; jobName: string } | null {
-  if (!runningJob) return null;
-  return { jobId: runningJob.jobId, jobName: runningJob.jobName };
-}
-
-export async function cancelRunningJob(): Promise<"cancelled" | "no-job-running"> {
-  if (!runningJob) return "no-job-running";
-  const log = getLogger();
-  log.info({ jobId: runningJob.jobId, jobName: runningJob.jobName }, "Cancelling running job");
-  runningJob.cancelled = true;
-  await runningJob.session.abort();
-  return "cancelled";
-}
+export { isJobRunning, getRunningJob, cancelRunningJob };
 
 export async function executeJob(job: Job, api: Api): Promise<void> {
   const log = getLogger();
 
-  if (runningJob) {
+  if (isJobRunning()) {
     log.warn({ jobId: job.id, jobName: job.name }, "Skipping job — another job is already running");
     return;
   }
@@ -48,13 +34,13 @@ export async function executeJob(job: Job, api: Api): Promise<void> {
   // Mark as running before session creation so isJobRunning() is true
   // when hooks fire during createSession. Session ref is set after.
   const noop = async () => {};
-  runningJob = {
+  setRunningJob({
     jobId: job.id,
     jobName: job.name,
     session: { abort: noop, destroy: noop },
     responseBuffer: "",
     cancelled: false,
-  };
+  });
 
   const runId = createJobRun(job.id);
   const startTime = Date.now();
@@ -88,14 +74,14 @@ export async function executeJob(job: Job, api: Api): Promise<void> {
       workingDirectory: config.paths.root,
     });
 
-    runningJob.session = session;
+    setRunningJobSession(session);
 
     const unsubscribe = session.on((event: SessionEvent) => {
       if (event.type === "assistant.message") {
         const content = (event.data as { content?: string }).content;
         if (content) {
           responseBuffer = content;
-          if (runningJob) runningJob.responseBuffer = content;
+          setRunningJobResponse(content);
         }
       }
     });
@@ -125,7 +111,7 @@ export async function executeJob(job: Job, api: Api): Promise<void> {
 
       // Preserve partial results only on explicit cancellation
       const durationMs = Date.now() - startTime;
-      if (runningJob?.cancelled && responseBuffer) {
+      if (isRunningJobCancelled() && responseBuffer) {
         completeJobRun(runId, `(cancelled — partial output)\n\n${responseBuffer}`, durationMs);
         const header = `📋 Job "${job.name}" cancelled (${Math.round(durationMs / 1000)}s, partial output):`;
         const chunks = splitMessage(`${header}\n\n${responseBuffer}`);
@@ -160,6 +146,6 @@ export async function executeJob(job: Job, api: Api): Promise<void> {
         // ignore
       }
     }
-    runningJob = null;
+    clearRunningJob();
   }
 }

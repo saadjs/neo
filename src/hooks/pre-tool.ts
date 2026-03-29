@@ -1,6 +1,6 @@
 import type { PreToolUseHandler } from "./types";
 import { getLogger } from "../logging/index";
-import { isJobRunning } from "../scheduler/job-runner";
+import { isJobRunning } from "../scheduler/job-state";
 
 const JOB_RUNNING_DENY_REASON =
   "A scheduled job is currently executing. Restarting the service now would kill the in-flight job. Wait until the job completes before restarting.";

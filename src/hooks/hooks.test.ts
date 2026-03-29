@@ -35,7 +35,7 @@ vi.mock("../logging/index.js", () => ({
   }),
 }));
 
-vi.mock("../scheduler/job-runner.js", () => ({
+vi.mock("../scheduler/job-state.js", () => ({
   isJobRunning: vi.fn(),
 }));
 
@@ -66,7 +66,7 @@ import { postToolUse } from "./post-tool";
 import { errorOccurred, resetModelCallFailures } from "./error";
 import { sessionEnd } from "./session-lifecycle";
 import { sessionStart } from "./session-start";
-import { isJobRunning } from "../scheduler/job-runner";
+import { isJobRunning } from "../scheduler/job-state";
 import { readDailyMemory, isChannelChat } from "../memory/daily";
 import { getRuntimeContextSection } from "../runtime/state";
 import { formatAnomaliesForContext } from "../logging/anomalies";
