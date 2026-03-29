@@ -321,7 +321,9 @@ export interface Config {
   };
   providers: {
     anthropicApiKey: string | undefined;
+    anthropicAdminApiKey: string | undefined;
     openaiApiKey: string | undefined;
+    openaiAdminApiKey: string | undefined;
     vercelAiGatewayApiKey: string | undefined;
     custom: {
       name: string | undefined;
@@ -545,7 +547,9 @@ function loadConfig(): Config {
       },
       providers: {
         anthropicApiKey: optionalString(process.env.ANTHROPIC_API_KEY),
+        anthropicAdminApiKey: optionalString(process.env.ANTHROPIC_ADMIN_API_KEY),
         openaiApiKey: optionalString(process.env.OPENAI_API_KEY),
+        openaiAdminApiKey: optionalString(process.env.OPENAI_ADMIN_API_KEY),
         vercelAiGatewayApiKey: optionalString(process.env.AI_GATEWAY_API_KEY),
         custom: {
           name: optionalString(process.env.NEO_PROVIDER_NAME),

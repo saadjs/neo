@@ -547,7 +547,7 @@ export async function fetchAnthropicUsage(
   provider: ProviderEntry,
   config: RequestConfig = {},
 ): Promise<ProviderUsageReport> {
-  const apiKey = provider.apiKey ?? provider.bearerToken;
+  const apiKey = provider.adminApiKey ?? provider.apiKey ?? provider.bearerToken;
   if (!apiKey) {
     return {
       providerKey: provider.key,
@@ -619,7 +619,7 @@ export async function fetchOpenAiUsage(
   provider: ProviderEntry,
   config: RequestConfig = {},
 ): Promise<ProviderUsageReport> {
-  const apiKey = provider.apiKey ?? provider.bearerToken;
+  const apiKey = provider.adminApiKey ?? provider.apiKey ?? provider.bearerToken;
   if (!apiKey) {
     return {
       providerKey: provider.key,

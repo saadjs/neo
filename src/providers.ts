@@ -8,6 +8,7 @@ export interface ProviderEntry {
   baseUrl: string;
   apiKey?: string;
   bearerToken?: string;
+  adminApiKey?: string;
 }
 
 export interface ProviderConfig {
@@ -48,6 +49,7 @@ export function detectProviders(): ProviderEntry[] {
       type: "anthropic",
       baseUrl: "https://api.anthropic.com",
       apiKey: config.providers.anthropicApiKey,
+      adminApiKey: config.providers.anthropicAdminApiKey,
     });
   }
 
@@ -58,6 +60,7 @@ export function detectProviders(): ProviderEntry[] {
       type: "openai",
       baseUrl: "https://api.openai.com/v1",
       apiKey: config.providers.openaiApiKey,
+      adminApiKey: config.providers.openaiAdminApiKey,
     });
   }
 

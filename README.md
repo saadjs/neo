@@ -260,7 +260,9 @@ See [`.env.example`](.env.example) for all options.
 | `TELEGRAM_OWNER_ID`            | Yes      | Telegram user ID                                  |
 | `GITHUB_TOKEN`                 | Yes      | GitHub PAT with Copilot access                    |
 | `ANTHROPIC_API_KEY`            | No       | Anthropic API key (enables Claude via direct API) |
+| `ANTHROPIC_ADMIN_API_KEY`      | No       | Anthropic Admin API key for `/usage` reports      |
 | `OPENAI_API_KEY`               | No       | OpenAI API key (enables GPT via direct API)       |
+| `OPENAI_ADMIN_API_KEY`         | No       | OpenAI Admin API key for `/usage` reports         |
 | `AI_GATEWAY_API_KEY`           | No       | Vercel AI Gateway API key                         |
 | `NEO_PROVIDER_NAME`            | No       | Custom provider display name (e.g., "ollama")     |
 | `NEO_PROVIDER_TYPE`            | No       | Custom provider type: `openai` or `anthropic`     |

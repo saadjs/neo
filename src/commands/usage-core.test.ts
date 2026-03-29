@@ -350,6 +350,33 @@ describe("usage-core", () => {
     });
   });
 
+  it("prefers anthropic admin API key over regular key for usage", async () => {
+    const result = await fetchAnthropicUsage(
+      {
+        key: "anthropic",
+        label: "anthropic",
+        type: "anthropic",
+        baseUrl: "https://api.anthropic.com",
+        apiKey: "sk-ant-regular",
+        adminApiKey: "sk-ant-admin-key",
+      },
+      {
+        fetchFn: async (_input, init?: RequestInit) => {
+          expect(init?.headers).toMatchObject({
+            "x-api-key": "sk-ant-admin-key",
+          });
+          return new Response(JSON.stringify({ data: [] }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        },
+        nowMs: Date.parse("2026-03-13T00:00:00.000Z"),
+      },
+    );
+
+    expect(result.ok).toBe(true);
+  });
+
   it("returns unavailable when anthropic denies usage access", async () => {
     const result = await fetchAnthropicUsage(
       {
@@ -555,6 +582,33 @@ describe("usage-core", () => {
         },
       },
     });
+  });
+
+  it("prefers openai admin API key over regular key for usage", async () => {
+    const result = await fetchOpenAiUsage(
+      {
+        key: "openai",
+        label: "openai",
+        type: "openai",
+        baseUrl: "https://api.openai.com/v1",
+        apiKey: "sk-proj-regular",
+        adminApiKey: "sk-admin-key",
+      },
+      {
+        fetchFn: async (_input, init?: RequestInit) => {
+          expect(init?.headers).toMatchObject({
+            Authorization: "Bearer sk-admin-key",
+          });
+          return new Response(JSON.stringify({ data: [] }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        },
+        nowMs: Date.parse("2026-03-13T00:00:00.000Z"),
+      },
+    );
+
+    expect(result.ok).toBe(true);
   });
 
   it("marks unsupported custom providers as unavailable", async () => {
