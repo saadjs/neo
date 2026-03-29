@@ -185,11 +185,13 @@ Notes:
 Send `/start` or `/help` in Telegram to see all available commands.
 
 Key commands:
+
 - `/new` — Start a fresh conversation
 - `/model` — Switch models from a curated shortlist, with Show All for the full catalog
 - `/cancel` — Stop the current task
 - `/memory` — View or search memory
 - `/reasoning` — Set reasoning effort level
+- `/research` — Deep research on a topic (see [Research](#research) below)
 - `/sessions` — List active sessions
 - `/channel` — Configure group chat settings (label, topics, default model, reasoning effort)
 
@@ -202,7 +204,34 @@ Neo registers these custom tools alongside the Copilot SDK's built-in capabiliti
 - **reminder** — Create, list, and cancel scheduled reminders (once, daily, weekly, monthly, weekdays)
 - **job** — Manage recurring AI jobs on cron schedules
 - **conversation** — Search prior chats and retrieve recent history
+- **research** — Deep research with parallel worker agents, web search, and structured report generation
 - **system** — Inspect settings, apply safe config changes, restart
+
+## Research
+
+The `/research` command runs deep investigations using an orchestrator-worker pattern inspired by Anthropic's [multi-agent research system](https://www.anthropic.com/engineering/multi-agent-research-system):
+
+```
+/research <topic> [url1 url2 ...]
+```
+
+**Examples:**
+
+- `/research quantum computing advances 2025`
+- `/research rust vs go https://blog.rust-lang.org https://go.dev/blog`
+
+**How it works:**
+
+1. The orchestrator (your current `/model`) creates a research plan
+2. Worker subagents (`task` tool) run in parallel, each researching a subtopic
+3. Findings are synthesized, cross-referenced, and gaps filled
+4. A comprehensive markdown report with citations is saved to `$NEO_DATA_DIR/research/`
+
+**Depth levels:** quick (3-5 sources, 2 workers), standard (8-12 sources, 3-4 workers), deep (15+ sources, 5+ workers).
+
+**Worker model:** Defaults to `copilot:claude-sonnet-4.6`, configurable via `RESEARCH_WORKER_MODEL` in `config.json`. Supports any `provider:model` format.
+
+**Output destinations:** Local file (default), GitHub repo (`gh` CLI), or Google Docs (`gws` CLI).
 
 ## Memory
 
@@ -232,6 +261,7 @@ AI_GATEWAY_API_KEY=vercel_...   # Enables Vercel AI Gateway models
 ```
 
 **Usage:**
+
 - `/model` — Opens your ordered shortlist first; use `Show All` to browse the full live catalog
 - `/model anthropic:claude-opus-4-6` — Switch directly using `provider:model` syntax
 - `/model vercel:anthropic/claude-sonnet-4.5` — Switch to a Vercel gateway model using its `provider/model` ID

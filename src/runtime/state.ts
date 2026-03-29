@@ -133,6 +133,7 @@ function getManagedValuesSnapshot(): ManagedConfigValues {
   return {
     COPILOT_MODEL: config.copilot.model,
     MODEL_SHORTLIST: config.copilot.modelShortlist,
+    RESEARCH_WORKER_MODEL: config.copilot.researchWorkerModel,
     NEO_LOG_LEVEL: getLogLevel(),
     NEO_SKILL_DIRS: config.copilot.skillDirectories,
     NEO_CONTEXT_COMPACTION_ENABLED: config.copilot.contextCompaction.enabled,
@@ -149,6 +150,9 @@ async function applyRuntimeValue(key: ManagedConfigKey, value: unknown) {
       break;
     case "MODEL_SHORTLIST":
       config.copilot.modelShortlist = value as string[];
+      break;
+    case "RESEARCH_WORKER_MODEL":
+      config.copilot.researchWorkerModel = String(value);
       break;
     case "NEO_LOG_LEVEL":
       config.logging.level = String(value) as typeof config.logging.level;

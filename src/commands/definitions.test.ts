@@ -16,6 +16,7 @@ describe("getTelegramCommands", () => {
       { command: "model", description: "Switch the model for this chat only" },
       { command: "new", description: "Start a fresh conversation" },
       { command: "reasoning", description: "Set reasoning effort for this chat" },
+      { command: "research", description: "Deep research on a topic" },
       { command: "restart", description: "Restart Neo" },
       { command: "sessions", description: "List and resume sessions" },
       { command: "soul", description: "Show current persona" },
