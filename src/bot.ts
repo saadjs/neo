@@ -189,7 +189,7 @@ export async function createBot(): Promise<BotHandle> {
     await next();
   });
 
-  await registerCommands(bot);
+  await registerCommands(bot, handleMessage);
 
   bot.on("callback_query:data", async (ctx) => {
     if (isUserInputCallback(ctx.callbackQuery.data)) {

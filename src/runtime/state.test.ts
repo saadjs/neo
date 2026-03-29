@@ -23,6 +23,7 @@ vi.mock("../config.js", () => ({
   config: {
     copilot: {
       model: "gpt-4.1",
+      researchWorkerModel: "claude-sonnet-4.6",
       skillDirectories: [],
       contextCompaction: {
         enabled: true,
@@ -58,6 +59,7 @@ vi.mock("../config.js", () => ({
   defaultManagedConfig: () => ({
     COPILOT_MODEL: "gpt-4.1",
     MODEL_SHORTLIST: [],
+    RESEARCH_WORKER_MODEL: "claude-sonnet-4.6",
     NEO_LOG_LEVEL: "info",
     NEO_SKILL_DIRS: [],
     NEO_CONTEXT_COMPACTION_ENABLED: true,
@@ -67,7 +69,10 @@ vi.mock("../config.js", () => ({
   getManagedConfigDefinition: (key: string) => ({
     parse: (value: unknown) => value,
     mutability:
-      key === "COPILOT_MODEL" || key === "MODEL_SHORTLIST" || key === "NEO_LOG_LEVEL"
+      key === "COPILOT_MODEL" ||
+      key === "MODEL_SHORTLIST" ||
+      key === "RESEARCH_WORKER_MODEL" ||
+      key === "NEO_LOG_LEVEL"
         ? "runtime"
         : "restart_required",
     autonomy: key === "NEO_SKILL_DIRS" ? "approval_required" : "auto_apply_allowed",
@@ -79,6 +84,7 @@ vi.mock("../config.js", () => ({
     [
       "COPILOT_MODEL",
       "MODEL_SHORTLIST",
+      "RESEARCH_WORKER_MODEL",
       "NEO_LOG_LEVEL",
       "NEO_SKILL_DIRS",
       "NEO_CONTEXT_COMPACTION_ENABLED",
@@ -88,6 +94,7 @@ vi.mock("../config.js", () => ({
   loadManagedConfigFile: () => ({
     COPILOT_MODEL: "gpt-4.1",
     MODEL_SHORTLIST: [],
+    RESEARCH_WORKER_MODEL: "claude-sonnet-4.6",
     NEO_LOG_LEVEL: "info",
     NEO_SKILL_DIRS: [],
     NEO_CONTEXT_COMPACTION_ENABLED: true,
@@ -170,5 +177,38 @@ describe("restartService", () => {
 
     await vi.advanceTimersByTimeAsync(250);
     expect(exitMock).toHaveBeenCalledWith(0);
+  });
+});
+
+describe("applyConfigChange", () => {
+  it("applies RESEARCH_WORKER_MODEL at runtime without restart", async () => {
+    dataDir = mkdtempSync(join(tmpdir(), "neo-runtime-state-test-"));
+    tempDirs.push(dataDir);
+    execFileMock.mockImplementation(
+      (
+        _file: string,
+        _args: string[],
+        callback: ((error: Error | null, stdout: string, stderr: string) => void) | undefined,
+      ) => {
+        callback?.(null, "active\n", "");
+      },
+    );
+
+    const { applyConfigChange } = await import("./state");
+
+    const result = await applyConfigChange({
+      key: "RESEARCH_WORKER_MODEL",
+      value: "openai:gpt-4.1",
+      actor: "test",
+      source: "command",
+      reason: "Switch worker model",
+    });
+
+    expect(result).toEqual({
+      applied: true,
+      reason: "RESEARCH_WORKER_MODEL updated without restart.",
+      restartTriggered: false,
+    });
+    expect(switchDefaultModelMock).not.toHaveBeenCalled();
   });
 });

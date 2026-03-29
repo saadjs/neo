@@ -65,6 +65,8 @@ The following capabilities already exist in the Copilot CLI runtime and are **no
 
 ### Filesystem and code editing tools
 
+- `edit_file`
+- `read_file`
 - `view`
 - `rg`
 - `glob`

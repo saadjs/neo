@@ -60,7 +60,7 @@ Sessions are created with:
 
 The CLI provides these tools automatically — do NOT reimplement them:
 
-`bash`, `write_bash`, `read_bash`, `stop_bash`, `list_bash`, `apply_patch`, `view`, `rg`, `glob`, `web_search`, `web_fetch`, `store_memory`, `skill`, `sql`, `task`, `read_agent`, `list_agents`, `report_intent`, `github-mcp-server-*` (issues, PRs, commits, code search, etc.), `multi_tool_use.parallel`
+`bash`, `write_bash`, `read_bash`, `stop_bash`, `list_bash`, `edit_file`, `read_file`, `apply_patch`, `view`, `rg`, `glob`, `web_search`, `web_fetch`, `store_memory`, `skill`, `sql`, `task`, `read_agent`, `list_agents`, `report_intent`, `github-mcp-server-*` (issues, PRs, commits, code search, etc.), `multi_tool_use.parallel`
 
 ### Custom Tools (src/tools/)
 

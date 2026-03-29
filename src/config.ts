@@ -35,6 +35,7 @@ export interface ManagedConfigDefinition<T> {
 export interface ManagedConfigValues {
   COPILOT_MODEL: string;
   MODEL_SHORTLIST: string[];
+  RESEARCH_WORKER_MODEL: string;
   NEO_LOG_LEVEL: LogLevel;
   NEO_SKILL_DIRS: string[];
   NEO_CONTEXT_COMPACTION_ENABLED: boolean;
@@ -224,6 +225,16 @@ export const managedConfigDefinitions: Record<
     behavior:
       "Stores Neo's ordered global shortlist of preferred models. The first entry is primary and later entries are fallback candidates.",
   },
+  RESEARCH_WORKER_MODEL: {
+    defaultValue: "claude-sonnet-4.6",
+    parse: (value: unknown) => parseString("RESEARCH_WORKER_MODEL", value),
+    redact: false,
+    mutability: "runtime",
+    autonomy: "auto_apply_allowed",
+    summary: "Research worker model",
+    behavior:
+      "Sets the default model for research worker subagents spawned by the /research command. Supports provider:model format.",
+  },
   NEO_LOG_LEVEL: {
     defaultValue: "info" as LogLevel,
     parse: parseLogLevel,
@@ -286,6 +297,7 @@ export interface Config {
   copilot: {
     model: string;
     modelShortlist: string[];
+    researchWorkerModel: string;
     skillDirectories: string[];
     contextCompaction: {
       enabled: boolean;
@@ -315,6 +327,7 @@ export interface Config {
     browserSessions: string;
     browserScreenshots: string;
     browserDownloads: string;
+    researchDir: string;
   };
   logging: {
     level: LogLevel;
@@ -343,6 +356,7 @@ export function defaultManagedConfig(): ManagedConfigValues {
   return {
     COPILOT_MODEL: managedConfigDefinitions.COPILOT_MODEL.defaultValue as string,
     MODEL_SHORTLIST: managedConfigDefinitions.MODEL_SHORTLIST.defaultValue as string[],
+    RESEARCH_WORKER_MODEL: managedConfigDefinitions.RESEARCH_WORKER_MODEL.defaultValue as string,
     NEO_LOG_LEVEL: managedConfigDefinitions.NEO_LOG_LEVEL.defaultValue as LogLevel,
     NEO_SKILL_DIRS: managedConfigDefinitions.NEO_SKILL_DIRS.defaultValue as string[],
     NEO_CONTEXT_COMPACTION_ENABLED: managedConfigDefinitions.NEO_CONTEXT_COMPACTION_ENABLED
@@ -507,6 +521,7 @@ export async function ensureDataDir(): Promise<{ isFirstRun: boolean }> {
   await mkdir(join(DEFAULT_DATA_DIR, "browser", "sessions"), { recursive: true });
   await mkdir(join(DEFAULT_DATA_DIR, "browser", "screenshots"), { recursive: true });
   await mkdir(join(DEFAULT_DATA_DIR, "browser", "downloads"), { recursive: true });
+  await mkdir(join(DEFAULT_DATA_DIR, "research"), { recursive: true });
 
   if (isFirstRun) {
     await writeFile(soulPath, "# Soul\n\nYou are Neo, a personal AI agent.\n", "utf-8");
@@ -538,6 +553,7 @@ function loadConfig(): Config {
       copilot: {
         model: managed.COPILOT_MODEL,
         modelShortlist: managed.MODEL_SHORTLIST,
+        researchWorkerModel: managed.RESEARCH_WORKER_MODEL,
         skillDirectories: managed.NEO_SKILL_DIRS,
         contextCompaction: {
           enabled: managed.NEO_CONTEXT_COMPACTION_ENABLED,
@@ -584,6 +600,7 @@ function loadConfig(): Config {
         browserSessions: join(dataDir, "browser", "sessions"),
         browserScreenshots: join(dataDir, "browser", "screenshots"),
         browserDownloads: join(dataDir, "browser", "downloads"),
+        researchDir: join(dataDir, "research"),
       },
       logging: {
         level: managed.NEO_LOG_LEVEL,

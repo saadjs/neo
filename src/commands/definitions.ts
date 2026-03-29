@@ -62,6 +62,11 @@ export const commandDefinitions = [
     usage: "[level|reset]",
   },
   {
+    command: "research",
+    description: "Deep research on a topic",
+    usage: "<topic> [url1 url2 ...]",
+  },
+  {
     command: "restart",
     description: "Restart Neo",
   },

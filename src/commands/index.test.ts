@@ -50,6 +50,8 @@ vi.mock("./usage.js", () => ({ handleUsage: vi.fn() }));
 vi.mock("./audit.js", () => ({ handleAudit: vi.fn() }));
 vi.mock("./cost.js", () => ({ handleCost: vi.fn() }));
 vi.mock("./channel.js", () => ({ handleChannel: vi.fn() }));
+vi.mock("./research.js", () => ({ createResearchHandler: vi.fn(() => vi.fn()) }));
+vi.mock("./jobs.js", () => ({ handleJobs: vi.fn() }));
 
 import { registerCommands } from "./index";
 import { getTelegramCommands } from "./definitions";
@@ -59,10 +61,13 @@ describe("registerCommands", () => {
     const setMyCommands = vi.fn().mockResolvedValue(true);
     const command = vi.fn();
 
-    await registerCommands({
-      api: { setMyCommands },
-      command,
-    });
+    await registerCommands(
+      {
+        api: { setMyCommands },
+        command,
+      },
+      vi.fn(),
+    );
 
     expect(setMyCommands).toHaveBeenNthCalledWith(1, getTelegramCommands());
     expect(setMyCommands).toHaveBeenNthCalledWith(2, getTelegramCommands(), {
