@@ -1,5 +1,6 @@
 import type { Context } from "grammy";
 import type { MessageOptions } from "@github/copilot-sdk";
+import { getPendingUserInput } from "../telegram/user-input";
 import { getCommandArgs } from "./command-text";
 
 const URL_PATTERN = /^https?:\/\//;
@@ -34,6 +35,11 @@ export function buildResearchPrompt(topic: string, links: string[]): string {
 
 export function createResearchHandler(sendMessage: MessageSender) {
   return async function handleResearch(ctx: Context) {
+    if (ctx.chat?.id && getPendingUserInput(ctx.chat.id)) {
+      await ctx.reply("I’m waiting for a text answer to the pending question before I can continue.");
+      return;
+    }
+
     const raw = getCommandArgs(ctx.message?.text, "research");
 
     if (!raw) {

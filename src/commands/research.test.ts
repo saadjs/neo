@@ -1,9 +1,19 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+const { getPendingUserInputMock } = vi.hoisted(() => ({
+  getPendingUserInputMock: vi.fn(),
+}));
+
+vi.mock("../telegram/user-input", () => ({
+  getPendingUserInput: getPendingUserInputMock,
+}));
+
 import { buildResearchPrompt, createResearchHandler, parseResearchArgs } from "./research";
 
 afterEach(() => {
   vi.clearAllMocks();
+  getPendingUserInputMock.mockReset();
+  getPendingUserInputMock.mockReturnValue(undefined);
 });
 
 describe("parseResearchArgs", () => {
@@ -92,8 +102,32 @@ describe("handleResearch", () => {
     expect(sendMessage).not.toHaveBeenCalled();
   });
 
+  it("blocks research while ask_user input is pending", async () => {
+    const reply = vi.fn();
+    getPendingUserInputMock.mockReturnValue({
+      chatId: 123,
+      sessionId: "session-1",
+      requestId: "ask-1",
+      question: "Proceed?",
+      allowFreeform: true,
+      createdAt: Date.now(),
+    });
+
+    await handleResearch({
+      chat: { id: 123 },
+      message: { text: "/research quantum computing advances" },
+      reply,
+    } as never);
+
+    expect(reply).toHaveBeenCalledWith(
+      "I’m waiting for a text answer to the pending question before I can continue.",
+    );
+    expect(sendMessage).not.toHaveBeenCalled();
+  });
+
   it("forwards topic-only input into the normal message flow", async () => {
     await handleResearch({
+      chat: { id: 123 },
       message: { text: "/research quantum computing advances" },
     } as never);
 
@@ -105,6 +139,7 @@ describe("handleResearch", () => {
 
   it("includes starting links in the forwarded prompt", async () => {
     await handleResearch({
+      chat: { id: 123 },
       message: { text: "/research rust vs go https://blog.rust-lang.org" },
     } as never);
 
