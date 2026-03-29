@@ -10,24 +10,6 @@ const MODEL_PRICING: Record<string, { input: number; output: number }> = {
   "o3-mini": { input: 1.1, output: 4.4 },
 };
 
-export function initTokenUsageTable(): void {
-  const db = getConversationDb();
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS token_usage (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      session_id TEXT NOT NULL,
-      event_type TEXT NOT NULL,
-      model TEXT,
-      input_tokens INTEGER,
-      output_tokens INTEGER,
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-
-    CREATE INDEX IF NOT EXISTS idx_token_usage_session ON token_usage(session_id);
-    CREATE INDEX IF NOT EXISTS idx_token_usage_created ON token_usage(created_at);
-  `);
-}
-
 export function recordCompactionTokens(opts: {
   sessionId: string;
   model: string;

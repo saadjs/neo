@@ -2,7 +2,6 @@ import { DatabaseSync } from "node:sqlite";
 import { join } from "node:path";
 import { config } from "../config";
 import { getLogger } from "./index";
-import { initTokenUsageTable } from "./cost";
 
 let db: DatabaseSync | null = null;
 
@@ -79,7 +78,20 @@ export function getConversationDb(): DatabaseSync {
     // Column already exists — ignore
   }
 
-  initTokenUsageTable();
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS token_usage (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      session_id TEXT NOT NULL,
+      event_type TEXT NOT NULL,
+      model TEXT,
+      input_tokens INTEGER,
+      output_tokens INTEGER,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_token_usage_session ON token_usage(session_id);
+    CREATE INDEX IF NOT EXISTS idx_token_usage_created ON token_usage(created_at);
+  `);
 
   getLogger().info({ dbPath }, "Conversation database initialized");
   return db;
