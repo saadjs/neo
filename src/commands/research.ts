@@ -36,7 +36,9 @@ export function buildResearchPrompt(topic: string, links: string[]): string {
 export function createResearchHandler(sendMessage: MessageSender) {
   return async function handleResearch(ctx: Context) {
     if (ctx.chat?.id && getPendingUserInput(ctx.chat.id)) {
-      await ctx.reply("I’m waiting for a text answer to the pending question before I can continue.");
+      await ctx.reply(
+        "I’m waiting for a text answer to the pending question before I can continue.",
+      );
       return;
     }
 
