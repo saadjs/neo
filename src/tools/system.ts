@@ -158,7 +158,7 @@ export const systemTool = defineTool("system", {
           };
           const result = JSON.stringify(info, null, 2);
           audit.complete(result);
-          return result;
+          return { textResultForLlm: result, resultType: "success" as const };
         }
 
         case "status": {
@@ -172,25 +172,25 @@ export const systemTool = defineTool("system", {
             2,
           );
           audit.complete(result);
-          return result;
+          return { textResultForLlm: result, resultType: "success" as const };
         }
 
         case "explain_setting": {
           if (!args.key || !isManagedConfigKey(args.key)) {
             const result = "Error: key must be a managed config key.";
             audit.complete(result);
-            return result;
+            return { textResultForLlm: result, resultType: "failure" as const, error: result };
           }
           const result = JSON.stringify(await explainSetting(args.key), null, 2);
           audit.complete(result);
-          return result;
+          return { textResultForLlm: result, resultType: "success" as const };
         }
 
         case "plan_config_change": {
           if (!args.key || !isManagedConfigKey(args.key) || args.value === undefined) {
             const result = "Error: key and value are required for plan_config_change.";
             audit.complete(result);
-            return result;
+            return { textResultForLlm: result, resultType: "failure" as const, error: result };
           }
           const result = JSON.stringify(
             await planConfigChange({
@@ -204,14 +204,14 @@ export const systemTool = defineTool("system", {
             2,
           );
           audit.complete(result);
-          return result;
+          return { textResultForLlm: result, resultType: "success" as const };
         }
 
         case "apply_config_change": {
           if (!args.key || !isManagedConfigKey(args.key) || args.value === undefined) {
             const result = "Error: key and value are required for apply_config_change.";
             audit.complete(result);
-            return result;
+            return { textResultForLlm: result, resultType: "failure" as const, error: result };
           }
           const result = JSON.stringify(
             await applyConfigChange({
@@ -226,7 +226,7 @@ export const systemTool = defineTool("system", {
             2,
           );
           audit.complete(result);
-          return result;
+          return { textResultForLlm: result, resultType: "success" as const };
         }
 
         case "restart_service": {
@@ -241,19 +241,19 @@ export const systemTool = defineTool("system", {
             2,
           );
           audit.complete(result);
-          return result;
+          return { textResultForLlm: result, resultType: "success" as const };
         }
 
         case "recent_changes": {
           const result = JSON.stringify(await getRecentChanges(), null, 2);
           audit.complete(result);
-          return result;
+          return { textResultForLlm: result, resultType: "success" as const };
         }
 
         case "recent_restarts": {
           const result = JSON.stringify(await getRecentRestarts(), null, 2);
           audit.complete(result);
-          return result;
+          return { textResultForLlm: result, resultType: "success" as const };
         }
 
         case "uptime": {
@@ -266,19 +266,19 @@ export const systemTool = defineTool("system", {
             2,
           );
           audit.complete(result);
-          return result;
+          return { textResultForLlm: result, resultType: "success" as const };
         }
 
         case "set_chat_model": {
           if (!args.chat_id) {
             const result = "Error: chat_id is required for set_chat_model.";
             audit.complete(result);
-            return result;
+            return { textResultForLlm: result, resultType: "failure" as const, error: result };
           }
           if (!args.model) {
             const result = "Error: model is required for set_chat_model.";
             audit.complete(result);
-            return result;
+            return { textResultForLlm: result, resultType: "failure" as const, error: result };
           }
 
           const chatId = args.chat_id;
@@ -289,7 +289,7 @@ export const systemTool = defineTool("system", {
           if (!validatedModel) {
             const result = `Error: unknown model: ${modelId}. Use /model to see available models.`;
             audit.complete(result);
-            return result;
+            return { textResultForLlm: result, resultType: "failure" as const, error: result };
           }
 
           if (scope === "chat") {
@@ -316,7 +316,7 @@ export const systemTool = defineTool("system", {
               2,
             );
             audit.complete(result);
-            return result;
+            return { textResultForLlm: result, resultType: "success" as const };
           }
 
           // scope === "channel" — set channel default model
@@ -348,14 +348,14 @@ export const systemTool = defineTool("system", {
 
           const result = JSON.stringify(resultPayload, null, 2);
           audit.complete(result);
-          return result;
+          return { textResultForLlm: result, resultType: "success" as const };
         }
 
         case "clear_chat_model": {
           if (!args.chat_id) {
             const result = "Error: chat_id is required for clear_chat_model.";
             audit.complete(result);
-            return result;
+            return { textResultForLlm: result, resultType: "failure" as const, error: result };
           }
 
           const clearChatId = args.chat_id;
@@ -426,13 +426,17 @@ export const systemTool = defineTool("system", {
             2,
           );
           audit.complete(result);
-          return result;
+          return { textResultForLlm: result, resultType: "success" as const };
         }
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       audit.complete(`Error: ${message}`);
-      throw error;
+      return {
+        textResultForLlm: `system tool error: ${message}`,
+        resultType: "failure" as const,
+        error: message,
+      };
     }
   },
 });

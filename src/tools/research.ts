@@ -379,11 +379,15 @@ export const researchTool = defineTool("research", {
       });
 
       audit.complete(`Research plan generated for: ${args.topic}`);
-      return plan;
+      return { textResultForLlm: plan, resultType: "success" as const };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       audit.complete(`Error: ${message}`);
-      return `Failed to generate research plan: ${message}`;
+      return {
+        textResultForLlm: `Failed to generate research plan: ${message}`,
+        resultType: "failure" as const,
+        error: message,
+      };
     }
   },
 });

@@ -54,6 +54,12 @@ function invocation() {
   };
 }
 
+interface ToolResult {
+  textResultForLlm: string;
+  resultType: "success" | "failure";
+  error?: string;
+}
+
 describe("browserTool", () => {
   beforeEach(() => {
     vi.resetModules();
@@ -80,14 +86,14 @@ describe("browserTool", () => {
     });
 
     const { browserTool } = await import("./browser");
-    const result = await browserTool.handler(
+    const result = (await browserTool.handler(
       {
         action: "start_session",
         session_name: "main",
         credential_key: "github",
       },
       invocation(),
-    );
+    )) as ToolResult;
 
     expect(startBrowserSession).toHaveBeenCalledWith("session-1", "main", {
       headless: undefined,
@@ -98,8 +104,8 @@ describe("browserTool", () => {
       "browser",
       expect.objectContaining({ credential_key: "[REDACTED]" }),
     );
-    expect(result).toContain('"session_name": "main"');
-    expect(result).toContain('"credential_key": "[REDACTED]"');
+    expect(result.textResultForLlm).toContain('"session_name": "main"');
+    expect(result.textResultForLlm).toContain('"credential_key": "[REDACTED]"');
   });
 
   it("captures a screenshot and sends it to Telegram", async () => {
@@ -113,22 +119,22 @@ describe("browserTool", () => {
     getChatIdForSession.mockReturnValue(42);
 
     const { browserTool } = await import("./browser");
-    const result = await browserTool.handler(
+    const result = (await browserTool.handler(
       {
         action: "screenshot",
         session_name: "main",
         full_page: true,
       },
       invocation(),
-    );
+    )) as ToolResult;
 
     expect(sendPhotoFromPath).toHaveBeenCalledWith(
       42,
       expect.stringContaining("/tmp/neo-browser-screenshots/main-"),
       "Browser screenshot: https://example.com/dashboard",
     );
-    expect(result).toContain('"delivered_to_telegram": true');
-    expect(result).toContain('"width": 1280');
+    expect(result.textResultForLlm).toContain('"delivered_to_telegram": true');
+    expect(result.textResultForLlm).toContain('"width": 1280');
   });
 
   it("returns a manual-intervention error when login triggers a captcha", async () => {
@@ -164,7 +170,7 @@ describe("browserTool", () => {
     });
 
     const { browserTool } = await import("./browser");
-    const result = await browserTool.handler(
+    const result = (await browserTool.handler(
       {
         action: "login",
         session_name: "main",
@@ -175,10 +181,13 @@ describe("browserTool", () => {
         success_selector: "#success",
       },
       invocation(),
-    );
+    )) as ToolResult;
 
     expect(resolveBrowserCredential).toHaveBeenCalledWith("github");
-    expect(result).toBe("Error: CAPTCHA detected. Manual intervention is required.");
+    expect(result.textResultForLlm).toBe(
+      "Error: CAPTCHA detected. Manual intervention is required.",
+    );
+    expect(result.resultType).toBe("failure");
   });
 
   it("waits for navigation after click when wait_until is requested", async () => {
@@ -193,7 +202,7 @@ describe("browserTool", () => {
     });
 
     const { browserTool } = await import("./browser");
-    const result = await browserTool.handler(
+    const result = (await browserTool.handler(
       {
         action: "click",
         session_name: "main",
@@ -202,7 +211,7 @@ describe("browserTool", () => {
         timeout_ms: 5000,
       },
       invocation(),
-    );
+    )) as ToolResult;
 
     expect(getBrowserSession).toHaveBeenCalledWith("session-1", "main");
     expect(waitForNavigation).toHaveBeenCalledWith({
@@ -210,6 +219,6 @@ describe("browserTool", () => {
       timeout: 5000,
     });
     expect(click).toHaveBeenCalledTimes(1);
-    expect(result).toContain('"url": "https://example.com/after"');
+    expect(result.textResultForLlm).toContain('"url": "https://example.com/after"');
   });
 });

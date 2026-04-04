@@ -68,17 +68,21 @@ export const jobTool = defineTool("job", {
             ? "Cancelling running job. Abort signal sent."
             : "No job is currently running.";
         audit.complete(result);
-        return result;
+        return { textResultForLlm: result, resultType: "success" as const };
       }
 
       const { action, ...rest } = args;
       const result = execute({ action, ...rest });
       audit.complete(result);
-      return result;
+      return { textResultForLlm: result, resultType: "success" as const };
     } catch (error) {
       const message = `job tool error: ${String(error)}`;
       audit.complete(message);
-      return message;
+      return {
+        textResultForLlm: message,
+        resultType: "failure" as const,
+        error: String(error),
+      };
     }
   },
 });
