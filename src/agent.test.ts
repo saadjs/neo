@@ -6,7 +6,7 @@ const {
   deleteSessionMock,
   clientStartMock,
   clientStopMock,
-  buildSystemContextMock,
+  buildSystemContextPartsMock,
   logSessionMock,
   clearActiveSessionMock,
   setActiveSessionMock,
@@ -22,7 +22,7 @@ const {
   deleteSessionMock: vi.fn(),
   clientStartMock: vi.fn(),
   clientStopMock: vi.fn(),
-  buildSystemContextMock: vi.fn(),
+  buildSystemContextPartsMock: vi.fn(),
   logSessionMock: vi.fn(),
   clearActiveSessionMock: vi.fn(),
   setActiveSessionMock: vi.fn(),
@@ -83,7 +83,7 @@ vi.mock("./tools/index.js", () => ({
 }));
 
 vi.mock("./memory/index.js", () => ({
-  buildSystemContext: buildSystemContextMock,
+  buildSystemContextParts: buildSystemContextPartsMock,
 }));
 
 vi.mock("./logging/index.js", () => ({
@@ -119,7 +119,7 @@ afterEach(async () => {
   deleteSessionMock.mockReset();
   clientStartMock.mockReset();
   clientStopMock.mockReset();
-  buildSystemContextMock.mockReset();
+  buildSystemContextPartsMock.mockReset();
   logSessionMock.mockReset();
   clearActiveSessionMock.mockReset();
   setActiveSessionMock.mockReset();
@@ -150,7 +150,10 @@ describe("refreshSessionContext", () => {
       disconnect: vi.fn().mockResolvedValue(undefined),
     };
     createSessionMock.mockResolvedValue(session);
-    buildSystemContextMock.mockResolvedValue("context");
+    buildSystemContextPartsMock.mockResolvedValue({
+      identity: "neo-identity",
+      additionalContent: "context",
+    });
     getActiveSessionIdMock.mockReturnValue(null);
     getChannelConfigMock.mockReturnValue({ defaultModel: "channel-model" });
 
@@ -172,7 +175,10 @@ describe("refreshSessionContext", () => {
       disconnect: vi.fn().mockResolvedValue(undefined),
     };
     resumeSessionMock.mockResolvedValue(resumedSession);
-    buildSystemContextMock.mockResolvedValue("context");
+    buildSystemContextPartsMock.mockResolvedValue({
+      identity: "neo-identity",
+      additionalContent: "context",
+    });
     getActiveSessionIdMock.mockReturnValue("session-resumed");
     getChannelConfigMock.mockReturnValue({ defaultModel: "channel-model" });
 
@@ -192,7 +198,10 @@ describe("refreshSessionContext", () => {
       disconnect: vi.fn().mockResolvedValue(undefined),
     };
     createSessionMock.mockResolvedValue(session);
-    buildSystemContextMock.mockResolvedValue("context");
+    buildSystemContextPartsMock.mockResolvedValue({
+      identity: "neo-identity",
+      additionalContent: "context",
+    });
     getActiveSessionIdMock.mockReturnValue(null);
     requestUserInputMock.mockResolvedValue({ answer: "yes", wasFreeform: true });
 
@@ -219,7 +228,10 @@ describe("refreshSessionContext", () => {
       disconnect: vi.fn().mockResolvedValue(undefined),
     };
     createSessionMock.mockResolvedValue(session);
-    buildSystemContextMock.mockResolvedValue("context");
+    buildSystemContextPartsMock.mockResolvedValue({
+      identity: "neo-identity",
+      additionalContent: "context",
+    });
     getActiveSessionIdMock.mockReturnValue(null);
 
     const { createNewSession, getSessionForChat, refreshSessionContext, startAgent } =
@@ -249,7 +261,10 @@ describe("refreshSessionContext", () => {
       disconnect: vi.fn().mockResolvedValue(undefined),
     };
     createSessionMock.mockResolvedValueOnce(staleSession).mockResolvedValueOnce(freshSession);
-    buildSystemContextMock.mockResolvedValue("context");
+    buildSystemContextPartsMock.mockResolvedValue({
+      identity: "neo-identity",
+      additionalContent: "context",
+    });
     getActiveSessionIdMock.mockReturnValue(null);
 
     const {
@@ -304,7 +319,10 @@ describe("refreshSessionContext", () => {
       .mockResolvedValueOnce(firstSession)
       .mockResolvedValueOnce(secondSession)
       .mockResolvedValueOnce(thirdSession);
-    buildSystemContextMock.mockResolvedValue("context");
+    buildSystemContextPartsMock.mockResolvedValue({
+      identity: "neo-identity",
+      additionalContent: "context",
+    });
     getActiveSessionIdMock.mockReturnValue(null);
 
     const {
@@ -353,7 +371,10 @@ describe("refreshSessionContext", () => {
       disconnect: vi.fn().mockResolvedValue(undefined),
     };
     createSessionMock.mockResolvedValueOnce(staleSession).mockResolvedValueOnce(freshSession);
-    buildSystemContextMock.mockResolvedValue("context");
+    buildSystemContextPartsMock.mockResolvedValue({
+      identity: "neo-identity",
+      additionalContent: "context",
+    });
     getActiveSessionIdMock.mockReturnValue("session-stale");
     clearActiveSessionMock.mockImplementation(() => {
       getActiveSessionIdMock.mockReturnValue(undefined);
@@ -388,7 +409,10 @@ describe("refreshSessionContext", () => {
         destroy: vi.fn().mockResolvedValue(undefined),
         disconnect: vi.fn().mockResolvedValue(undefined),
       });
-    buildSystemContextMock.mockResolvedValue("context");
+    buildSystemContextPartsMock.mockResolvedValue({
+      identity: "neo-identity",
+      additionalContent: "context",
+    });
     getActiveSessionIdMock.mockReturnValue(null);
 
     const {
@@ -428,7 +452,10 @@ describe("discardSession", () => {
       disconnect: vi.fn().mockResolvedValue(undefined),
     };
     createSessionMock.mockResolvedValue(session);
-    buildSystemContextMock.mockResolvedValue("context");
+    buildSystemContextPartsMock.mockResolvedValue({
+      identity: "neo-identity",
+      additionalContent: "context",
+    });
     getActiveSessionIdMock.mockReturnValue(null);
 
     const { createNewSession, discardSession, getSessionForChat, startAgent } =
@@ -456,7 +483,10 @@ describe("discardSession", () => {
       disconnect: vi.fn().mockResolvedValue(undefined),
     };
     createSessionMock.mockResolvedValueOnce(staleSession).mockResolvedValueOnce(freshSession);
-    buildSystemContextMock.mockResolvedValue("context");
+    buildSystemContextPartsMock.mockResolvedValue({
+      identity: "neo-identity",
+      additionalContent: "context",
+    });
     getActiveSessionIdMock.mockReturnValue(null);
 
     const {
@@ -498,7 +528,10 @@ describe("discardSession", () => {
       disconnect: vi.fn().mockResolvedValue(undefined),
     };
     createSessionMock.mockResolvedValueOnce(staleSession).mockResolvedValueOnce(freshSession);
-    buildSystemContextMock.mockResolvedValue("context");
+    buildSystemContextPartsMock.mockResolvedValue({
+      identity: "neo-identity",
+      additionalContent: "context",
+    });
     getActiveSessionIdMock.mockReturnValue(null);
 
     const {
@@ -534,7 +567,10 @@ describe("destroySession", () => {
       disconnect: vi.fn().mockResolvedValue(undefined),
     };
     createSessionMock.mockResolvedValue(session);
-    buildSystemContextMock.mockResolvedValue("context");
+    buildSystemContextPartsMock.mockResolvedValue({
+      identity: "neo-identity",
+      additionalContent: "context",
+    });
     getActiveSessionIdMock.mockReturnValue(null);
 
     const { createNewSession, destroySession, getSessionForChat, startAgent } =
@@ -558,7 +594,10 @@ describe("destroySession", () => {
       disconnect: vi.fn().mockResolvedValue(undefined),
     };
     createSessionMock.mockResolvedValue(session);
-    buildSystemContextMock.mockResolvedValue("context");
+    buildSystemContextPartsMock.mockResolvedValue({
+      identity: "neo-identity",
+      additionalContent: "context",
+    });
     getActiveSessionIdMock.mockReturnValue(null);
 
     const { createNewSession, destroySession, startAgent } = await import("./agent");
@@ -609,7 +648,10 @@ describe("getModelForChat", () => {
       disconnect: vi.fn().mockResolvedValue(undefined),
     };
     createSessionMock.mockResolvedValue(session);
-    buildSystemContextMock.mockResolvedValue("context");
+    buildSystemContextPartsMock.mockResolvedValue({
+      identity: "neo-identity",
+      additionalContent: "context",
+    });
     getActiveSessionIdMock.mockReturnValue(null);
 
     const { config } = await import("./config.js");
@@ -635,7 +677,10 @@ describe("getModelForChat", () => {
       disconnect: vi.fn().mockResolvedValue(undefined),
     };
     createSessionMock.mockResolvedValue(session);
-    buildSystemContextMock.mockResolvedValue("context");
+    buildSystemContextPartsMock.mockResolvedValue({
+      identity: "neo-identity",
+      additionalContent: "context",
+    });
     getActiveSessionIdMock.mockReturnValue(null);
 
     const { createNewSession, startAgent, switchDefaultModel } = await import("./agent");
@@ -655,7 +700,10 @@ describe("getModelForChat", () => {
       disconnect: vi.fn().mockResolvedValue(undefined),
     };
     createSessionMock.mockResolvedValue(session);
-    buildSystemContextMock.mockResolvedValue("context");
+    buildSystemContextPartsMock.mockResolvedValue({
+      identity: "neo-identity",
+      additionalContent: "context",
+    });
     getActiveSessionIdMock.mockReturnValue(null);
     getChannelConfigMock.mockReturnValue({ defaultModel: "gpt-4.1" });
 

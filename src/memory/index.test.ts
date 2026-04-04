@@ -105,3 +105,70 @@ describe("buildSystemContext", () => {
     expect(context).toContain("Timezone");
   });
 });
+
+describe("buildSystemContextParts", () => {
+  it("separates identity from additional content", async () => {
+    loadSoulMock.mockResolvedValue("# Neo Soul");
+    loadPreferencesMock.mockResolvedValue("# Preferences\n- be concise");
+    loadHumanMock.mockResolvedValue("# Human\n- Name: Kevin");
+    loadRecentSummariesMock.mockResolvedValue("");
+    isChannelChatMock.mockReturnValue(false);
+
+    const { buildSystemContextParts } = await import("./index");
+    const parts = await buildSystemContextParts(123);
+
+    expect(parts.identity).toBe("# Neo Soul");
+    expect(parts.additionalContent).toContain("About the Human");
+    expect(parts.additionalContent).toContain("User Preferences");
+    expect(parts.additionalContent).toContain("Timezone");
+    expect(parts.identity).not.toContain("Timezone");
+    expect(parts.identity).not.toContain("About the Human");
+  });
+
+  it("includes channel soul overlay in identity", async () => {
+    loadSoulMock.mockResolvedValue("# Neo Soul");
+    loadPreferencesMock.mockResolvedValue("# Preferences");
+    loadHumanMock.mockResolvedValue("# Human");
+    loadRecentSummariesMock.mockResolvedValue("");
+    isChannelChatMock.mockReturnValue(true);
+    getChannelConfigMock.mockReturnValue({
+      chatId: -100456,
+      label: "dev",
+      soulOverlay: "You are extra snarky here.",
+      preferences: "Channel pref",
+      topics: "coding",
+    });
+
+    const { buildSystemContextParts } = await import("./index");
+    const parts = await buildSystemContextParts(-100456);
+
+    expect(parts.identity).toContain("# Neo Soul");
+    expect(parts.identity).toContain("Channel Persona");
+    expect(parts.identity).toContain("extra snarky");
+    expect(parts.additionalContent).toContain("Channel Preferences");
+    expect(parts.additionalContent).toContain("Topic Enforcement");
+    expect(parts.additionalContent).toContain("Current Channel");
+  });
+
+  it("produces equivalent output when reassembled via buildSystemContext", async () => {
+    loadSoulMock.mockResolvedValue("Soul");
+    loadPreferencesMock.mockResolvedValue("- pref");
+    loadHumanMock.mockResolvedValue("- human");
+    loadRecentSummariesMock.mockResolvedValue("");
+    isChannelChatMock.mockReturnValue(false);
+
+    const { buildSystemContext, buildSystemContextParts } = await import("./index");
+    const flat = await buildSystemContext(99);
+
+    // Reset mocks so the second call gets the same data
+    loadSoulMock.mockResolvedValue("Soul");
+    loadPreferencesMock.mockResolvedValue("- pref");
+    loadHumanMock.mockResolvedValue("- human");
+    loadRecentSummariesMock.mockResolvedValue("");
+
+    const parts = await buildSystemContextParts(99);
+    const reassembled = `${parts.identity}\n\n---\n\n${parts.additionalContent}`;
+
+    expect(reassembled).toBe(flat);
+  });
+});
