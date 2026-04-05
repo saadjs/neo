@@ -24,32 +24,32 @@ const {
   upsertChannelConfigMock,
 } = vi.hoisted(() => ({
   botHandlers: new Map<string, (ctx: any) => Promise<void>>(),
-  resolvePendingUserInputMock: vi.fn(),
-  getPendingUserInputMock: vi.fn(),
-  registerCommandsMock: vi.fn(async () => {}),
-  resetModelCallFailuresMock: vi.fn(),
-  getModelReasoningInfoMock: vi.fn(),
-  watchPendingUserInputMock: vi.fn(() => () => {}),
-  getChannelConfigMock: vi.fn(() => null),
-  upsertChannelConfigMock: vi.fn(),
+  resolvePendingUserInputMock: vi.fn<any>(),
+  getPendingUserInputMock: vi.fn<any>(),
+  registerCommandsMock: vi.fn<any>(async () => {}),
+  resetModelCallFailuresMock: vi.fn<any>(),
+  getModelReasoningInfoMock: vi.fn<any>(),
+  watchPendingUserInputMock: vi.fn<any>(() => () => {}),
+  getChannelConfigMock: vi.fn<any>(() => null),
+  upsertChannelConfigMock: vi.fn<any>(),
 }));
 
 vi.mock("grammy", () => ({
   Bot: class MockBot {
-    use = vi.fn();
-    on = vi.fn((event: string, handler: (ctx: any) => Promise<void>) => {
+    use = vi.fn<any>();
+    on = vi.fn<any>((event: string, handler: (ctx: any) => Promise<void>) => {
       botHandlers.set(event, handler);
       return this;
     });
-    catch = vi.fn();
+    catch = vi.fn<any>();
   },
 }));
 
 vi.mock("@grammyjs/runner", () => ({
-  run: vi.fn(() => ({
-    stop: vi.fn(),
-    task: vi.fn(() => Promise.resolve()),
-    isRunning: vi.fn(() => true),
+  run: vi.fn<any>(() => ({
+    stop: vi.fn<any>(),
+    task: vi.fn<any>(() => Promise.resolve()),
+    isRunning: vi.fn<any>(() => true),
   })),
 }));
 
@@ -67,37 +67,37 @@ vi.mock("./config.js", () => ({
 }));
 
 vi.mock("./agent.js", () => ({
-  beginSessionTurn: vi.fn(),
-  clearReasoningEffort: vi.fn(),
-  consumeAbortFlag: vi.fn(() => false),
-  discardSession: vi.fn(),
-  endSessionTurn: vi.fn(),
-  getClient: vi.fn(),
-  getModelForChat: vi.fn(),
-  getOrCreateSession: vi.fn(),
-  getPerChatReasoningEffortOverride: vi.fn(() => undefined),
-  getReasoningEffortForChat: vi.fn(() => undefined),
-  hasTrackedSession: vi.fn(),
-  refreshSessionContext: vi.fn(),
-  switchModel: vi.fn(),
+  beginSessionTurn: vi.fn<any>(),
+  clearReasoningEffort: vi.fn<any>(),
+  consumeAbortFlag: vi.fn<any>(() => false),
+  discardSession: vi.fn<any>(),
+  endSessionTurn: vi.fn<any>(),
+  getClient: vi.fn<any>(),
+  getModelForChat: vi.fn<any>(),
+  getOrCreateSession: vi.fn<any>(),
+  getPerChatReasoningEffortOverride: vi.fn<any>(() => undefined),
+  getReasoningEffortForChat: vi.fn<any>(() => undefined),
+  hasTrackedSession: vi.fn<any>(),
+  refreshSessionContext: vi.fn<any>(),
+  switchModel: vi.fn<any>(),
 }));
 
 vi.mock("./logging/index.js", () => ({
   getLogger: () => ({
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    debug: vi.fn(),
+    info: vi.fn<any>(),
+    warn: vi.fn<any>(),
+    error: vi.fn<any>(),
+    debug: vi.fn<any>(),
   }),
 }));
 
 vi.mock("./logging/conversations.js", () => ({
-  logMessage: vi.fn(),
-  logToolCall: vi.fn(),
-  completeToolCall: vi.fn(),
-  getLastCompactionEventId: vi.fn(),
-  setLastCompactionEventId: vi.fn(),
-  setSessionTags: vi.fn(),
+  logMessage: vi.fn<any>(),
+  logToolCall: vi.fn<any>(),
+  completeToolCall: vi.fn<any>(),
+  getLastCompactionEventId: vi.fn<any>(),
+  setLastCompactionEventId: vi.fn<any>(),
+  setSessionTags: vi.fn<any>(),
 }));
 
 vi.mock("./commands/index.js", () => ({
@@ -105,8 +105,8 @@ vi.mock("./commands/index.js", () => ({
 }));
 
 vi.mock("./commands/model.js", () => ({
-  handleModelCallback: vi.fn(),
-  isModelCallback: vi.fn(() => false),
+  handleModelCallback: vi.fn<any>(),
+  isModelCallback: vi.fn<any>(() => false),
 }));
 
 vi.mock("./commands/model-catalog.js", () => ({
@@ -114,30 +114,30 @@ vi.mock("./commands/model-catalog.js", () => ({
 }));
 
 vi.mock("./commands/reasoning.js", () => ({
-  handleReasoningCallback: vi.fn(),
-  isReasoningCallback: vi.fn(() => false),
+  handleReasoningCallback: vi.fn<any>(),
+  isReasoningCallback: vi.fn<any>(() => false),
 }));
 
 vi.mock("./commands/session.js", () => ({
-  handleSessionCallback: vi.fn(),
-  isSessionCallback: vi.fn(() => false),
+  handleSessionCallback: vi.fn<any>(),
+  isSessionCallback: vi.fn<any>(() => false),
 }));
 
 vi.mock("./commands/jobs.js", () => ({
-  handleJobsCallback: vi.fn(),
-  isJobsCallback: vi.fn(() => false),
+  handleJobsCallback: vi.fn<any>(),
+  isJobsCallback: vi.fn<any>(() => false),
 }));
 
 vi.mock("./telegram/files.js", () => ({
-  downloadTelegramFile: vi.fn(),
+  downloadTelegramFile: vi.fn<any>(),
 }));
 
 vi.mock("./telegram/messages.js", () => ({
-  splitMessage: vi.fn((text: string) => [text]),
+  splitMessage: vi.fn<any>((text: string) => [text]),
 }));
 
 vi.mock("./memory/index.js", () => ({
-  appendCompactionMemory: vi.fn(),
+  appendCompactionMemory: vi.fn<any>(),
 }));
 
 vi.mock("./memory/db.js", () => ({
@@ -146,49 +146,49 @@ vi.mock("./memory/db.js", () => ({
 }));
 
 vi.mock("./logging/cost.js", () => ({
-  recordCompactionTokens: vi.fn(),
-  recordMessageEstimate: vi.fn(),
+  recordCompactionTokens: vi.fn<any>(),
+  recordMessageEstimate: vi.fn<any>(),
 }));
 
 vi.mock("./memory/tagging.js", () => ({
-  extractTags: vi.fn(() => []),
+  extractTags: vi.fn<any>(() => []),
 }));
 
 vi.mock("./voice/transcribe.js", () => ({
-  isVoiceEnabled: vi.fn(() => false),
-  transcribeFile: vi.fn(),
+  isVoiceEnabled: vi.fn<any>(() => false),
+  transcribeFile: vi.fn<any>(),
 }));
 
 vi.mock("./telegram/progress.js", () => ({
   TYPING_REFRESH_MS: 1000,
   PROGRESS_REFRESH_MS: 1000,
   PROGRESS_EDIT_DEBOUNCE_MS: 100,
-  formatProgressName: vi.fn((name?: string) => name ?? "tool"),
-  buildProgressText: vi.fn(() => "Thinking..."),
+  formatProgressName: vi.fn<any>((name?: string) => name ?? "tool"),
+  buildProgressText: vi.fn<any>(() => "Thinking..."),
 }));
 
 vi.mock("./telegram/session-timeout.js", () => ({
-  isMessageNotModifiedError: vi.fn(() => false),
-  isMissingProgressMessageError: vi.fn(() => false),
+  isMessageNotModifiedError: vi.fn<any>(() => false),
+  isMissingProgressMessageError: vi.fn<any>(() => false),
 }));
 
 vi.mock("./telegram/user-input.js", () => ({
-  cancelPendingUserInputForSession: vi.fn(),
+  cancelPendingUserInputForSession: vi.fn<any>(),
   getPendingUserInput: getPendingUserInputMock,
   resolvePendingUserInput: resolvePendingUserInputMock,
   watchPendingUserInput: watchPendingUserInputMock,
 }));
 
 vi.mock("./telegram/session-errors.js", () => ({
-  shouldSilenceSessionError: vi.fn(() => false),
+  shouldSilenceSessionError: vi.fn<any>(() => false),
 }));
 
 vi.mock("./hooks/error-state.js", () => ({
-  clearFallbackAttemptState: vi.fn(),
-  consumePendingFailover: vi.fn(() => null),
-  consumeSessionErrorNotified: vi.fn(() => false),
-  consumeSessionErrorSummary: vi.fn(() => null),
-  markFallbackModelAttempted: vi.fn(),
+  clearFallbackAttemptState: vi.fn<any>(),
+  consumePendingFailover: vi.fn<any>(() => null),
+  consumeSessionErrorNotified: vi.fn<any>(() => false),
+  consumeSessionErrorSummary: vi.fn<any>(() => null),
+  markFallbackModelAttempted: vi.fn<any>(),
 }));
 
 vi.mock("./hooks/error.js", () => ({
@@ -228,8 +228,8 @@ describe("createBot", () => {
       wasFreeform: true,
     });
 
-    const reply = vi.fn();
-    const replyWithChatAction = vi.fn();
+    const reply = vi.fn<any>();
+    const replyWithChatAction = vi.fn<any>();
 
     await textHandler?.({
       chat: { id: 123 },
@@ -254,11 +254,11 @@ describe("createBot", () => {
     const sessionHandlers: Array<(event: any) => void> = [];
     vi.mocked(getOrCreateSession).mockResolvedValue({
       sessionId: "session-1",
-      on: vi.fn((handler: (event: any) => void) => {
+      on: vi.fn<any>((handler: (event: any) => void) => {
         sessionHandlers.push(handler);
         return () => {};
       }),
-      send: vi.fn(async () => {
+      send: vi.fn<any>(async () => {
         for (const handler of sessionHandlers) {
           handler({ type: "assistant.message", data: { content: "done" } });
           handler({ type: "session.idle", data: {} });
@@ -266,11 +266,11 @@ describe("createBot", () => {
       }),
     } as any);
 
-    const reply = vi.fn(async (text: string) => {
+    const reply = vi.fn<any>(async (text: string) => {
       if (text === "Thinking...") return { message_id: 1 };
       return {};
     });
-    const replyWithChatAction = vi.fn(async () => {});
+    const replyWithChatAction = vi.fn<any>(async () => {});
 
     await textHandler?.({
       chat: { id: 123 },
@@ -278,8 +278,8 @@ describe("createBot", () => {
       reply,
       replyWithChatAction,
       api: {
-        editMessageText: vi.fn(async () => {}),
-        deleteMessage: vi.fn(async () => {}),
+        editMessageText: vi.fn<any>(async () => {}),
+        deleteMessage: vi.fn<any>(async () => {}),
       },
     });
 
@@ -295,15 +295,15 @@ describe("createBot", () => {
     expect(textHandler).toBeTypeOf("function");
 
     const sessionHandlers: Array<(event: any) => void> = [];
-    const unwatchPendingInput = vi.fn();
+    const unwatchPendingInput = vi.fn<any>();
     watchPendingUserInputMock.mockReturnValue(unwatchPendingInput);
     vi.mocked(getOrCreateSession).mockResolvedValue({
       sessionId: "session-1",
-      on: vi.fn((handler: (event: any) => void) => {
+      on: vi.fn<any>((handler: (event: any) => void) => {
         sessionHandlers.push(handler);
         return () => {};
       }),
-      send: vi.fn(async () => {
+      send: vi.fn<any>(async () => {
         for (const handler of sessionHandlers) {
           handler({ type: "assistant.message", data: { content: "done" } });
           handler({ type: "session.idle", data: {} });
@@ -311,11 +311,11 @@ describe("createBot", () => {
       }),
     } as any);
 
-    const reply = vi.fn(async (text: string) => {
+    const reply = vi.fn<any>(async (text: string) => {
       if (text === "Thinking...") return { message_id: 1 };
       return {};
     });
-    const replyWithChatAction = vi.fn(async () => {});
+    const replyWithChatAction = vi.fn<any>(async () => {});
 
     await textHandler?.({
       chat: { id: 123 },
@@ -323,8 +323,8 @@ describe("createBot", () => {
       reply,
       replyWithChatAction,
       api: {
-        editMessageText: vi.fn(async () => {}),
-        deleteMessage: vi.fn(async () => {}),
+        editMessageText: vi.fn<any>(async () => {}),
+        deleteMessage: vi.fn<any>(async () => {}),
       },
     });
 
@@ -356,11 +356,11 @@ describe("createBot", () => {
       if (attempt === 1) {
         return {
           sessionId: "session-1",
-          on: vi.fn((handler: (event: any) => void) => {
+          on: vi.fn<any>((handler: (event: any) => void) => {
             firstAttemptHandlers.push(handler);
             return () => {};
           }),
-          send: vi.fn(async () => {
+          send: vi.fn<any>(async () => {
             for (const handler of firstAttemptHandlers) {
               handler({ type: "session.error", data: { message: "boom" } });
             }
@@ -370,11 +370,11 @@ describe("createBot", () => {
 
       return {
         sessionId: "session-2",
-        on: vi.fn((handler: (event: any) => void) => {
+        on: vi.fn<any>((handler: (event: any) => void) => {
           secondAttemptHandlers.push(handler);
           return () => {};
         }),
-        send: vi.fn(async () => {
+        send: vi.fn<any>(async () => {
           for (const handler of secondAttemptHandlers) {
             handler({ type: "assistant.message", data: { content: "done" } });
             handler({ type: "session.idle", data: {} });
@@ -390,11 +390,11 @@ describe("createBot", () => {
       } as any)
       .mockReturnValue(null);
 
-    const reply = vi.fn(async (text: string) => {
+    const reply = vi.fn<any>(async (text: string) => {
       if (text === "Thinking...") return { message_id: 1 };
       return {};
     });
-    const replyWithChatAction = vi.fn(async () => {});
+    const replyWithChatAction = vi.fn<any>(async () => {});
 
     await textHandler?.({
       chat: { id: -100123 },
@@ -402,8 +402,8 @@ describe("createBot", () => {
       reply,
       replyWithChatAction,
       api: {
-        editMessageText: vi.fn(async () => {}),
-        deleteMessage: vi.fn(async () => {}),
+        editMessageText: vi.fn<any>(async () => {}),
+        deleteMessage: vi.fn<any>(async () => {}),
       },
     });
 
@@ -435,11 +435,11 @@ describe("createBot", () => {
       if (attempt === 1) {
         return {
           sessionId: "session-1",
-          on: vi.fn((handler: (event: any) => void) => {
+          on: vi.fn<any>((handler: (event: any) => void) => {
             firstAttemptHandlers.push(handler);
             return () => {};
           }),
-          send: vi.fn(async () => {
+          send: vi.fn<any>(async () => {
             for (const handler of firstAttemptHandlers) {
               handler({ type: "session.error", data: { message: "boom" } });
             }
@@ -449,11 +449,11 @@ describe("createBot", () => {
 
       return {
         sessionId: "session-2",
-        on: vi.fn((handler: (event: any) => void) => {
+        on: vi.fn<any>((handler: (event: any) => void) => {
           secondAttemptHandlers.push(handler);
           return () => {};
         }),
-        send: vi.fn(async () => {
+        send: vi.fn<any>(async () => {
           for (const handler of secondAttemptHandlers) {
             handler({ type: "assistant.message", data: { content: "done" } });
             handler({ type: "session.idle", data: {} });
@@ -469,11 +469,11 @@ describe("createBot", () => {
       } as any)
       .mockReturnValue(null);
 
-    const reply = vi.fn(async (text: string) => {
+    const reply = vi.fn<any>(async (text: string) => {
       if (text === "Thinking...") return { message_id: 1 };
       return {};
     });
-    const replyWithChatAction = vi.fn(async () => {});
+    const replyWithChatAction = vi.fn<any>(async () => {});
 
     await textHandler?.({
       chat: { id: 123 },
@@ -481,8 +481,8 @@ describe("createBot", () => {
       reply,
       replyWithChatAction,
       api: {
-        editMessageText: vi.fn(async () => {}),
-        deleteMessage: vi.fn(async () => {}),
+        editMessageText: vi.fn<any>(async () => {}),
+        deleteMessage: vi.fn<any>(async () => {}),
       },
     });
 

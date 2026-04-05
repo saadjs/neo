@@ -5,10 +5,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const { switchDefaultModelMock, getLogLevelMock, setLogLevelMock, execFileMock } = vi.hoisted(
   () => ({
-    switchDefaultModelMock: vi.fn(),
-    getLogLevelMock: vi.fn(() => "info"),
-    setLogLevelMock: vi.fn(),
-    execFileMock: vi.fn(),
+    switchDefaultModelMock: vi.fn<any>(),
+    getLogLevelMock: vi.fn<any>(() => "info"),
+    setLogLevelMock: vi.fn<any>(),
+    execFileMock: vi.fn<any>(),
   }),
 );
 
@@ -102,7 +102,7 @@ vi.mock("../config.js", () => ({
     NEO_CONTEXT_BUFFER_EXHAUSTION_THRESHOLD: 0.95,
   }),
   redactSettingValue: (_key: string, value: unknown) => value,
-  writeManagedConfigFile: vi.fn(),
+  writeManagedConfigFile: vi.fn<any>(),
 }));
 
 vi.mock("../agent.js", () => ({
@@ -113,7 +113,7 @@ vi.mock("../logging/index.js", () => ({
   getLogLevel: getLogLevelMock,
   setLogLevel: setLogLevelMock,
   getLogger: () => ({
-    info: vi.fn(),
+    info: vi.fn<any>(),
   }),
 }));
 
@@ -184,15 +184,13 @@ describe("applyConfigChange", () => {
   it("applies RESEARCH_WORKER_MODEL at runtime without restart", async () => {
     dataDir = mkdtempSync(join(tmpdir(), "neo-runtime-state-test-"));
     tempDirs.push(dataDir);
-    execFileMock.mockImplementation(
-      (
-        _file: string,
-        _args: string[],
-        callback: ((error: Error | null, stdout: string, stderr: string) => void) | undefined,
-      ) => {
-        callback?.(null, "active\n", "");
-      },
-    );
+    execFileMock.mockImplementation(((
+      _file: string,
+      _args: string[],
+      callback: ((error: Error | null, stdout: string, stderr: string) => void) | undefined,
+    ) => {
+      callback?.(null, "active\n", "");
+    }) as never);
 
     const { applyConfigChange } = await import("./state");
 

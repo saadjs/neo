@@ -21,52 +21,52 @@ vi.mock("../config.js", () => ({
 
 vi.mock("../logging/index.js", () => ({
   getLogger: () => ({
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    debug: vi.fn(),
+    info: vi.fn<any>(),
+    warn: vi.fn<any>(),
+    error: vi.fn<any>(),
+    debug: vi.fn<any>(),
   }),
 }));
 
 vi.mock("../logging/conversations.js", () => ({
-  searchSessionsByTag: vi.fn(() => []),
+  searchSessionsByTag: vi.fn<any>(() => []),
 }));
 
-vi.mock("./help.js", () => ({ handleHelp: vi.fn() }));
-vi.mock("./cancel.js", () => ({ handleCancel: vi.fn() }));
+vi.mock("./help.js", () => ({ handleHelp: vi.fn<any>() }));
+vi.mock("./cancel.js", () => ({ handleCancel: vi.fn<any>() }));
 vi.mock("./session.js", () => ({
-  handleNewSession: vi.fn(),
-  handleSessions: vi.fn(),
+  handleNewSession: vi.fn<any>(),
+  handleSessions: vi.fn<any>(),
 }));
-vi.mock("./model.js", () => ({ handleModel: vi.fn() }));
-vi.mock("./reasoning.js", () => ({ handleReasoning: vi.fn() }));
-vi.mock("./memory.js", () => ({ handleMemory: vi.fn() }));
-vi.mock("./log.js", () => ({ handleLogLevel: vi.fn() }));
-vi.mock("./soul.js", () => ({ handleSoul: vi.fn() }));
-vi.mock("./restart.js", () => ({ handleRestart: vi.fn() }));
-vi.mock("./status.js", () => ({ handleStatus: vi.fn() }));
-vi.mock("./whichmodel.js", () => ({ handleWhichModel: vi.fn() }));
-vi.mock("./usage.js", () => ({ handleUsage: vi.fn() }));
-vi.mock("./audit.js", () => ({ handleAudit: vi.fn() }));
-vi.mock("./cost.js", () => ({ handleCost: vi.fn() }));
-vi.mock("./channel.js", () => ({ handleChannel: vi.fn() }));
-vi.mock("./research.js", () => ({ createResearchHandler: vi.fn(() => vi.fn()) }));
-vi.mock("./jobs.js", () => ({ handleJobs: vi.fn() }));
+vi.mock("./model.js", () => ({ handleModel: vi.fn<any>() }));
+vi.mock("./reasoning.js", () => ({ handleReasoning: vi.fn<any>() }));
+vi.mock("./memory.js", () => ({ handleMemory: vi.fn<any>() }));
+vi.mock("./log.js", () => ({ handleLogLevel: vi.fn<any>() }));
+vi.mock("./soul.js", () => ({ handleSoul: vi.fn<any>() }));
+vi.mock("./restart.js", () => ({ handleRestart: vi.fn<any>() }));
+vi.mock("./status.js", () => ({ handleStatus: vi.fn<any>() }));
+vi.mock("./whichmodel.js", () => ({ handleWhichModel: vi.fn<any>() }));
+vi.mock("./usage.js", () => ({ handleUsage: vi.fn<any>() }));
+vi.mock("./audit.js", () => ({ handleAudit: vi.fn<any>() }));
+vi.mock("./cost.js", () => ({ handleCost: vi.fn<any>() }));
+vi.mock("./channel.js", () => ({ handleChannel: vi.fn<any>() }));
+vi.mock("./research.js", () => ({ createResearchHandler: vi.fn<any>(() => vi.fn<any>()) }));
+vi.mock("./jobs.js", () => ({ handleJobs: vi.fn<any>() }));
 
 import { registerCommands } from "./index";
 import { getTelegramCommands } from "./definitions";
 
 describe("registerCommands", () => {
   it("publishes Telegram command metadata and registers each handler", async () => {
-    const setMyCommands = vi.fn().mockResolvedValue(true);
-    const command = vi.fn();
+    const setMyCommands = vi.fn<any>().mockResolvedValue(true);
+    const command = vi.fn<any>();
 
     await registerCommands(
       {
         api: { setMyCommands },
         command,
-      },
-      vi.fn(),
+      } as never,
+      vi.fn<any>() as never,
     );
 
     expect(setMyCommands).toHaveBeenNthCalledWith(1, getTelegramCommands());

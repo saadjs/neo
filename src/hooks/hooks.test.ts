@@ -12,31 +12,31 @@ vi.mock("@github/copilot-sdk", () => ({
 
 const { cancelPendingUserInputForSessionMock, setActiveSessionMock, logSessionMock } = vi.hoisted(
   () => ({
-    cancelPendingUserInputForSessionMock: vi.fn(),
-    setActiveSessionMock: vi.fn(),
-    logSessionMock: vi.fn(),
+    cancelPendingUserInputForSessionMock: vi.fn<any>(),
+    setActiveSessionMock: vi.fn<any>(),
+    logSessionMock: vi.fn<any>(),
   }),
 );
 
 vi.mock("../agent.js", () => ({
-  getModelForChat: vi.fn(() => "gpt-4.1"),
+  getModelForChat: vi.fn<any>(() => "gpt-4.1"),
 }));
 
 vi.mock("../commands/model-catalog.js", () => ({
-  getNextFallbackModel: vi.fn().mockResolvedValue(null),
+  getNextFallbackModel: vi.fn<any>().mockResolvedValue(null),
 }));
 
 vi.mock("../logging/index.js", () => ({
   getLogger: () => ({
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
+    debug: vi.fn<any>(),
+    info: vi.fn<any>(),
+    warn: vi.fn<any>(),
+    error: vi.fn<any>(),
   }),
 }));
 
 vi.mock("../scheduler/job-state.js", () => ({
-  isJobRunning: vi.fn(),
+  isJobRunning: vi.fn<any>(),
 }));
 
 vi.mock("../telegram/user-input.js", () => ({
@@ -49,16 +49,16 @@ vi.mock("../logging/conversations.js", () => ({
 }));
 
 vi.mock("../memory/daily.js", () => ({
-  readDailyMemory: vi.fn().mockResolvedValue(""),
-  isChannelChat: vi.fn().mockReturnValue(false),
+  readDailyMemory: vi.fn<any>().mockResolvedValue(""),
+  isChannelChat: vi.fn<any>().mockReturnValue(false),
 }));
 
 vi.mock("../runtime/state.js", () => ({
-  getRuntimeContextSection: vi.fn().mockReturnValue(""),
+  getRuntimeContextSection: vi.fn<any>().mockReturnValue(""),
 }));
 
 vi.mock("../logging/anomalies.js", () => ({
-  formatAnomaliesForContext: vi.fn().mockReturnValue(""),
+  formatAnomaliesForContext: vi.fn<any>().mockReturnValue(""),
 }));
 
 import { preToolUse } from "./pre-tool";

@@ -12,16 +12,16 @@ const {
   failJobRunMock,
   approveAllMock,
 } = vi.hoisted(() => ({
-  createSessionMock: vi.fn(),
-  sendAndWaitMock: vi.fn(),
-  sessionOnMock: vi.fn(),
-  sessionDestroyMock: vi.fn(),
-  sessionAbortMock: vi.fn(),
-  buildSystemContextMock: vi.fn(),
-  createJobRunMock: vi.fn(),
-  completeJobRunMock: vi.fn(),
-  failJobRunMock: vi.fn(),
-  approveAllMock: vi.fn(),
+  createSessionMock: vi.fn<any>(),
+  sendAndWaitMock: vi.fn<any>(),
+  sessionOnMock: vi.fn<any>(),
+  sessionDestroyMock: vi.fn<any>(),
+  sessionAbortMock: vi.fn<any>(),
+  buildSystemContextMock: vi.fn<any>(),
+  createJobRunMock: vi.fn<any>(),
+  completeJobRunMock: vi.fn<any>(),
+  failJobRunMock: vi.fn<any>(),
+  approveAllMock: vi.fn<any>(),
 }));
 
 vi.mock("@github/copilot-sdk", () => ({
@@ -53,10 +53,10 @@ vi.mock("../memory/index.js", () => ({
 
 vi.mock("../logging/index.js", () => ({
   getLogger: () => ({
-    info: vi.fn(),
-    debug: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
+    info: vi.fn<any>(),
+    debug: vi.fn<any>(),
+    warn: vi.fn<any>(),
+    error: vi.fn<any>(),
   }),
 }));
 
@@ -83,7 +83,19 @@ describe("executeJob", () => {
     sendAndWaitMock.mockResolvedValue({ data: { content: "done" } });
     sessionOnMock.mockReturnValue(() => {});
     sessionDestroyMock.mockResolvedValue(undefined);
-    createSessionMock.mockImplementation(async (sessionConfig) => {
+    createSessionMock.mockImplementation((async (sessionConfig: {
+      hooks?: {
+        onPreToolUse?: (
+          toolUse: {
+            timestamp: number;
+            cwd: string;
+            toolName: string;
+            toolArgs: { action: string };
+          },
+          context: { sessionId: string },
+        ) => unknown;
+      };
+    }) => {
       preToolDecision = sessionConfig.hooks?.onPreToolUse?.(
         {
           timestamp: Date.now(),
@@ -100,7 +112,7 @@ describe("executeJob", () => {
         abort: sessionAbortMock,
         sendAndWait: sendAndWaitMock,
       };
-    });
+    }) as never);
 
     const { executeJob } = await import("./job-runner");
 
@@ -115,10 +127,12 @@ describe("executeJob", () => {
         updated_at: "2026-03-13T00:00:00.000Z",
         next_run_at: "2026-03-14T00:00:00.000Z",
       },
-      { sendMessage: vi.fn().mockResolvedValue(undefined) } as never,
+      { sendMessage: vi.fn<any>().mockResolvedValue(undefined) } as never,
     );
 
-    const sessionConfig = createSessionMock.mock.calls[0]?.[0];
+    const sessionConfig = createSessionMock.mock.calls[0]?.[0] as {
+      hooks?: { onPreToolUse?: unknown };
+    };
     expect(sessionConfig.hooks?.onPreToolUse).toBeTypeOf("function");
 
     expect(preToolDecision).toEqual({
@@ -143,7 +157,7 @@ describe("executeJob", () => {
     });
 
     const { executeJob } = await import("./job-runner");
-    const sendMessage = vi.fn().mockResolvedValue(undefined);
+    const sendMessage = vi.fn<any>().mockResolvedValue(undefined);
 
     await executeJob(
       {
@@ -200,7 +214,7 @@ describe("executeJob", () => {
         updated_at: "2026-03-13T00:00:00.000Z",
         next_run_at: "2026-03-14T00:00:00.000Z",
       },
-      { sendMessage: vi.fn().mockResolvedValue(undefined) } as never,
+      { sendMessage: vi.fn<any>().mockResolvedValue(undefined) } as never,
     );
 
     // Wait until sendAndWait is called — by then the real session is assigned

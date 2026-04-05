@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const { buildHelpTextMock, getChatModelContextMock } = vi.hoisted(() => ({
-  buildHelpTextMock: vi.fn(),
-  getChatModelContextMock: vi.fn(),
+  buildHelpTextMock: vi.fn<any>(),
+  getChatModelContextMock: vi.fn<any>(),
 }));
 
 vi.mock("./definitions.js", () => ({
@@ -30,7 +30,7 @@ describe("handleHelp", () => {
 
     const { handleHelp } = await import("./help");
 
-    const reply = vi.fn();
+    const reply = vi.fn<any>();
     await handleHelp({ chat: { id: 7 }, reply } as unknown as Parameters<typeof handleHelp>[0]);
 
     expect(getChatModelContextMock).toHaveBeenCalledWith(7);
@@ -45,7 +45,7 @@ describe("handleHelp", () => {
 
     const { handleHelp } = await import("./help");
 
-    const reply = vi.fn();
+    const reply = vi.fn<any>();
     await handleHelp({ reply } as unknown as Parameters<typeof handleHelp>[0]);
 
     expect(reply).toHaveBeenCalledWith("HELP", { parse_mode: "Markdown" });

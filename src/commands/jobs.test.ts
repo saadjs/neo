@@ -8,12 +8,12 @@ const {
   cancelRunningJobMock,
   getRunningJobMock,
 } = vi.hoisted(() => ({
-  listJobsMock: vi.fn(),
-  getJobRunsMock: vi.fn(),
-  setJobEnabledMock: vi.fn(),
-  deleteJobMock: vi.fn(),
-  cancelRunningJobMock: vi.fn(),
-  getRunningJobMock: vi.fn(),
+  listJobsMock: vi.fn<any>(),
+  getJobRunsMock: vi.fn<any>(),
+  setJobEnabledMock: vi.fn<any>(),
+  deleteJobMock: vi.fn<any>(),
+  cancelRunningJobMock: vi.fn<any>(),
+  getRunningJobMock: vi.fn<any>(),
 }));
 
 vi.mock("../scheduler/jobs-db.js", () => ({
@@ -33,7 +33,7 @@ vi.mock("../scheduler/cron.js", () => ({
 }));
 
 vi.mock("../logging/index.js", () => ({
-  getLogger: () => ({ info: vi.fn(), warn: vi.fn() }),
+  getLogger: () => ({ info: vi.fn<any>(), warn: vi.fn<any>() }),
 }));
 
 import { handleJobs, handleJobsCallback, isJobsCallback } from "./jobs";
@@ -51,10 +51,10 @@ function makeCtx(text = "/jobs") {
   return {
     message: { text },
     chat: { id: 42 },
-    reply: vi.fn(),
+    reply: vi.fn<any>(),
     callbackQuery: undefined as unknown,
-    answerCallbackQuery: vi.fn(),
-    api: { editMessageText: vi.fn() },
+    answerCallbackQuery: vi.fn<any>(),
+    api: { editMessageText: vi.fn<any>() },
   } as unknown as Parameters<typeof handleJobs>[0];
 }
 
@@ -65,9 +65,9 @@ function makeCallbackCtx(data: string) {
       data,
       message: { message_id: 100 },
     },
-    reply: vi.fn(),
-    answerCallbackQuery: vi.fn(),
-    api: { editMessageText: vi.fn() },
+    reply: vi.fn<any>(),
+    answerCallbackQuery: vi.fn<any>(),
+    api: { editMessageText: vi.fn<any>() },
   } as unknown as Parameters<typeof handleJobsCallback>[0];
 }
 

@@ -23,8 +23,8 @@ vi.mock("./config.js", () => ({
 
 vi.mock("./logging/index.js", () => ({
   getLogger: () => ({
-    info: vi.fn(),
-    warn: vi.fn(),
+    info: vi.fn<any>(),
+    warn: vi.fn<any>(),
   }),
 }));
 
@@ -218,7 +218,7 @@ describe("fetchProviderModels", () => {
     };
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue({
+      vi.fn<any>().mockResolvedValue({
         ok: true,
         json: () => Promise.resolve(mockResponse),
       }),
@@ -242,7 +242,7 @@ describe("fetchProviderModels", () => {
   });
 
   it("sends bearer auth for Anthropics-compatible custom providers", async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
+    const fetchMock = vi.fn<any>().mockResolvedValue({
       ok: true,
       json: () =>
         Promise.resolve({
@@ -289,7 +289,7 @@ describe("fetchProviderModels", () => {
     };
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue({
+      vi.fn<any>().mockResolvedValue({
         ok: true,
         json: () => Promise.resolve(mockResponse),
       }),
@@ -315,7 +315,7 @@ describe("fetchProviderModels", () => {
     };
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue({
+      vi.fn<any>().mockResolvedValue({
         ok: true,
         json: () => Promise.resolve(mockResponse),
       }),
@@ -338,7 +338,7 @@ describe("fetchProviderModels", () => {
   });
 
   it("fetches only language models for Vercel AI Gateway", async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
+    const fetchMock = vi.fn<any>().mockResolvedValue({
       ok: true,
       json: () =>
         Promise.resolve({
@@ -396,7 +396,7 @@ describe("fetchProviderModels", () => {
   it("returns empty array on fetch failure", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue({
+      vi.fn<any>().mockResolvedValue({
         ok: false,
         status: 401,
       }),

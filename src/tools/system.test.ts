@@ -18,19 +18,19 @@ const {
   loadModelCatalogMock,
   createAuditTimerMock,
 } = vi.hoisted(() => ({
-  clearPerChatModelOverrideMock: vi.fn(),
-  clearReasoningEffortMock: vi.fn(),
-  getModelForChatMock: vi.fn(),
-  getPerChatModelOverrideMock: vi.fn(),
-  getPerChatReasoningEffortOverrideMock: vi.fn(),
-  getReasoningEffortForChatMock: vi.fn(),
-  refreshSessionContextMock: vi.fn(),
-  switchModelMock: vi.fn(),
-  getChannelConfigMock: vi.fn(),
-  upsertChannelConfigMock: vi.fn(),
-  loadModelCatalogMock: vi.fn(),
-  createAuditTimerMock: vi.fn(() => ({
-    complete: vi.fn(),
+  clearPerChatModelOverrideMock: vi.fn<any>(),
+  clearReasoningEffortMock: vi.fn<any>(),
+  getModelForChatMock: vi.fn<any>(),
+  getPerChatModelOverrideMock: vi.fn<any>(),
+  getPerChatReasoningEffortOverrideMock: vi.fn<any>(),
+  getReasoningEffortForChatMock: vi.fn<any>(),
+  refreshSessionContextMock: vi.fn<any>(),
+  switchModelMock: vi.fn<any>(),
+  getChannelConfigMock: vi.fn<any>(),
+  upsertChannelConfigMock: vi.fn<any>(),
+  loadModelCatalogMock: vi.fn<any>(),
+  createAuditTimerMock: vi.fn<any>(() => ({
+    complete: vi.fn<any>(),
   })),
 }));
 
@@ -59,19 +59,19 @@ vi.mock("../logging/audit.js", () => ({
 }));
 
 vi.mock("../config.js", () => ({
-  getManagedConfigDefinition: vi.fn(),
-  isManagedConfigKey: vi.fn(() => false),
+  getManagedConfigDefinition: vi.fn<any>(),
+  isManagedConfigKey: vi.fn<any>(() => false),
 }));
 
 vi.mock("../runtime/state.js", () => ({
-  applyConfigChange: vi.fn(),
-  explainSetting: vi.fn(),
-  formatSystemStatusSummary: vi.fn(),
-  getRecentChanges: vi.fn(),
-  getRecentRestarts: vi.fn(),
-  getSystemStatus: vi.fn(),
-  planConfigChange: vi.fn(),
-  restartService: vi.fn(),
+  applyConfigChange: vi.fn<any>(),
+  explainSetting: vi.fn<any>(),
+  formatSystemStatusSummary: vi.fn<any>(),
+  getRecentChanges: vi.fn<any>(),
+  getRecentRestarts: vi.fn<any>(),
+  getSystemStatus: vi.fn<any>(),
+  planConfigChange: vi.fn<any>(),
+  restartService: vi.fn<any>(),
 }));
 
 import { systemTool } from "./system";

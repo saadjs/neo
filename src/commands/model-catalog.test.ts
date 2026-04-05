@@ -8,8 +8,8 @@ const { testState, listModelsMock, getClientMock } = vi.hoisted(() => ({
   testState: {
     dataDir: "",
   },
-  listModelsMock: vi.fn(),
-  getClientMock: vi.fn(),
+  listModelsMock: vi.fn<any>(),
+  getClientMock: vi.fn<any>(),
 }));
 
 vi.mock("../config.js", () => ({
@@ -43,8 +43,8 @@ vi.mock("../agent.js", () => ({
 
 vi.mock("../logging/index.js", () => ({
   getLogger: () => ({
-    info: vi.fn(),
-    warn: vi.fn(),
+    info: vi.fn<any>(),
+    warn: vi.fn<any>(),
   }),
 }));
 
@@ -166,7 +166,7 @@ describe("loadModelCatalog", () => {
       "utf-8",
     );
 
-    const fetchMock = vi.fn().mockResolvedValue({
+    const fetchMock = vi.fn<any>().mockResolvedValue({
       ok: true,
       json: () =>
         Promise.resolve({
@@ -191,7 +191,7 @@ describe("loadModelCatalog", () => {
   });
 
   it("adds Vercel AI Gateway models to the catalog", async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
+    const fetchMock = vi.fn<any>().mockResolvedValue({
       ok: true,
       json: () =>
         Promise.resolve({

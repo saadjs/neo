@@ -5,8 +5,8 @@ vi.mock("@github/copilot-sdk", () => ({
 }));
 
 const { getChatIdForSessionMock, getModelForChatMock } = vi.hoisted(() => ({
-  getChatIdForSessionMock: vi.fn(),
-  getModelForChatMock: vi.fn(),
+  getChatIdForSessionMock: vi.fn<any>(),
+  getModelForChatMock: vi.fn<any>(),
 }));
 
 vi.mock("../agent.js", () => ({
@@ -15,7 +15,7 @@ vi.mock("../agent.js", () => ({
 }));
 
 vi.mock("../logging/audit.js", () => ({
-  createAuditTimer: () => ({ complete: vi.fn() }),
+  createAuditTimer: () => ({ complete: vi.fn<any>() }),
 }));
 
 vi.mock("../config.js", () => ({

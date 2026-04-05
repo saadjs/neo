@@ -10,14 +10,14 @@ const {
   loadShortlistModelsMock,
   loadCatalogModelsOutsideShortlistMock,
 } = vi.hoisted(() => ({
-  upsertChannelConfigMock: vi.fn(),
-  getChannelConfigMock: vi.fn(),
-  refreshSessionContextMock: vi.fn(),
-  getPerChatModelOverrideMock: vi.fn(),
-  getModelForChatMock: vi.fn(),
-  getModelReasoningInfoMock: vi.fn(),
-  loadShortlistModelsMock: vi.fn(),
-  loadCatalogModelsOutsideShortlistMock: vi.fn(),
+  upsertChannelConfigMock: vi.fn<any>(),
+  getChannelConfigMock: vi.fn<any>(),
+  refreshSessionContextMock: vi.fn<any>(),
+  getPerChatModelOverrideMock: vi.fn<any>(),
+  getModelForChatMock: vi.fn<any>(),
+  getModelReasoningInfoMock: vi.fn<any>(),
+  loadShortlistModelsMock: vi.fn<any>(),
+  loadCatalogModelsOutsideShortlistMock: vi.fn<any>(),
 }));
 
 vi.mock("../config.js", () => ({
@@ -79,7 +79,7 @@ describe("handleChannel", () => {
   });
 
   it("parses /channel commands that include a bot mention", async () => {
-    const reply = vi.fn();
+    const reply = vi.fn<any>();
 
     await handleChannel({
       chat: { id: -100123 },
@@ -95,7 +95,7 @@ describe("handleChannel", () => {
   });
 
   it("refreshes the active session after changing the channel label", async () => {
-    const reply = vi.fn();
+    const reply = vi.fn<any>();
 
     await handleChannel({
       chat: { id: -100123 },
@@ -109,7 +109,7 @@ describe("handleChannel", () => {
   });
 
   it("shows channel config without Markdown parse mode for user-provided values", async () => {
-    const reply = vi.fn();
+    const reply = vi.fn<any>();
     getChannelConfigMock.mockReturnValue({
       chatId: -100123,
       label: "dev_ops[*]",
@@ -140,7 +140,7 @@ describe("handleChannel", () => {
   });
 
   it("sets channel default model", async () => {
-    const reply = vi.fn();
+    const reply = vi.fn<any>();
     getPerChatModelOverrideMock.mockReturnValue(undefined);
 
     await handleChannel({
@@ -155,7 +155,7 @@ describe("handleChannel", () => {
   });
 
   it("warns about per-chat model override when setting channel model", async () => {
-    const reply = vi.fn();
+    const reply = vi.fn<any>();
     getPerChatModelOverrideMock.mockReturnValue("gpt-5.4");
 
     await handleChannel({
@@ -172,7 +172,7 @@ describe("handleChannel", () => {
   });
 
   it("clears channel default model", async () => {
-    const reply = vi.fn();
+    const reply = vi.fn<any>();
 
     await handleChannel({
       chat: { id: -100123 },
@@ -186,7 +186,7 @@ describe("handleChannel", () => {
   });
 
   it("sets channel default reasoning effort when model supports it", async () => {
-    const reply = vi.fn();
+    const reply = vi.fn<any>();
     getModelForChatMock.mockReturnValue("claude-sonnet-4");
     getModelReasoningInfoMock.mockResolvedValue({
       supported: true,
@@ -208,7 +208,7 @@ describe("handleChannel", () => {
   });
 
   it("rejects reasoning when channel model does not support it", async () => {
-    const reply = vi.fn();
+    const reply = vi.fn<any>();
     getModelForChatMock.mockReturnValue("gpt-4.1");
     getModelReasoningInfoMock.mockResolvedValue({ supported: false, levels: [] });
 
@@ -227,7 +227,7 @@ describe("handleChannel", () => {
   });
 
   it("checks the effective per-chat model when a group override is active", async () => {
-    const reply = vi.fn();
+    const reply = vi.fn<any>();
     getChannelConfigMock.mockReturnValue({ defaultModel: "gpt-4.1" });
     getModelForChatMock.mockReturnValue("claude-opus-4.6");
     getModelReasoningInfoMock.mockResolvedValue({
@@ -248,7 +248,7 @@ describe("handleChannel", () => {
   });
 
   it("clears channel default reasoning effort", async () => {
-    const reply = vi.fn();
+    const reply = vi.fn<any>();
 
     await handleChannel({
       chat: { id: -100123 },
@@ -264,7 +264,7 @@ describe("handleChannel", () => {
   });
 
   it("rejects invalid reasoning effort", async () => {
-    const reply = vi.fn();
+    const reply = vi.fn<any>();
 
     await handleChannel({
       chat: { id: -100123 },
@@ -278,7 +278,7 @@ describe("handleChannel", () => {
   });
 
   it("displays model and reasoning in showChannelConfig", async () => {
-    const reply = vi.fn();
+    const reply = vi.fn<any>();
     getChannelConfigMock.mockReturnValue({
       chatId: -100123,
       label: "Platform",
@@ -300,7 +300,7 @@ describe("handleChannel", () => {
   });
 
   it("sets channel soul overlay", async () => {
-    const reply = vi.fn();
+    const reply = vi.fn<any>();
 
     await handleChannel({
       chat: { id: -100123 },
@@ -316,7 +316,7 @@ describe("handleChannel", () => {
   });
 
   it("clears channel soul overlay", async () => {
-    const reply = vi.fn();
+    const reply = vi.fn<any>();
 
     await handleChannel({
       chat: { id: -100123 },
@@ -330,7 +330,7 @@ describe("handleChannel", () => {
   });
 
   it("sets channel preferences", async () => {
-    const reply = vi.fn();
+    const reply = vi.fn<any>();
 
     await handleChannel({
       chat: { id: -100123 },
@@ -346,7 +346,7 @@ describe("handleChannel", () => {
   });
 
   it("clears channel preferences", async () => {
-    const reply = vi.fn();
+    const reply = vi.fn<any>();
 
     await handleChannel({
       chat: { id: -100123 },
@@ -360,7 +360,7 @@ describe("handleChannel", () => {
   });
 
   it("shows model picker when /channel model has no args", async () => {
-    const reply = vi.fn();
+    const reply = vi.fn<any>();
     getChannelConfigMock.mockReturnValue({ defaultModel: "gpt-4.1" });
     loadShortlistModelsMock.mockResolvedValue({
       fetchedAt: "2026-03-21T03:00:00Z",
@@ -391,7 +391,7 @@ describe("handleChannel", () => {
   });
 
   it("shows reasoning picker when /channel reasoning has no args", async () => {
-    const reply = vi.fn();
+    const reply = vi.fn<any>();
     getChannelConfigMock.mockReturnValue({ defaultReasoningEffort: "high" });
     getModelReasoningInfoMock.mockResolvedValue({
       supported: true,
@@ -411,7 +411,7 @@ describe("handleChannel", () => {
   });
 
   it("shows usage when /channel soul has no args", async () => {
-    const reply = vi.fn();
+    const reply = vi.fn<any>();
 
     await handleChannel({
       chat: { id: -100123 },
@@ -424,7 +424,7 @@ describe("handleChannel", () => {
   });
 
   it("shows usage when /channel preferences has no args", async () => {
-    const reply = vi.fn();
+    const reply = vi.fn<any>();
 
     await handleChannel({
       chat: { id: -100123 },

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const { getPendingUserInputMock } = vi.hoisted(() => ({
-  getPendingUserInputMock: vi.fn(),
+  getPendingUserInputMock: vi.fn<any>(),
 }));
 
 vi.mock("../telegram/user-input", () => ({
@@ -73,11 +73,11 @@ describe("buildResearchPrompt", () => {
 });
 
 describe("handleResearch", () => {
-  const sendMessage = vi.fn();
-  const handleResearch = createResearchHandler(sendMessage);
+  const sendMessage = vi.fn<any>();
+  const handleResearch = createResearchHandler(sendMessage as never);
 
   it("shows usage when no args are provided", async () => {
-    const reply = vi.fn();
+    const reply = vi.fn<any>();
 
     await handleResearch({
       message: { text: "/research" },
@@ -91,7 +91,7 @@ describe("handleResearch", () => {
   });
 
   it("rejects links-only input", async () => {
-    const reply = vi.fn();
+    const reply = vi.fn<any>();
 
     await handleResearch({
       message: { text: "/research https://a.com https://b.com" },
@@ -103,7 +103,7 @@ describe("handleResearch", () => {
   });
 
   it("blocks research while ask_user input is pending", async () => {
-    const reply = vi.fn();
+    const reply = vi.fn<any>();
     getPendingUserInputMock.mockReturnValue({
       chatId: 123,
       sessionId: "session-1",

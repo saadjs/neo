@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const { getChatModelContextMock, formatChatModelContextMarkdownMock } = vi.hoisted(() => ({
-  getChatModelContextMock: vi.fn(),
-  formatChatModelContextMarkdownMock: vi.fn(),
+  getChatModelContextMock: vi.fn<any>(),
+  formatChatModelContextMarkdownMock: vi.fn<any>(),
 }));
 
 vi.mock("./model-context.js", () => ({
@@ -28,7 +28,7 @@ describe("handleWhichModel", () => {
 
     const { handleWhichModel } = await import("./whichmodel");
 
-    const reply = vi.fn();
+    const reply = vi.fn<any>();
     await handleWhichModel({ chat: { id: 42 }, reply } as unknown as Parameters<
       typeof handleWhichModel
     >[0]);
@@ -43,7 +43,7 @@ describe("handleWhichModel", () => {
   it("handles missing chat context gracefully", async () => {
     const { handleWhichModel } = await import("./whichmodel");
 
-    const reply = vi.fn();
+    const reply = vi.fn<any>();
     await handleWhichModel({ reply } as unknown as Parameters<typeof handleWhichModel>[0]);
 
     expect(reply).toHaveBeenCalledWith("Unable to determine chat model without chat context.");

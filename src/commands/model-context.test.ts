@@ -2,9 +2,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const { getModelForChatMock, getReasoningEffortForChatMock, getChannelConfigMock } = vi.hoisted(
   () => ({
-    getModelForChatMock: vi.fn((_chatId: number): string => "gpt-4.1"),
-    getReasoningEffortForChatMock: vi.fn((_chatId: number): string | undefined => undefined),
-    getChannelConfigMock: vi.fn(
+    getModelForChatMock: vi.fn<any>((_chatId: number): string => "gpt-4.1"),
+    getReasoningEffortForChatMock: vi.fn<any>((_chatId: number): string | undefined => undefined),
+    getChannelConfigMock: vi.fn<any>(
       (_chatId: number): Record<string, string | number | null> | null => null,
     ),
   }),

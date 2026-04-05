@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const { readdirMock, mkdirMock } = vi.hoisted(() => ({
-  readdirMock: vi.fn(),
-  mkdirMock: vi.fn(),
+  readdirMock: vi.fn<any>(),
+  mkdirMock: vi.fn<any>(),
 }));
 
 vi.mock("../config.js", () => ({

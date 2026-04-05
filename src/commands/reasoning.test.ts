@@ -7,11 +7,11 @@ const {
   clearReasoningEffortMock,
   getModelReasoningInfoMock,
 } = vi.hoisted(() => ({
-  getModelForChatMock: vi.fn(),
-  getReasoningEffortForChatMock: vi.fn(),
-  setReasoningEffortMock: vi.fn(),
-  clearReasoningEffortMock: vi.fn(),
-  getModelReasoningInfoMock: vi.fn(),
+  getModelForChatMock: vi.fn<any>(),
+  getReasoningEffortForChatMock: vi.fn<any>(),
+  setReasoningEffortMock: vi.fn<any>(),
+  clearReasoningEffortMock: vi.fn<any>(),
+  getModelReasoningInfoMock: vi.fn<any>(),
 }));
 
 vi.mock("../agent.js", () => ({
@@ -40,7 +40,7 @@ describe("handleReasoning", () => {
     });
 
     const { handleReasoning } = await import("./reasoning");
-    const reply = vi.fn();
+    const reply = vi.fn<any>();
 
     await handleReasoning({
       chat: { id: 42 },
@@ -64,7 +64,7 @@ describe("handleReasoning", () => {
     });
 
     const { handleReasoning } = await import("./reasoning");
-    const reply = vi.fn();
+    const reply = vi.fn<any>();
 
     await handleReasoning({
       chat: { id: 42 },
@@ -72,7 +72,10 @@ describe("handleReasoning", () => {
       reply,
     } as never);
 
-    const [text, options] = reply.mock.calls[0];
+    const [text, options] = reply.mock.calls[0] as [
+      string,
+      { reply_markup: { inline_keyboard: Array<Array<{ text: string }>> } },
+    ];
     expect(text).toContain("claude-sonnet-4");
     expect(text).toContain("Current: high");
     expect(
@@ -96,7 +99,7 @@ describe("handleReasoning", () => {
     });
 
     const { handleReasoning } = await import("./reasoning");
-    const reply = vi.fn();
+    const reply = vi.fn<any>();
 
     await handleReasoning({
       chat: { id: 42 },
@@ -120,7 +123,7 @@ describe("handleReasoning", () => {
     });
 
     const { handleReasoning } = await import("./reasoning");
-    const reply = vi.fn();
+    const reply = vi.fn<any>();
 
     await handleReasoning({
       chat: { id: 42 },
@@ -144,7 +147,7 @@ describe("handleReasoning", () => {
     });
 
     const { handleReasoning } = await import("./reasoning");
-    const reply = vi.fn();
+    const reply = vi.fn<any>();
 
     await handleReasoning({
       chat: { id: 42 },
@@ -170,7 +173,7 @@ describe("handleReasoningCallback", () => {
     });
 
     const { handleReasoning, handleReasoningCallback } = await import("./reasoning");
-    const reply = vi.fn();
+    const reply = vi.fn<any>();
 
     await handleReasoning({
       chat: { id: 42 },
@@ -178,18 +181,26 @@ describe("handleReasoningCallback", () => {
       reply,
     } as never);
 
-    const replyMarkup = reply.mock.calls[0][1].reply_markup;
+    const replyMarkup = (
+      reply.mock.calls[0] as [
+        string,
+        {
+          reply_markup: { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> };
+        },
+      ]
+    )[1].reply_markup;
     const highButton = replyMarkup.inline_keyboard
       .flat()
       .find((b: { text: string }) => b.text === "high");
-    const editMessageText = vi.fn();
-    const answerCallbackQuery = vi.fn();
+    expect(highButton).toBeDefined();
+    const editMessageText = vi.fn<any>();
+    const answerCallbackQuery = vi.fn<any>();
 
     const handled = await handleReasoningCallback({
       api: { editMessageText },
       answerCallbackQuery,
       callbackQuery: {
-        data: highButton.callback_data,
+        data: highButton!.callback_data,
         message: { message_id: 99 },
       },
       chat: { id: 42 },
@@ -211,7 +222,7 @@ describe("handleReasoningCallback", () => {
     });
 
     const { handleReasoning, handleReasoningCallback } = await import("./reasoning");
-    const reply = vi.fn();
+    const reply = vi.fn<any>();
 
     await handleReasoning({
       chat: { id: 42 },
@@ -219,18 +230,26 @@ describe("handleReasoningCallback", () => {
       reply,
     } as never);
 
-    const replyMarkup = reply.mock.calls[0][1].reply_markup;
+    const replyMarkup = (
+      reply.mock.calls[0] as [
+        string,
+        {
+          reply_markup: { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> };
+        },
+      ]
+    )[1].reply_markup;
     const resetButton = replyMarkup.inline_keyboard
       .flat()
       .find((b: { text: string }) => b.text === "Reset to default");
-    const editMessageText = vi.fn();
-    const answerCallbackQuery = vi.fn();
+    expect(resetButton).toBeDefined();
+    const editMessageText = vi.fn<any>();
+    const answerCallbackQuery = vi.fn<any>();
 
     const handled = await handleReasoningCallback({
       api: { editMessageText },
       answerCallbackQuery,
       callbackQuery: {
-        data: resetButton.callback_data,
+        data: resetButton!.callback_data,
         message: { message_id: 99 },
       },
       chat: { id: 42 },

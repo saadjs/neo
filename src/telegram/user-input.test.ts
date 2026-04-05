@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const { sendMessageMock, editMessageReplyMarkupMock, infoMock, warnMock } = vi.hoisted(() => ({
-  sendMessageMock: vi.fn(),
-  editMessageReplyMarkupMock: vi.fn(),
-  infoMock: vi.fn(),
-  warnMock: vi.fn(),
+  sendMessageMock: vi.fn<any>(),
+  editMessageReplyMarkupMock: vi.fn<any>(),
+  infoMock: vi.fn<any>(),
+  warnMock: vi.fn<any>(),
 }));
 
 vi.mock("./runtime.js", () => ({
@@ -54,7 +54,13 @@ describe("user input bridge", () => {
         }),
       }),
     );
-    expect(sendMessageMock.mock.calls[0][2]?.reply_markup?.inline_keyboard).toEqual([
+    expect(
+      (
+        sendMessageMock.mock.calls[0][2] as {
+          reply_markup?: { inline_keyboard?: unknown };
+        }
+      )?.reply_markup?.inline_keyboard,
+    ).toEqual([
       [{ text: "Yes", callback_data: expect.stringMatching(/^ask:/) }],
       [{ text: "No", callback_data: expect.stringMatching(/^ask:/) }],
     ]);
@@ -240,14 +246,18 @@ describe("user input bridge", () => {
 
     await Promise.resolve();
 
-    const sendArgs = sendMessageMock.mock.calls[0];
+    const sendArgs = sendMessageMock.mock.calls[0] as [
+      number,
+      string,
+      { reply_markup?: { inline_keyboard?: Array<Array<{ callback_data: string }>> } },
+    ];
     const buttons = sendArgs?.[2]?.reply_markup?.inline_keyboard as Array<
       Array<{ callback_data: string }>
     >;
     const callbackData = buttons[0][0]?.callback_data;
     expect(callbackData).toMatch(/^ask:/);
 
-    const answerCallbackQuery = vi.fn().mockResolvedValue(undefined);
+    const answerCallbackQuery = vi.fn<any>().mockResolvedValue(undefined);
     await expect(
       handleUserInputCallback({
         chat: { id: -100123 },
@@ -291,13 +301,17 @@ describe("user input bridge", () => {
     });
 
     // sendMessage has NOT resolved yet, so promptMessageId is undefined
-    const sendArgs = sendMessageMock.mock.calls[0];
+    const sendArgs = sendMessageMock.mock.calls[0] as [
+      number,
+      string,
+      { reply_markup?: { inline_keyboard?: Array<Array<{ callback_data: string }>> } },
+    ];
     const buttons = sendArgs?.[2]?.reply_markup?.inline_keyboard as Array<
       Array<{ callback_data: string }>
     >;
     const callbackData = buttons[0][0]?.callback_data;
 
-    const answerCallbackQuery = vi.fn().mockResolvedValue(undefined);
+    const answerCallbackQuery = vi.fn<any>().mockResolvedValue(undefined);
     await expect(
       handleUserInputCallback({
         chat: { id: -100123 },

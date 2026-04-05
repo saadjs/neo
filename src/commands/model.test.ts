@@ -11,15 +11,15 @@ const {
   loadCatalogModelsOutsideShortlistMock,
   applyConfigChangeMock,
 } = vi.hoisted(() => ({
-  getModelForChatMock: vi.fn(),
-  switchModelMock: vi.fn(),
-  getReasoningEffortForChatMock: vi.fn(),
-  clearReasoningEffortMock: vi.fn(),
-  loadModelCatalogMock: vi.fn(),
-  getModelReasoningInfoMock: vi.fn(),
-  loadShortlistModelsMock: vi.fn(),
-  loadCatalogModelsOutsideShortlistMock: vi.fn(),
-  applyConfigChangeMock: vi.fn().mockResolvedValue({
+  getModelForChatMock: vi.fn<any>(),
+  switchModelMock: vi.fn<any>(),
+  getReasoningEffortForChatMock: vi.fn<any>(),
+  clearReasoningEffortMock: vi.fn<any>(),
+  loadModelCatalogMock: vi.fn<any>(),
+  getModelReasoningInfoMock: vi.fn<any>(),
+  loadShortlistModelsMock: vi.fn<any>(),
+  loadCatalogModelsOutsideShortlistMock: vi.fn<any>(),
+  applyConfigChangeMock: vi.fn<any>().mockResolvedValue({
     applied: true,
     reason: "updated",
     restartTriggered: false,
@@ -89,7 +89,7 @@ describe("handleModel", () => {
     });
 
     const { handleModel } = await import("./model");
-    const reply = vi.fn();
+    const reply = vi.fn<any>();
 
     await handleModel({
       chat: { id: 42 },
@@ -108,7 +108,7 @@ describe("handleModel", () => {
     mockPickerData();
 
     const { handleModel } = await import("./model");
-    const reply = vi.fn();
+    const reply = vi.fn<any>();
 
     await handleModel({
       chat: { id: 42 },
@@ -116,7 +116,10 @@ describe("handleModel", () => {
       reply,
     } as never);
 
-    const [, options] = reply.mock.calls[0];
+    const [, options] = reply.mock.calls[0] as [
+      string,
+      { reply_markup: { inline_keyboard: Array<Array<{ text: string }>> } },
+    ];
     expect(reply.mock.calls[0][0]).toContain("Choose a model for this chat from your shortlist.");
     expect(reply.mock.calls[0][0]).toContain("Current: gpt-4.1");
     expect(
@@ -143,7 +146,7 @@ describe("handleModelCallback", () => {
     mockPickerData();
 
     const { handleModel, handleModelCallback } = await import("./model");
-    const reply = vi.fn();
+    const reply = vi.fn<any>();
 
     await handleModel({
       chat: { id: 42 },
@@ -151,10 +154,17 @@ describe("handleModelCallback", () => {
       reply,
     } as never);
 
-    const replyMarkup = reply.mock.calls[0][1].reply_markup;
+    const replyMarkup = (
+      reply.mock.calls[0] as [
+        string,
+        {
+          reply_markup: { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> };
+        },
+      ]
+    )[1].reply_markup;
     const selectCallback = replyMarkup.inline_keyboard[0][1].callback_data;
-    const editMessageText = vi.fn();
-    const answerCallbackQuery = vi.fn();
+    const editMessageText = vi.fn<any>();
+    const answerCallbackQuery = vi.fn<any>();
 
     const handled = await handleModelCallback({
       api: { editMessageText },
@@ -179,7 +189,7 @@ describe("handleModelCallback", () => {
     mockPickerData();
 
     const { handleModel, handleModelCallback } = await import("./model");
-    const reply = vi.fn();
+    const reply = vi.fn<any>();
 
     await handleModel({
       chat: { id: 42 },
@@ -187,12 +197,19 @@ describe("handleModelCallback", () => {
       reply,
     } as never);
 
-    const replyMarkup = reply.mock.calls[0][1].reply_markup;
+    const replyMarkup = (
+      reply.mock.calls[0] as [
+        string,
+        {
+          reply_markup: { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> };
+        },
+      ]
+    )[1].reply_markup;
     const showAllCallback = replyMarkup.inline_keyboard
       .flat()
       .find((button: { text: string }) => button.text === "Show All")!.callback_data;
-    const editMessageText = vi.fn();
-    const answerCallbackQuery = vi.fn();
+    const editMessageText = vi.fn<any>();
+    const answerCallbackQuery = vi.fn<any>();
 
     await handleModelCallback({
       api: { editMessageText },
@@ -204,7 +221,12 @@ describe("handleModelCallback", () => {
       chat: { id: 42 },
     } as never);
 
-    const catalogMarkup = editMessageText.mock.calls.at(-1)![3].reply_markup;
+    const catalogMarkup = (editMessageText.mock.calls.at(-1) as [
+      number,
+      string,
+      { parse_mode: string },
+      { reply_markup: { inline_keyboard: Array<Array<{ callback_data: string }>> } },
+    ])![3].reply_markup;
     const catalogItemCallback = catalogMarkup.inline_keyboard[0][0].callback_data;
 
     await handleModelCallback({
@@ -217,7 +239,12 @@ describe("handleModelCallback", () => {
       chat: { id: 42 },
     } as never);
 
-    const detailMarkup = editMessageText.mock.calls.at(-1)![3].reply_markup;
+    const detailMarkup = (editMessageText.mock.calls.at(-1) as [
+      number,
+      string,
+      { parse_mode: string },
+      { reply_markup: { inline_keyboard: Array<Array<{ callback_data: string }>> } },
+    ])![3].reply_markup;
     const addPrimaryCallback = detailMarkup.inline_keyboard[1][0].callback_data;
 
     await handleModelCallback({

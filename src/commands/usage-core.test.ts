@@ -106,23 +106,25 @@ describe("usage-core", () => {
   });
 
   it("uses bearer auth for the copilot internal endpoint", async () => {
-    const fetchFn: typeof fetch = vi.fn(async (_input, init?: RequestInit) => {
-      expect(init?.headers).toMatchObject({
-        Authorization: "Bearer token",
-      });
+    const fetchFn: typeof fetch = vi.fn<typeof fetch>(
+      async (_input: string | URL | Request, init?: RequestInit) => {
+        expect(init?.headers).toMatchObject({
+          Authorization: "Bearer token",
+        });
 
-      return new Response(
-        JSON.stringify({
-          quota_snapshots: {
-            premium_interactions: { percent_remaining: 80 },
+        return new Response(
+          JSON.stringify({
+            quota_snapshots: {
+              premium_interactions: { percent_remaining: 80 },
+            },
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
           },
-        }),
-        {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        },
-      );
-    });
+        );
+      },
+    );
 
     const result = await fetchCopilotUsage("token", {
       fetchFn,

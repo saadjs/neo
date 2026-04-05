@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const { abortSessionMock } = vi.hoisted(() => ({
-  abortSessionMock: vi.fn(),
+  abortSessionMock: vi.fn<any>(),
 }));
 
 vi.mock("../agent.js", () => ({
@@ -9,7 +9,7 @@ vi.mock("../agent.js", () => ({
 }));
 
 vi.mock("../logging/index.js", () => ({
-  getLogger: () => ({ info: vi.fn() }),
+  getLogger: () => ({ info: vi.fn<any>() }),
 }));
 
 import { handleCancel } from "./cancel";
@@ -19,7 +19,9 @@ afterEach(() => {
 });
 
 function makeCtx(chatId: number) {
-  return { chat: { id: chatId }, reply: vi.fn() } as unknown as Parameters<typeof handleCancel>[0];
+  return { chat: { id: chatId }, reply: vi.fn<any>() } as unknown as Parameters<
+    typeof handleCancel
+  >[0];
 }
 
 describe("handleCancel", () => {

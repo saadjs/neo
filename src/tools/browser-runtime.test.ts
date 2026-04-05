@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const launchPersistentContext = vi.fn();
+const launchPersistentContext = vi.fn<any>();
 
 vi.mock("playwright", () => ({
   chromium: {
@@ -10,7 +10,7 @@ vi.mock("playwright", () => ({
 
 vi.mock("../logging/index.js", () => ({
   getLogger: () => ({
-    info: vi.fn(),
+    info: vi.fn<any>(),
   }),
 }));
 
@@ -52,14 +52,14 @@ describe("browser runtime", () => {
   });
 
   it("starts, lists, and closes persistent sessions", async () => {
-    const close = vi.fn().mockResolvedValue(undefined);
+    const close = vi.fn<any>().mockResolvedValue(undefined);
     const page = {
       isClosed: () => false,
       url: () => "https://example.com",
     };
     launchPersistentContext.mockResolvedValue({
       pages: () => [page],
-      newPage: vi.fn().mockResolvedValue(page),
+      newPage: vi.fn<any>().mockResolvedValue(page),
       close,
     });
 
@@ -91,7 +91,7 @@ describe("browser runtime", () => {
   });
 
   it("isolates sessions with the same name across different scopes", async () => {
-    const close = vi.fn().mockResolvedValue(undefined);
+    const close = vi.fn<any>().mockResolvedValue(undefined);
     const firstPage = {
       isClosed: () => false,
       url: () => "https://one.example.com",
@@ -103,12 +103,12 @@ describe("browser runtime", () => {
     launchPersistentContext
       .mockResolvedValueOnce({
         pages: () => [firstPage],
-        newPage: vi.fn().mockResolvedValue(firstPage),
+        newPage: vi.fn<any>().mockResolvedValue(firstPage),
         close,
       })
       .mockResolvedValueOnce({
         pages: () => [secondPage],
-        newPage: vi.fn().mockResolvedValue(secondPage),
+        newPage: vi.fn<any>().mockResolvedValue(secondPage),
         close,
       });
 
@@ -125,7 +125,7 @@ describe("browser runtime", () => {
   });
 
   it("uses distinct profile paths for names containing literal escape-like sequences", async () => {
-    const close = vi.fn().mockResolvedValue(undefined);
+    const close = vi.fn<any>().mockResolvedValue(undefined);
     const page = {
       isClosed: () => false,
       url: () => "https://example.com",
@@ -133,12 +133,12 @@ describe("browser runtime", () => {
     launchPersistentContext
       .mockResolvedValueOnce({
         pages: () => [page],
-        newPage: vi.fn().mockResolvedValue(page),
+        newPage: vi.fn<any>().mockResolvedValue(page),
         close,
       })
       .mockResolvedValueOnce({
         pages: () => [page],
-        newPage: vi.fn().mockResolvedValue(page),
+        newPage: vi.fn<any>().mockResolvedValue(page),
         close,
       });
 

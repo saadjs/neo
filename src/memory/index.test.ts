@@ -8,12 +8,12 @@ const {
   getChannelConfigMock,
   isChannelChatMock,
 } = vi.hoisted(() => ({
-  loadSoulMock: vi.fn(),
-  loadPreferencesMock: vi.fn(),
-  loadHumanMock: vi.fn(),
-  loadRecentSummariesMock: vi.fn(),
-  getChannelConfigMock: vi.fn(),
-  isChannelChatMock: vi.fn(),
+  loadSoulMock: vi.fn<any>(),
+  loadPreferencesMock: vi.fn<any>(),
+  loadHumanMock: vi.fn<any>(),
+  loadRecentSummariesMock: vi.fn<any>(),
+  getChannelConfigMock: vi.fn<any>(),
+  isChannelChatMock: vi.fn<any>(),
 }));
 
 vi.mock("./soul.js", () => ({

@@ -19,10 +19,10 @@ vi.mock("../config.js", () => ({
 
 vi.mock("../logging/index.js", () => ({
   getLogger: () => ({
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
+    debug: vi.fn<any>(),
+    info: vi.fn<any>(),
+    warn: vi.fn<any>(),
+    error: vi.fn<any>(),
   }),
 }));
 
