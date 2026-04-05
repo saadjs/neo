@@ -6,7 +6,7 @@ import type { SessionMetadata } from "@github/copilot-sdk";
 export type ReasoningEffort = "low" | "medium" | "high" | "xhigh";
 import { config } from "./config";
 import { allTools } from "./tools/index";
-import { buildSystemContext } from "./memory/index";
+import { buildSystemContextParts } from "./memory/index";
 import { getLogger } from "./logging/index";
 import { buildSessionHooks } from "./hooks/index";
 import {
@@ -584,7 +584,7 @@ export async function resumeSessionById(
 }
 
 async function buildSessionConfig(chatId: number) {
-  const systemContext = await buildSystemContext(chatId);
+  const { identity, additionalContent } = await buildSystemContextParts(chatId);
   const qualifiedModel = getModelForChat(chatId);
   const { rawModel, providerKey } = parseQualifiedModel(qualifiedModel);
   const provider = providerKey ? buildProviderConfig(providerKey) : undefined;
@@ -597,7 +597,14 @@ async function buildSessionConfig(chatId: number) {
     streaming: true,
     ...(reasoningEffort && { reasoningEffort }),
     ...(provider && { provider }),
-    systemMessage: { mode: "replace" as const, content: systemContext },
+    systemMessage: {
+      mode: "customize" as const,
+      sections: {
+        identity: { action: "replace" as const, content: identity },
+        tone: { action: "remove" as const },
+      },
+      content: additionalContent,
+    },
     tools: allTools,
     skillDirectories: config.copilot.skillDirectories,
     onPermissionRequest: approveAll,
