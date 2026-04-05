@@ -139,7 +139,8 @@ Vitest, Node environment, picks up `src/**/*.test.ts`. Add or update tests for e
 
 ## Style
 
-Strict TypeScript ESM. Double quotes, semicolons. `camelCase` for variables/functions, `PascalCase` for types. Kebab-case filenames. Tests next to source as `*.test.ts`.
+- Strict TypeScript ESM. Double quotes, semicolons. `camelCase` for variables/functions, `PascalCase` for types. Kebab-case filenames. Tests next to source as `*.test.ts`.
+- No use of explicit or implicit `any` types to workaround type errors — add proper types instead. Use `unknown` and type guards if necessary.
 
 ## Documentation
 
