@@ -224,29 +224,35 @@ describe("buildResearchPlan", () => {
   });
 });
 
+interface ToolResult {
+  textResultForLlm: string;
+  resultType: "success" | "failure";
+  error?: string;
+}
+
 describe("researchTool", () => {
   it("uses the configured worker model when none is provided", async () => {
     getChatIdForSessionMock.mockReturnValue(42);
     getModelForChatMock.mockReturnValue("openai:gpt-5.4");
 
-    const result = await researchTool.handler(
+    const result = (await researchTool.handler(
       {
         topic: "quantum computing",
         destination: "local",
         depth: "standard",
       },
       { sessionId: "session-1" } as never,
-    );
+    )) as ToolResult;
 
-    expect(result).toContain("claude-sonnet-4.6");
-    expect(result).toContain("openai:gpt-5.4 -> anthropic:claude-sonnet-4.5");
+    expect(result.textResultForLlm).toContain("claude-sonnet-4.6");
+    expect(result.textResultForLlm).toContain("openai:gpt-5.4 -> anthropic:claude-sonnet-4.5");
   });
 
   it("prefers an explicit worker model override", async () => {
     getChatIdForSessionMock.mockReturnValue(42);
     getModelForChatMock.mockReturnValue("openai:gpt-5.4");
 
-    const result = await researchTool.handler(
+    const result = (await researchTool.handler(
       {
         topic: "quantum computing",
         destination: "local",
@@ -254,27 +260,27 @@ describe("researchTool", () => {
         worker_model: "openai:gpt-4.1",
       },
       { sessionId: "session-1" } as never,
-    );
+    )) as ToolResult;
 
-    expect(result).toContain("openai:gpt-4.1");
+    expect(result.textResultForLlm).toContain("openai:gpt-4.1");
   });
 
   it("uses the invoking chat model as the first fallback when available", async () => {
     getChatIdForSessionMock.mockReturnValue(42);
     getModelForChatMock.mockReturnValue("openai:gpt-5.4");
 
-    const result = await researchTool.handler(
+    const result = (await researchTool.handler(
       {
         topic: "quantum computing",
         destination: "local",
         depth: "standard",
       },
       { sessionId: "session-1" } as never,
-    );
+    )) as ToolResult;
 
     expect(getChatIdForSessionMock).toHaveBeenCalledWith("session-1");
     expect(getModelForChatMock).toHaveBeenCalledWith(42);
-    expect(result).toContain(
+    expect(result.textResultForLlm).toContain(
       "**Worker fallback models**: openai:gpt-5.4 -> anthropic:claude-sonnet-4.5",
     );
   });

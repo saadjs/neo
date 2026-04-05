@@ -41,11 +41,15 @@ export const reminderTool = defineTool("reminder", {
       initRemindersTable();
       const result = execute(args);
       audit.complete(result);
-      return result;
+      return { textResultForLlm: result, resultType: "success" as const };
     } catch (error) {
       const message = `reminder tool error: ${String(error)}`;
       audit.complete(message);
-      return message;
+      return {
+        textResultForLlm: message,
+        resultType: "failure" as const,
+        error: String(error),
+      };
     }
   },
 });

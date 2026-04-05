@@ -79,9 +79,17 @@ import { systemTool } from "./system";
 const handler = systemTool.handler as (
   args: Record<string, unknown>,
   invocation: { sessionId: string },
-) => Promise<string>;
+) => Promise<{ textResultForLlm: string; resultType: string; error?: string }>;
 
 const invocation = { sessionId: "test-session" };
+
+function resultText(result: {
+  textResultForLlm: string;
+  resultType: string;
+  error?: string;
+}): string {
+  return result.textResultForLlm;
+}
 
 describe("system tool — set_chat_model", () => {
   beforeEach(() => {
@@ -118,12 +126,12 @@ describe("system tool — set_chat_model", () => {
 
   it("requires chat_id", async () => {
     const result = await handler({ action: "set_chat_model" }, invocation);
-    expect(result).toContain("chat_id is required");
+    expect(resultText(result)).toContain("chat_id is required");
   });
 
   it("requires model", async () => {
     const result = await handler({ action: "set_chat_model", chat_id: -100 }, invocation);
-    expect(result).toContain("model is required");
+    expect(resultText(result)).toContain("model is required");
   });
 
   it("rejects unknown models before persisting them", async () => {
@@ -132,7 +140,7 @@ describe("system tool — set_chat_model", () => {
       invocation,
     );
 
-    expect(result).toContain("unknown model: unknown-model");
+    expect(resultText(result)).toContain("unknown model: unknown-model");
     expect(upsertChannelConfigMock).not.toHaveBeenCalled();
     expect(switchModelMock).not.toHaveBeenCalled();
   });
@@ -144,7 +152,7 @@ describe("system tool — set_chat_model", () => {
       { action: "set_chat_model", chat_id: -100, model: "claude-opus-4-6" },
       invocation,
     );
-    const parsed = JSON.parse(result);
+    const parsed = JSON.parse(resultText(result));
 
     expect(upsertChannelConfigMock).toHaveBeenCalledWith(-100, {
       defaultModel: "claude-opus-4-6",
@@ -165,7 +173,7 @@ describe("system tool — set_chat_model", () => {
       { action: "set_chat_model", chat_id: -200, model: "gpt-4.1" },
       invocation,
     );
-    const parsed = JSON.parse(result);
+    const parsed = JSON.parse(resultText(result));
 
     expect(upsertChannelConfigMock).toHaveBeenCalledWith(-200, { defaultModel: "gpt-4.1" });
     expect(clearPerChatModelOverrideMock).not.toHaveBeenCalled();
@@ -185,7 +193,7 @@ describe("system tool — set_chat_model", () => {
       { action: "set_chat_model", chat_id: -200, model: "gpt-4.1" },
       invocation,
     );
-    const parsed = JSON.parse(result);
+    const parsed = JSON.parse(resultText(result));
 
     expect(clearReasoningEffortMock).not.toHaveBeenCalled();
     expect(upsertChannelConfigMock).toHaveBeenCalledWith(-200, { defaultReasoningEffort: null });
@@ -202,7 +210,7 @@ describe("system tool — set_chat_model", () => {
       { action: "set_chat_model", chat_id: 123, model: "claude-opus-4-6", scope: "chat" },
       invocation,
     );
-    const parsed = JSON.parse(result);
+    const parsed = JSON.parse(resultText(result));
 
     expect(switchModelMock).toHaveBeenCalledWith(123, "claude-opus-4-6");
     expect(upsertChannelConfigMock).not.toHaveBeenCalled();
@@ -219,7 +227,7 @@ describe("system tool — set_chat_model", () => {
       { action: "set_chat_model", chat_id: 456, model: "gpt-5.4", scope: "chat" },
       invocation,
     );
-    const parsed = JSON.parse(result);
+    const parsed = JSON.parse(resultText(result));
 
     expect(switchModelMock).toHaveBeenCalledWith(456, "gpt-5.4");
     expect(parsed.previousPerChatModel).toBeNull();
@@ -234,7 +242,7 @@ describe("system tool — set_chat_model", () => {
       { action: "set_chat_model", chat_id: 456, model: "gpt-5.4", scope: "chat" },
       invocation,
     );
-    const parsed = JSON.parse(result);
+    const parsed = JSON.parse(resultText(result));
 
     expect(switchModelMock).toHaveBeenCalledWith(456, "gpt-5.4");
     expect(clearReasoningEffortMock).toHaveBeenCalledWith(456);
@@ -253,7 +261,7 @@ describe("system tool — set_chat_model", () => {
       { action: "set_chat_model", chat_id: 456, model: "gpt-5.4", scope: "chat" },
       invocation,
     );
-    const parsed = JSON.parse(result);
+    const parsed = JSON.parse(resultText(result));
 
     expect(switchModelMock).toHaveBeenCalledWith(456, "gpt-5.4");
     expect(clearReasoningEffortMock).not.toHaveBeenCalled();
@@ -272,7 +280,7 @@ describe("system tool — set_chat_model", () => {
       { action: "set_chat_model", chat_id: 456, model: "gpt-5.4", scope: "chat" },
       invocation,
     );
-    const parsed = JSON.parse(result);
+    const parsed = JSON.parse(resultText(result));
 
     expect(clearReasoningEffortMock).not.toHaveBeenCalled();
     expect(parsed.reasoningEffortCleared).toBeUndefined();
@@ -308,7 +316,7 @@ describe("system tool — clear_chat_model", () => {
 
   it("requires chat_id", async () => {
     const result = await handler({ action: "clear_chat_model" }, invocation);
-    expect(result).toContain("chat_id is required");
+    expect(resultText(result)).toContain("chat_id is required");
   });
 
   it("clears per-chat override first when both exist and no scope given", async () => {
@@ -316,7 +324,7 @@ describe("system tool — clear_chat_model", () => {
     getPerChatModelOverrideMock.mockReturnValue("gpt-5.4");
 
     const result = await handler({ action: "clear_chat_model", chat_id: -100 }, invocation);
-    const parsed = JSON.parse(result);
+    const parsed = JSON.parse(resultText(result));
 
     // Should only clear per-chat override, preserving channel default
     expect(clearPerChatModelOverrideMock).toHaveBeenCalledWith(-100);
@@ -329,7 +337,7 @@ describe("system tool — clear_chat_model", () => {
     getPerChatModelOverrideMock.mockReturnValue(undefined);
 
     const result = await handler({ action: "clear_chat_model", chat_id: -200 }, invocation);
-    const parsed = JSON.parse(result);
+    const parsed = JSON.parse(resultText(result));
 
     expect(upsertChannelConfigMock).toHaveBeenCalledWith(-200, { defaultModel: null });
     expect(clearPerChatModelOverrideMock).not.toHaveBeenCalled();
@@ -345,7 +353,7 @@ describe("system tool — clear_chat_model", () => {
       { action: "clear_chat_model", chat_id: -100, scope: "channel" },
       invocation,
     );
-    const parsed = JSON.parse(result);
+    const parsed = JSON.parse(resultText(result));
 
     expect(upsertChannelConfigMock).toHaveBeenCalledWith(-100, { defaultModel: null });
     expect(clearPerChatModelOverrideMock).not.toHaveBeenCalled();
@@ -360,7 +368,7 @@ describe("system tool — clear_chat_model", () => {
       { action: "clear_chat_model", chat_id: -100, scope: "chat" },
       invocation,
     );
-    const parsed = JSON.parse(result);
+    const parsed = JSON.parse(resultText(result));
 
     expect(clearPerChatModelOverrideMock).toHaveBeenCalledWith(-100);
     expect(upsertChannelConfigMock).not.toHaveBeenCalled();
@@ -372,7 +380,7 @@ describe("system tool — clear_chat_model", () => {
     getPerChatModelOverrideMock.mockReturnValue(undefined);
 
     const result = await handler({ action: "clear_chat_model", chat_id: -400 }, invocation);
-    const parsed = JSON.parse(result);
+    const parsed = JSON.parse(resultText(result));
 
     expect(parsed.cleared).toEqual([]);
     expect(refreshSessionContextMock).toHaveBeenCalledWith(-400);
@@ -391,7 +399,7 @@ describe("system tool — clear_chat_model", () => {
       { action: "clear_chat_model", chat_id: -500, scope: "chat" },
       invocation,
     );
-    const parsed = JSON.parse(result);
+    const parsed = JSON.parse(resultText(result));
 
     expect(clearPerChatModelOverrideMock).toHaveBeenCalledWith(-500);
     expect(clearReasoningEffortMock).toHaveBeenCalledWith(-500);
@@ -416,7 +424,7 @@ describe("system tool — clear_chat_model", () => {
       { action: "clear_chat_model", chat_id: -600, scope: "channel" },
       invocation,
     );
-    const parsed = JSON.parse(result);
+    const parsed = JSON.parse(resultText(result));
 
     expect(upsertChannelConfigMock).toHaveBeenCalledWith(-600, { defaultModel: null });
     expect(upsertChannelConfigMock).toHaveBeenCalledWith(-600, { defaultReasoningEffort: null });
@@ -437,7 +445,7 @@ describe("system tool — clear_chat_model", () => {
       { action: "clear_chat_model", chat_id: -700, scope: "chat" },
       invocation,
     );
-    const parsed = JSON.parse(result);
+    const parsed = JSON.parse(resultText(result));
 
     expect(clearPerChatModelOverrideMock).toHaveBeenCalledWith(-700);
     expect(clearReasoningEffortMock).not.toHaveBeenCalled();

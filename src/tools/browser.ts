@@ -397,11 +397,15 @@ export const browserTool = defineTool("browser", {
     try {
       const result = await execute(args, invocation.sessionId);
       audit.complete(result);
-      return result;
+      return { textResultForLlm: result, resultType: "success" as const };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       audit.complete(`Error: ${message}`);
-      return `Error: ${message}`;
+      return {
+        textResultForLlm: `Error: ${message}`,
+        resultType: "failure" as const,
+        error: message,
+      };
     }
   },
 });
