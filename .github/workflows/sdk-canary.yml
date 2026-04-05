@@ -1,0 +1,46 @@
+name: SDK Canary
+
+on:
+  workflow_dispatch:
+    inputs:
+      sdk_version:
+        description: "SDK version to test (default: latest)"
+        required: false
+        default: "latest"
+  schedule:
+    # Every Monday at 09:00 UTC
+    - cron: "0 9 * * 1"
+
+jobs:
+  canary:
+    name: Copilot SDK upgrade check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Override SDK version
+        run: |
+          VERSION="${{ github.event.inputs.sdk_version || 'latest' }}"
+          echo "🔧 Installing @github/copilot-sdk@${VERSION}"
+          npm install "@github/copilot-sdk@${VERSION}" --save-exact
+          echo "### Installed SDK version" >> "$GITHUB_STEP_SUMMARY"
+          node -e "console.log(require('@github/copilot-sdk/package.json').version)" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Tests
+        run: npm test
+
+      - name: SDK surface smoke test
+        run: node --experimental-vm-modules scripts/sdk-smoke-test.mjs
