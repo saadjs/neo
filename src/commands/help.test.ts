@@ -1,8 +1,9 @@
+/* eslint-disable vitest/require-mock-type-parameters */
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const { buildHelpTextMock, getChatModelContextMock } = vi.hoisted(() => ({
-  buildHelpTextMock: vi.fn<any>(),
-  getChatModelContextMock: vi.fn<any>(),
+  buildHelpTextMock: vi.fn(),
+  getChatModelContextMock: vi.fn(),
 }));
 
 vi.mock("./definitions.js", () => ({
@@ -30,7 +31,7 @@ describe("handleHelp", () => {
 
     const { handleHelp } = await import("./help");
 
-    const reply = vi.fn<any>();
+    const reply = vi.fn();
     await handleHelp({ chat: { id: 7 }, reply } as unknown as Parameters<typeof handleHelp>[0]);
 
     expect(getChatModelContextMock).toHaveBeenCalledWith(7);
@@ -45,7 +46,7 @@ describe("handleHelp", () => {
 
     const { handleHelp } = await import("./help");
 
-    const reply = vi.fn<any>();
+    const reply = vi.fn();
     await handleHelp({ reply } as unknown as Parameters<typeof handleHelp>[0]);
 
     expect(reply).toHaveBeenCalledWith("HELP", { parse_mode: "Markdown" });

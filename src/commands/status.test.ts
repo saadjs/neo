@@ -1,10 +1,11 @@
+/* eslint-disable vitest/require-mock-type-parameters */
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const { getSystemStatusMock, formatSystemStatusSummaryMock, getChatModelContextMock } = vi.hoisted(
   () => ({
-    getSystemStatusMock: vi.fn<any>(),
-    formatSystemStatusSummaryMock: vi.fn<any>(),
-    getChatModelContextMock: vi.fn<any>(),
+    getSystemStatusMock: vi.fn(),
+    formatSystemStatusSummaryMock: vi.fn(),
+    getChatModelContextMock: vi.fn(),
   }),
 );
 
@@ -38,7 +39,7 @@ describe("handleStatus", () => {
 
     const { handleStatus } = await import("./status");
 
-    const reply = vi.fn<any>();
+    const reply = vi.fn();
     await handleStatus({ chat: { id: 99 }, reply } as unknown as Parameters<
       typeof handleStatus
     >[0]);
@@ -56,7 +57,7 @@ describe("handleStatus", () => {
 
     const { handleStatus } = await import("./status");
 
-    const reply = vi.fn<any>();
+    const reply = vi.fn();
     await handleStatus({ reply } as unknown as Parameters<typeof handleStatus>[0]);
 
     expect(reply).toHaveBeenCalledWith("runtime summary");

@@ -1,22 +1,23 @@
+/* eslint-disable vitest/require-mock-type-parameters */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@github/copilot-sdk", () => ({
   defineTool: (_name: string, definition: unknown) => definition,
 }));
 
-const completeAudit = vi.fn<any>();
-const createAuditTimer = vi.fn<any>(() => ({ complete: completeAudit }));
+const completeAudit = vi.fn();
+const createAuditTimer = vi.fn(() => ({ complete: completeAudit }));
 
 vi.mock("../logging/audit.js", () => ({
   createAuditTimer,
 }));
 
-const startBrowserSession = vi.fn<any>();
-const getBrowserSession = vi.fn<any>();
-const closeBrowserSession = vi.fn<any>();
-const closeAllBrowserSessions = vi.fn<any>();
-const listBrowserSessions = vi.fn<any>(() => []);
-const resolveBrowserCredential = vi.fn<any>();
+const startBrowserSession = vi.fn();
+const getBrowserSession = vi.fn();
+const closeBrowserSession = vi.fn();
+const closeAllBrowserSessions = vi.fn();
+const listBrowserSessions = vi.fn(() => []);
+const resolveBrowserCredential = vi.fn();
 
 vi.mock("./browser-runtime.js", () => ({
   startBrowserSession,
@@ -27,12 +28,12 @@ vi.mock("./browser-runtime.js", () => ({
   resolveBrowserCredential,
 }));
 
-const getChatIdForSession = vi.fn<any>();
+const getChatIdForSession = vi.fn();
 vi.mock("../agent.js", () => ({
   getChatIdForSession,
 }));
 
-const sendPhotoFromPath = vi.fn<any>();
+const sendPhotoFromPath = vi.fn();
 vi.mock("../telegram/runtime.js", () => ({
   sendPhotoFromPath,
 }));
@@ -112,7 +113,7 @@ describe("browserTool", () => {
     getBrowserSession.mockResolvedValue({
       page: {
         url: () => "https://example.com/dashboard",
-        screenshot: vi.fn<any>().mockResolvedValue(undefined),
+        screenshot: vi.fn().mockResolvedValue(undefined),
         viewportSize: () => ({ width: 1280, height: 720 }),
       },
     });
@@ -138,23 +139,23 @@ describe("browserTool", () => {
   });
 
   it("returns a manual-intervention error when login triggers a captcha", async () => {
-    const locator = vi.fn<any>((selector: string) => {
+    const locator = vi.fn((selector: string) => {
       if (selector === "body") {
         return {
-          innerText: vi.fn<any>().mockResolvedValue("Please solve the CAPTCHA to continue"),
+          innerText: vi.fn().mockResolvedValue("Please solve the CAPTCHA to continue"),
         };
       }
 
       if (selector === "#success") {
         return {
-          waitFor: vi.fn<any>().mockRejectedValue(new Error("timeout")),
+          waitFor: vi.fn().mockRejectedValue(new Error("timeout")),
         };
       }
 
       return {
-        fill: vi.fn<any>().mockResolvedValue(undefined),
-        click: vi.fn<any>().mockResolvedValue(undefined),
-        press: vi.fn<any>().mockResolvedValue(undefined),
+        fill: vi.fn().mockResolvedValue(undefined),
+        click: vi.fn().mockResolvedValue(undefined),
+        press: vi.fn().mockResolvedValue(undefined),
       };
     });
 
@@ -191,11 +192,11 @@ describe("browserTool", () => {
   });
 
   it("waits for navigation after click when wait_until is requested", async () => {
-    const click = vi.fn<any>().mockResolvedValue(undefined);
-    const waitForNavigation = vi.fn<any>().mockResolvedValue(null);
+    const click = vi.fn().mockResolvedValue(undefined);
+    const waitForNavigation = vi.fn().mockResolvedValue(null);
     getBrowserSession.mockResolvedValue({
       page: {
-        locator: vi.fn<any>(() => ({ click })),
+        locator: vi.fn(() => ({ click })),
         waitForNavigation,
         url: () => "https://example.com/after",
       },

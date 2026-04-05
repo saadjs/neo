@@ -1,3 +1,4 @@
+/* eslint-disable vitest/require-mock-type-parameters */
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -7,11 +8,11 @@ const {
   clearReasoningEffortMock,
   getModelReasoningInfoMock,
 } = vi.hoisted(() => ({
-  getModelForChatMock: vi.fn<any>(),
-  getReasoningEffortForChatMock: vi.fn<any>(),
-  setReasoningEffortMock: vi.fn<any>(),
-  clearReasoningEffortMock: vi.fn<any>(),
-  getModelReasoningInfoMock: vi.fn<any>(),
+  getModelForChatMock: vi.fn(),
+  getReasoningEffortForChatMock: vi.fn(),
+  setReasoningEffortMock: vi.fn(),
+  clearReasoningEffortMock: vi.fn(),
+  getModelReasoningInfoMock: vi.fn(),
 }));
 
 vi.mock("../agent.js", () => ({
@@ -40,7 +41,7 @@ describe("handleReasoning", () => {
     });
 
     const { handleReasoning } = await import("./reasoning");
-    const reply = vi.fn<any>();
+    const reply = vi.fn();
 
     await handleReasoning({
       chat: { id: 42 },
@@ -64,7 +65,7 @@ describe("handleReasoning", () => {
     });
 
     const { handleReasoning } = await import("./reasoning");
-    const reply = vi.fn<any>();
+    const reply = vi.fn();
 
     await handleReasoning({
       chat: { id: 42 },
@@ -99,7 +100,7 @@ describe("handleReasoning", () => {
     });
 
     const { handleReasoning } = await import("./reasoning");
-    const reply = vi.fn<any>();
+    const reply = vi.fn();
 
     await handleReasoning({
       chat: { id: 42 },
@@ -123,7 +124,7 @@ describe("handleReasoning", () => {
     });
 
     const { handleReasoning } = await import("./reasoning");
-    const reply = vi.fn<any>();
+    const reply = vi.fn();
 
     await handleReasoning({
       chat: { id: 42 },
@@ -147,7 +148,7 @@ describe("handleReasoning", () => {
     });
 
     const { handleReasoning } = await import("./reasoning");
-    const reply = vi.fn<any>();
+    const reply = vi.fn();
 
     await handleReasoning({
       chat: { id: 42 },
@@ -173,7 +174,7 @@ describe("handleReasoningCallback", () => {
     });
 
     const { handleReasoning, handleReasoningCallback } = await import("./reasoning");
-    const reply = vi.fn<any>();
+    const reply = vi.fn();
 
     await handleReasoning({
       chat: { id: 42 },
@@ -193,8 +194,8 @@ describe("handleReasoningCallback", () => {
       .flat()
       .find((b: { text: string }) => b.text === "high");
     expect(highButton).toBeDefined();
-    const editMessageText = vi.fn<any>();
-    const answerCallbackQuery = vi.fn<any>();
+    const editMessageText = vi.fn();
+    const answerCallbackQuery = vi.fn();
 
     const handled = await handleReasoningCallback({
       api: { editMessageText },
@@ -222,7 +223,7 @@ describe("handleReasoningCallback", () => {
     });
 
     const { handleReasoning, handleReasoningCallback } = await import("./reasoning");
-    const reply = vi.fn<any>();
+    const reply = vi.fn();
 
     await handleReasoning({
       chat: { id: 42 },
@@ -242,8 +243,8 @@ describe("handleReasoningCallback", () => {
       .flat()
       .find((b: { text: string }) => b.text === "Reset to default");
     expect(resetButton).toBeDefined();
-    const editMessageText = vi.fn<any>();
-    const answerCallbackQuery = vi.fn<any>();
+    const editMessageText = vi.fn();
+    const answerCallbackQuery = vi.fn();
 
     const handled = await handleReasoningCallback({
       api: { editMessageText },

@@ -1,8 +1,9 @@
+/* eslint-disable vitest/require-mock-type-parameters */
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const { readdirMock, mkdirMock } = vi.hoisted(() => ({
-  readdirMock: vi.fn<any>(),
-  mkdirMock: vi.fn<any>(),
+  readdirMock: vi.fn(),
+  mkdirMock: vi.fn(),
 }));
 
 vi.mock("../config.js", () => ({

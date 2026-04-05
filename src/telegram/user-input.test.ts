@@ -1,10 +1,11 @@
+/* eslint-disable vitest/require-mock-type-parameters */
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const { sendMessageMock, editMessageReplyMarkupMock, infoMock, warnMock } = vi.hoisted(() => ({
-  sendMessageMock: vi.fn<any>(),
-  editMessageReplyMarkupMock: vi.fn<any>(),
-  infoMock: vi.fn<any>(),
-  warnMock: vi.fn<any>(),
+  sendMessageMock: vi.fn(),
+  editMessageReplyMarkupMock: vi.fn(),
+  infoMock: vi.fn(),
+  warnMock: vi.fn(),
 }));
 
 vi.mock("./runtime.js", () => ({
@@ -257,7 +258,7 @@ describe("user input bridge", () => {
     const callbackData = buttons[0][0]?.callback_data;
     expect(callbackData).toMatch(/^ask:/);
 
-    const answerCallbackQuery = vi.fn<any>().mockResolvedValue(undefined);
+    const answerCallbackQuery = vi.fn().mockResolvedValue(undefined);
     await expect(
       handleUserInputCallback({
         chat: { id: -100123 },
@@ -311,7 +312,7 @@ describe("user input bridge", () => {
     >;
     const callbackData = buttons[0][0]?.callback_data;
 
-    const answerCallbackQuery = vi.fn<any>().mockResolvedValue(undefined);
+    const answerCallbackQuery = vi.fn().mockResolvedValue(undefined);
     await expect(
       handleUserInputCallback({
         chat: { id: -100123 },

@@ -1,3 +1,4 @@
+/* eslint-disable vitest/require-mock-type-parameters */
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@github/copilot-sdk", () => ({
@@ -5,8 +6,8 @@ vi.mock("@github/copilot-sdk", () => ({
 }));
 
 const { getChatIdForSessionMock, getModelForChatMock } = vi.hoisted(() => ({
-  getChatIdForSessionMock: vi.fn<any>(),
-  getModelForChatMock: vi.fn<any>(),
+  getChatIdForSessionMock: vi.fn(),
+  getModelForChatMock: vi.fn(),
 }));
 
 vi.mock("../agent.js", () => ({
@@ -15,7 +16,7 @@ vi.mock("../agent.js", () => ({
 }));
 
 vi.mock("../logging/audit.js", () => ({
-  createAuditTimer: () => ({ complete: vi.fn<any>() }),
+  createAuditTimer: () => ({ complete: vi.fn() }),
 }));
 
 vi.mock("../config.js", () => ({

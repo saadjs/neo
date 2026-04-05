@@ -1,3 +1,4 @@
+/* eslint-disable vitest/require-mock-type-parameters */
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -8,8 +9,8 @@ const { testState, listModelsMock, getClientMock } = vi.hoisted(() => ({
   testState: {
     dataDir: "",
   },
-  listModelsMock: vi.fn<any>(),
-  getClientMock: vi.fn<any>(),
+  listModelsMock: vi.fn(),
+  getClientMock: vi.fn(),
 }));
 
 vi.mock("../config.js", () => ({
@@ -43,8 +44,8 @@ vi.mock("../agent.js", () => ({
 
 vi.mock("../logging/index.js", () => ({
   getLogger: () => ({
-    info: vi.fn<any>(),
-    warn: vi.fn<any>(),
+    info: vi.fn(),
+    warn: vi.fn(),
   }),
 }));
 
@@ -166,7 +167,7 @@ describe("loadModelCatalog", () => {
       "utf-8",
     );
 
-    const fetchMock = vi.fn<any>().mockResolvedValue({
+    const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: () =>
         Promise.resolve({
@@ -191,7 +192,7 @@ describe("loadModelCatalog", () => {
   });
 
   it("adds Vercel AI Gateway models to the catalog", async () => {
-    const fetchMock = vi.fn<any>().mockResolvedValue({
+    const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: () =>
         Promise.resolve({

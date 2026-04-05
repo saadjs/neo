@@ -1,3 +1,4 @@
+/* eslint-disable vitest/require-mock-type-parameters */
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -12,16 +13,16 @@ const {
   failJobRunMock,
   approveAllMock,
 } = vi.hoisted(() => ({
-  createSessionMock: vi.fn<any>(),
-  sendAndWaitMock: vi.fn<any>(),
-  sessionOnMock: vi.fn<any>(),
-  sessionDestroyMock: vi.fn<any>(),
-  sessionAbortMock: vi.fn<any>(),
-  buildSystemContextMock: vi.fn<any>(),
-  createJobRunMock: vi.fn<any>(),
-  completeJobRunMock: vi.fn<any>(),
-  failJobRunMock: vi.fn<any>(),
-  approveAllMock: vi.fn<any>(),
+  createSessionMock: vi.fn(),
+  sendAndWaitMock: vi.fn(),
+  sessionOnMock: vi.fn(),
+  sessionDestroyMock: vi.fn(),
+  sessionAbortMock: vi.fn(),
+  buildSystemContextMock: vi.fn(),
+  createJobRunMock: vi.fn(),
+  completeJobRunMock: vi.fn(),
+  failJobRunMock: vi.fn(),
+  approveAllMock: vi.fn(),
 }));
 
 vi.mock("@github/copilot-sdk", () => ({
@@ -53,10 +54,10 @@ vi.mock("../memory/index.js", () => ({
 
 vi.mock("../logging/index.js", () => ({
   getLogger: () => ({
-    info: vi.fn<any>(),
-    debug: vi.fn<any>(),
-    warn: vi.fn<any>(),
-    error: vi.fn<any>(),
+    info: vi.fn(),
+    debug: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
   }),
 }));
 
@@ -127,7 +128,7 @@ describe("executeJob", () => {
         updated_at: "2026-03-13T00:00:00.000Z",
         next_run_at: "2026-03-14T00:00:00.000Z",
       },
-      { sendMessage: vi.fn<any>().mockResolvedValue(undefined) } as never,
+      { sendMessage: vi.fn().mockResolvedValue(undefined) } as never,
     );
 
     const sessionConfig = createSessionMock.mock.calls[0]?.[0] as {
@@ -157,7 +158,7 @@ describe("executeJob", () => {
     });
 
     const { executeJob } = await import("./job-runner");
-    const sendMessage = vi.fn<any>().mockResolvedValue(undefined);
+    const sendMessage = vi.fn().mockResolvedValue(undefined);
 
     await executeJob(
       {
@@ -214,7 +215,7 @@ describe("executeJob", () => {
         updated_at: "2026-03-13T00:00:00.000Z",
         next_run_at: "2026-03-14T00:00:00.000Z",
       },
-      { sendMessage: vi.fn<any>().mockResolvedValue(undefined) } as never,
+      { sendMessage: vi.fn().mockResolvedValue(undefined) } as never,
     );
 
     // Wait until sendAndWait is called — by then the real session is assigned

@@ -1,49 +1,50 @@
+/* eslint-disable vitest/require-mock-type-parameters */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@github/copilot-sdk", () => ({
   defineTool: (_name: string, definition: unknown) => definition,
 }));
 
-const refreshSessionContext = vi.fn<any>();
+const refreshSessionContext = vi.fn();
 vi.mock("../agent.js", () => ({
   refreshSessionContext,
 }));
 
-const completeAudit = vi.fn<any>();
-const createAuditTimer = vi.fn<any>(() => ({ complete: completeAudit }));
+const completeAudit = vi.fn();
+const createAuditTimer = vi.fn(() => ({ complete: completeAudit }));
 vi.mock("../logging/audit.js", () => ({
   createAuditTimer,
 }));
 
-const saveSoul = vi.fn<any>();
-const loadSoul = vi.fn<any>(() => "soul");
+const saveSoul = vi.fn();
+const loadSoul = vi.fn(() => "soul");
 vi.mock("../memory/soul.js", () => ({
   saveSoul,
   loadSoul,
 }));
 
-const savePreferences = vi.fn<any>();
-const loadPreferences = vi.fn<any>(() => "preferences");
-const appendPreference = vi.fn<any>();
+const savePreferences = vi.fn();
+const loadPreferences = vi.fn(() => "preferences");
+const appendPreference = vi.fn();
 vi.mock("../memory/preferences.js", () => ({
   savePreferences,
   loadPreferences,
   appendPreference,
 }));
 
-const saveHuman = vi.fn<any>();
-const appendHuman = vi.fn<any>();
-const loadHuman = vi.fn<any>(() => "human");
+const saveHuman = vi.fn();
+const appendHuman = vi.fn();
+const loadHuman = vi.fn(() => "human");
 vi.mock("../memory/human.js", () => ({
   saveHuman,
   appendHuman,
   loadHuman,
 }));
 
-const readDailyMemory = vi.fn<any>();
-const appendDailyMemory = vi.fn<any>();
-const listMemoryFiles = vi.fn<any>();
-const searchMemory = vi.fn<any>();
+const readDailyMemory = vi.fn();
+const appendDailyMemory = vi.fn();
+const listMemoryFiles = vi.fn();
+const searchMemory = vi.fn();
 vi.mock("../memory/daily.js", () => ({
   readDailyMemory,
   appendDailyMemory,
@@ -51,8 +52,8 @@ vi.mock("../memory/daily.js", () => ({
   searchMemory,
 }));
 
-const getChannelConfig = vi.fn<any>();
-const upsertChannelConfig = vi.fn<any>();
+const getChannelConfig = vi.fn();
+const upsertChannelConfig = vi.fn();
 vi.mock("../memory/db.js", () => ({
   getChannelConfig,
   upsertChannelConfig,

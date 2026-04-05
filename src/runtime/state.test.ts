@@ -1,3 +1,4 @@
+/* eslint-disable vitest/require-mock-type-parameters */
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -5,10 +6,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const { switchDefaultModelMock, getLogLevelMock, setLogLevelMock, execFileMock } = vi.hoisted(
   () => ({
-    switchDefaultModelMock: vi.fn<any>(),
-    getLogLevelMock: vi.fn<any>(() => "info"),
-    setLogLevelMock: vi.fn<any>(),
-    execFileMock: vi.fn<any>(),
+    switchDefaultModelMock: vi.fn(),
+    getLogLevelMock: vi.fn(() => "info"),
+    setLogLevelMock: vi.fn(),
+    execFileMock: vi.fn(),
   }),
 );
 
@@ -102,7 +103,7 @@ vi.mock("../config.js", () => ({
     NEO_CONTEXT_BUFFER_EXHAUSTION_THRESHOLD: 0.95,
   }),
   redactSettingValue: (_key: string, value: unknown) => value,
-  writeManagedConfigFile: vi.fn<any>(),
+  writeManagedConfigFile: vi.fn(),
 }));
 
 vi.mock("../agent.js", () => ({
@@ -113,7 +114,7 @@ vi.mock("../logging/index.js", () => ({
   getLogLevel: getLogLevelMock,
   setLogLevel: setLogLevelMock,
   getLogger: () => ({
-    info: vi.fn<any>(),
+    info: vi.fn(),
   }),
 }));
 

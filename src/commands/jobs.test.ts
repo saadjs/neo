@@ -1,3 +1,4 @@
+/* eslint-disable vitest/require-mock-type-parameters */
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -8,12 +9,12 @@ const {
   cancelRunningJobMock,
   getRunningJobMock,
 } = vi.hoisted(() => ({
-  listJobsMock: vi.fn<any>(),
-  getJobRunsMock: vi.fn<any>(),
-  setJobEnabledMock: vi.fn<any>(),
-  deleteJobMock: vi.fn<any>(),
-  cancelRunningJobMock: vi.fn<any>(),
-  getRunningJobMock: vi.fn<any>(),
+  listJobsMock: vi.fn(),
+  getJobRunsMock: vi.fn(),
+  setJobEnabledMock: vi.fn(),
+  deleteJobMock: vi.fn(),
+  cancelRunningJobMock: vi.fn(),
+  getRunningJobMock: vi.fn(),
 }));
 
 vi.mock("../scheduler/jobs-db.js", () => ({
@@ -33,7 +34,7 @@ vi.mock("../scheduler/cron.js", () => ({
 }));
 
 vi.mock("../logging/index.js", () => ({
-  getLogger: () => ({ info: vi.fn<any>(), warn: vi.fn<any>() }),
+  getLogger: () => ({ info: vi.fn(), warn: vi.fn() }),
 }));
 
 import { handleJobs, handleJobsCallback, isJobsCallback } from "./jobs";
@@ -51,10 +52,10 @@ function makeCtx(text = "/jobs") {
   return {
     message: { text },
     chat: { id: 42 },
-    reply: vi.fn<any>(),
+    reply: vi.fn(),
     callbackQuery: undefined as unknown,
-    answerCallbackQuery: vi.fn<any>(),
-    api: { editMessageText: vi.fn<any>() },
+    answerCallbackQuery: vi.fn(),
+    api: { editMessageText: vi.fn() },
   } as unknown as Parameters<typeof handleJobs>[0];
 }
 
@@ -65,9 +66,9 @@ function makeCallbackCtx(data: string) {
       data,
       message: { message_id: 100 },
     },
-    reply: vi.fn<any>(),
-    answerCallbackQuery: vi.fn<any>(),
-    api: { editMessageText: vi.fn<any>() },
+    reply: vi.fn(),
+    answerCallbackQuery: vi.fn(),
+    api: { editMessageText: vi.fn() },
   } as unknown as Parameters<typeof handleJobsCallback>[0];
 }
 

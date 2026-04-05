@@ -1,3 +1,4 @@
+/* eslint-disable vitest/require-mock-type-parameters */
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -8,12 +9,12 @@ const {
   getChannelConfigMock,
   isChannelChatMock,
 } = vi.hoisted(() => ({
-  loadSoulMock: vi.fn<any>(),
-  loadPreferencesMock: vi.fn<any>(),
-  loadHumanMock: vi.fn<any>(),
-  loadRecentSummariesMock: vi.fn<any>(),
-  getChannelConfigMock: vi.fn<any>(),
-  isChannelChatMock: vi.fn<any>(),
+  loadSoulMock: vi.fn(),
+  loadPreferencesMock: vi.fn(),
+  loadHumanMock: vi.fn(),
+  loadRecentSummariesMock: vi.fn(),
+  getChannelConfigMock: vi.fn(),
+  isChannelChatMock: vi.fn(),
 }));
 
 vi.mock("./soul.js", () => ({

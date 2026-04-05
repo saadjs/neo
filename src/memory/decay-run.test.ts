@@ -1,3 +1,4 @@
+/* eslint-disable vitest/require-mock-type-parameters */
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -19,10 +20,10 @@ vi.mock("../config.js", () => ({
 
 vi.mock("../logging/index.js", () => ({
   getLogger: () => ({
-    debug: vi.fn<any>(),
-    info: vi.fn<any>(),
-    warn: vi.fn<any>(),
-    error: vi.fn<any>(),
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
   }),
 }));
 

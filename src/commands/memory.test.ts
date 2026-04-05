@@ -1,3 +1,4 @@
+/* eslint-disable vitest/require-mock-type-parameters */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -7,11 +8,11 @@ const {
   readDailyMemoryMock,
   searchMemoryMock,
 } = vi.hoisted(() => ({
-  isChannelChatMock: vi.fn<any>(),
-  listMemoryFilesMock: vi.fn<any>(),
-  loadPreferencesMock: vi.fn<any>(),
-  readDailyMemoryMock: vi.fn<any>(),
-  searchMemoryMock: vi.fn<any>(),
+  isChannelChatMock: vi.fn(),
+  listMemoryFilesMock: vi.fn(),
+  loadPreferencesMock: vi.fn(),
+  readDailyMemoryMock: vi.fn(),
+  searchMemoryMock: vi.fn(),
 }));
 
 vi.mock("../memory/index.js", () => ({
@@ -23,7 +24,7 @@ vi.mock("../memory/index.js", () => ({
 }));
 
 vi.mock("../logging/conversations.js", () => ({
-  searchSessionsByTag: vi.fn<any>(),
+  searchSessionsByTag: vi.fn(),
 }));
 
 import { handleMemory } from "./memory";
@@ -44,7 +45,7 @@ describe("handleMemory", () => {
   });
 
   it("reads the current channel namespace for memory overview and searches", async () => {
-    const reply = vi.fn<any>().mockResolvedValue(undefined);
+    const reply = vi.fn().mockResolvedValue(undefined);
 
     await handleMemory({
       chat: { id: -100123 },
@@ -75,7 +76,7 @@ describe("handleMemory", () => {
   });
 
   it("keeps private chats on the global memory namespace", async () => {
-    const reply = vi.fn<any>().mockResolvedValue(undefined);
+    const reply = vi.fn().mockResolvedValue(undefined);
 
     await handleMemory({
       chat: { id: 42 },

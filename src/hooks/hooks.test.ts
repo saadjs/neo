@@ -1,3 +1,4 @@
+/* eslint-disable vitest/require-mock-type-parameters */
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
 vi.mock("vscode-jsonrpc/node", () => ({
@@ -12,31 +13,31 @@ vi.mock("@github/copilot-sdk", () => ({
 
 const { cancelPendingUserInputForSessionMock, setActiveSessionMock, logSessionMock } = vi.hoisted(
   () => ({
-    cancelPendingUserInputForSessionMock: vi.fn<any>(),
-    setActiveSessionMock: vi.fn<any>(),
-    logSessionMock: vi.fn<any>(),
+    cancelPendingUserInputForSessionMock: vi.fn(),
+    setActiveSessionMock: vi.fn(),
+    logSessionMock: vi.fn(),
   }),
 );
 
 vi.mock("../agent.js", () => ({
-  getModelForChat: vi.fn<any>(() => "gpt-4.1"),
+  getModelForChat: vi.fn(() => "gpt-4.1"),
 }));
 
 vi.mock("../commands/model-catalog.js", () => ({
-  getNextFallbackModel: vi.fn<any>().mockResolvedValue(null),
+  getNextFallbackModel: vi.fn().mockResolvedValue(null),
 }));
 
 vi.mock("../logging/index.js", () => ({
   getLogger: () => ({
-    debug: vi.fn<any>(),
-    info: vi.fn<any>(),
-    warn: vi.fn<any>(),
-    error: vi.fn<any>(),
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
   }),
 }));
 
 vi.mock("../scheduler/job-state.js", () => ({
-  isJobRunning: vi.fn<any>(),
+  isJobRunning: vi.fn(),
 }));
 
 vi.mock("../telegram/user-input.js", () => ({
@@ -49,16 +50,16 @@ vi.mock("../logging/conversations.js", () => ({
 }));
 
 vi.mock("../memory/daily.js", () => ({
-  readDailyMemory: vi.fn<any>().mockResolvedValue(""),
-  isChannelChat: vi.fn<any>().mockReturnValue(false),
+  readDailyMemory: vi.fn().mockResolvedValue(""),
+  isChannelChat: vi.fn().mockReturnValue(false),
 }));
 
 vi.mock("../runtime/state.js", () => ({
-  getRuntimeContextSection: vi.fn<any>().mockReturnValue(""),
+  getRuntimeContextSection: vi.fn().mockReturnValue(""),
 }));
 
 vi.mock("../logging/anomalies.js", () => ({
-  formatAnomaliesForContext: vi.fn<any>().mockReturnValue(""),
+  formatAnomaliesForContext: vi.fn().mockReturnValue(""),
 }));
 
 import { preToolUse } from "./pre-tool";
@@ -74,8 +75,17 @@ import { formatAnomaliesForContext } from "../logging/anomalies";
 const CHAT_ID = -100123;
 const INVOCATION = { sessionId: "test-session" };
 
-function baseInput(overrides: Record<string, unknown> = {}): any {
+function baseInput<const T extends Record<string, unknown>>(
+  overrides: T,
+): T & {
+  timestamp: number;
+  cwd: string;
+} {
   return { timestamp: Date.now(), cwd: "/tmp", ...overrides };
+}
+
+function hookError(error: unknown) {
+  return error as unknown as Parameters<ReturnType<typeof errorOccurred>>[0]["error"];
 }
 
 describe("preToolUse", () => {
@@ -152,7 +162,11 @@ describe("errorOccurred", () => {
   it("retries transient model_call errors", async () => {
     const invocation = { sessionId: "test-retry-transient" };
     const result = await handler(
-      baseInput({ error: new Error("timeout"), errorContext: "model_call", recoverable: true }),
+      baseInput({
+        error: hookError(new Error("timeout")),
+        errorContext: "model_call",
+        recoverable: true,
+      }),
       invocation,
     );
 
@@ -162,7 +176,7 @@ describe("errorOccurred", () => {
   it("aborts immediately for opaque model_call errors", async () => {
     const invocation = { sessionId: "test-opaque" };
     const result = await handler(
-      baseInput({ error: {}, errorContext: "model_call", recoverable: true }),
+      baseInput({ error: hookError({}), errorContext: "model_call", recoverable: true }),
       invocation,
     );
 
@@ -173,17 +187,29 @@ describe("errorOccurred", () => {
     const invocation = { sessionId: "test-retry-exhaust" };
     // First two calls retry
     await handler(
-      baseInput({ error: new Error("timeout"), errorContext: "model_call", recoverable: true }),
+      baseInput({
+        error: hookError(new Error("timeout")),
+        errorContext: "model_call",
+        recoverable: true,
+      }),
       invocation,
     );
     await handler(
-      baseInput({ error: new Error("timeout"), errorContext: "model_call", recoverable: true }),
+      baseInput({
+        error: hookError(new Error("timeout")),
+        errorContext: "model_call",
+        recoverable: true,
+      }),
       invocation,
     );
 
     // Third call should abort
     const result = await handler(
-      baseInput({ error: new Error("timeout"), errorContext: "model_call", recoverable: true }),
+      baseInput({
+        error: hookError(new Error("timeout")),
+        errorContext: "model_call",
+        recoverable: true,
+      }),
       invocation,
     );
 
@@ -194,18 +220,30 @@ describe("errorOccurred", () => {
     const invocation = { sessionId: "test-retry-reset" };
 
     await handler(
-      baseInput({ error: new Error("timeout"), errorContext: "model_call", recoverable: true }),
+      baseInput({
+        error: hookError(new Error("timeout")),
+        errorContext: "model_call",
+        recoverable: true,
+      }),
       invocation,
     );
     await handler(
-      baseInput({ error: new Error("timeout"), errorContext: "model_call", recoverable: true }),
+      baseInput({
+        error: hookError(new Error("timeout")),
+        errorContext: "model_call",
+        recoverable: true,
+      }),
       invocation,
     );
 
     resetModelCallFailures(invocation.sessionId);
 
     const result = await handler(
-      baseInput({ error: new Error("timeout"), errorContext: "model_call", recoverable: true }),
+      baseInput({
+        error: hookError(new Error("timeout")),
+        errorContext: "model_call",
+        recoverable: true,
+      }),
       invocation,
     );
 

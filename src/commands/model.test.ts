@@ -1,3 +1,4 @@
+/* eslint-disable vitest/require-mock-type-parameters */
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -11,15 +12,15 @@ const {
   loadCatalogModelsOutsideShortlistMock,
   applyConfigChangeMock,
 } = vi.hoisted(() => ({
-  getModelForChatMock: vi.fn<any>(),
-  switchModelMock: vi.fn<any>(),
-  getReasoningEffortForChatMock: vi.fn<any>(),
-  clearReasoningEffortMock: vi.fn<any>(),
-  loadModelCatalogMock: vi.fn<any>(),
-  getModelReasoningInfoMock: vi.fn<any>(),
-  loadShortlistModelsMock: vi.fn<any>(),
-  loadCatalogModelsOutsideShortlistMock: vi.fn<any>(),
-  applyConfigChangeMock: vi.fn<any>().mockResolvedValue({
+  getModelForChatMock: vi.fn(),
+  switchModelMock: vi.fn(),
+  getReasoningEffortForChatMock: vi.fn(),
+  clearReasoningEffortMock: vi.fn(),
+  loadModelCatalogMock: vi.fn(),
+  getModelReasoningInfoMock: vi.fn(),
+  loadShortlistModelsMock: vi.fn(),
+  loadCatalogModelsOutsideShortlistMock: vi.fn(),
+  applyConfigChangeMock: vi.fn().mockResolvedValue({
     applied: true,
     reason: "updated",
     restartTriggered: false,
@@ -89,7 +90,7 @@ describe("handleModel", () => {
     });
 
     const { handleModel } = await import("./model");
-    const reply = vi.fn<any>();
+    const reply = vi.fn();
 
     await handleModel({
       chat: { id: 42 },
@@ -108,7 +109,7 @@ describe("handleModel", () => {
     mockPickerData();
 
     const { handleModel } = await import("./model");
-    const reply = vi.fn<any>();
+    const reply = vi.fn();
 
     await handleModel({
       chat: { id: 42 },
@@ -146,7 +147,7 @@ describe("handleModelCallback", () => {
     mockPickerData();
 
     const { handleModel, handleModelCallback } = await import("./model");
-    const reply = vi.fn<any>();
+    const reply = vi.fn();
 
     await handleModel({
       chat: { id: 42 },
@@ -163,8 +164,8 @@ describe("handleModelCallback", () => {
       ]
     )[1].reply_markup;
     const selectCallback = replyMarkup.inline_keyboard[0][1].callback_data;
-    const editMessageText = vi.fn<any>();
-    const answerCallbackQuery = vi.fn<any>();
+    const editMessageText = vi.fn();
+    const answerCallbackQuery = vi.fn();
 
     const handled = await handleModelCallback({
       api: { editMessageText },
@@ -189,7 +190,7 @@ describe("handleModelCallback", () => {
     mockPickerData();
 
     const { handleModel, handleModelCallback } = await import("./model");
-    const reply = vi.fn<any>();
+    const reply = vi.fn();
 
     await handleModel({
       chat: { id: 42 },
@@ -208,8 +209,8 @@ describe("handleModelCallback", () => {
     const showAllCallback = replyMarkup.inline_keyboard
       .flat()
       .find((button: { text: string }) => button.text === "Show All")!.callback_data;
-    const editMessageText = vi.fn<any>();
-    const answerCallbackQuery = vi.fn<any>();
+    const editMessageText = vi.fn();
+    const answerCallbackQuery = vi.fn();
 
     await handleModelCallback({
       api: { editMessageText },

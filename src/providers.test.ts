@@ -1,3 +1,4 @@
+/* eslint-disable vitest/require-mock-type-parameters */
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const { configMock } = vi.hoisted(() => ({
@@ -23,8 +24,8 @@ vi.mock("./config.js", () => ({
 
 vi.mock("./logging/index.js", () => ({
   getLogger: () => ({
-    info: vi.fn<any>(),
-    warn: vi.fn<any>(),
+    info: vi.fn(),
+    warn: vi.fn(),
   }),
 }));
 
@@ -218,7 +219,7 @@ describe("fetchProviderModels", () => {
     };
     vi.stubGlobal(
       "fetch",
-      vi.fn<any>().mockResolvedValue({
+      vi.fn().mockResolvedValue({
         ok: true,
         json: () => Promise.resolve(mockResponse),
       }),
@@ -242,7 +243,7 @@ describe("fetchProviderModels", () => {
   });
 
   it("sends bearer auth for Anthropics-compatible custom providers", async () => {
-    const fetchMock = vi.fn<any>().mockResolvedValue({
+    const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: () =>
         Promise.resolve({
@@ -289,7 +290,7 @@ describe("fetchProviderModels", () => {
     };
     vi.stubGlobal(
       "fetch",
-      vi.fn<any>().mockResolvedValue({
+      vi.fn().mockResolvedValue({
         ok: true,
         json: () => Promise.resolve(mockResponse),
       }),
@@ -315,7 +316,7 @@ describe("fetchProviderModels", () => {
     };
     vi.stubGlobal(
       "fetch",
-      vi.fn<any>().mockResolvedValue({
+      vi.fn().mockResolvedValue({
         ok: true,
         json: () => Promise.resolve(mockResponse),
       }),
@@ -338,7 +339,7 @@ describe("fetchProviderModels", () => {
   });
 
   it("fetches only language models for Vercel AI Gateway", async () => {
-    const fetchMock = vi.fn<any>().mockResolvedValue({
+    const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: () =>
         Promise.resolve({
@@ -396,7 +397,7 @@ describe("fetchProviderModels", () => {
   it("returns empty array on fetch failure", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn<any>().mockResolvedValue({
+      vi.fn().mockResolvedValue({
         ok: false,
         status: 401,
       }),

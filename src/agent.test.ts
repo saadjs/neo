@@ -1,3 +1,4 @@
+/* eslint-disable vitest/require-mock-type-parameters */
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -17,21 +18,21 @@ const {
   cancelAllPendingUserInputsMock,
   getChannelConfigMock,
 } = vi.hoisted(() => ({
-  createSessionMock: vi.fn<any>(),
-  resumeSessionMock: vi.fn<any>(),
-  deleteSessionMock: vi.fn<any>(),
-  clientStartMock: vi.fn<any>(),
-  clientStopMock: vi.fn<any>(),
-  buildSystemContextPartsMock: vi.fn<any>(),
-  logSessionMock: vi.fn<any>(),
-  clearActiveSessionMock: vi.fn<any>(),
-  setActiveSessionMock: vi.fn<any>(),
-  getActiveSessionIdMock: vi.fn<any>(),
-  approveAllMock: vi.fn<any>(),
-  requestUserInputMock: vi.fn<any>(),
-  cancelPendingUserInputMock: vi.fn<any>(),
-  cancelAllPendingUserInputsMock: vi.fn<any>(),
-  getChannelConfigMock: vi.fn<any>(),
+  createSessionMock: vi.fn(),
+  resumeSessionMock: vi.fn(),
+  deleteSessionMock: vi.fn(),
+  clientStartMock: vi.fn(),
+  clientStopMock: vi.fn(),
+  buildSystemContextPartsMock: vi.fn(),
+  logSessionMock: vi.fn(),
+  clearActiveSessionMock: vi.fn(),
+  setActiveSessionMock: vi.fn(),
+  getActiveSessionIdMock: vi.fn(),
+  approveAllMock: vi.fn(),
+  requestUserInputMock: vi.fn(),
+  cancelPendingUserInputMock: vi.fn(),
+  cancelAllPendingUserInputsMock: vi.fn(),
+  getChannelConfigMock: vi.fn(),
 }));
 
 vi.mock("@github/copilot-sdk", () => ({
@@ -88,8 +89,8 @@ vi.mock("./memory/index.js", () => ({
 
 vi.mock("./logging/index.js", () => ({
   getLogger: () => ({
-    info: vi.fn<any>(),
-    warn: vi.fn<any>(),
+    info: vi.fn(),
+    warn: vi.fn(),
   }),
 }));
 
@@ -146,8 +147,8 @@ describe("refreshSessionContext", () => {
     const chatId = -300001;
     const session = {
       sessionId: "session-channel-default",
-      destroy: vi.fn<any>().mockResolvedValue(undefined),
-      disconnect: vi.fn<any>().mockResolvedValue(undefined),
+      destroy: vi.fn().mockResolvedValue(undefined),
+      disconnect: vi.fn().mockResolvedValue(undefined),
     };
     createSessionMock.mockResolvedValue(session);
     buildSystemContextPartsMock.mockResolvedValue({
@@ -171,8 +172,8 @@ describe("refreshSessionContext", () => {
     const chatId = -300002;
     const resumedSession = {
       sessionId: "session-resumed",
-      setModel: vi.fn<any>().mockResolvedValue(undefined),
-      disconnect: vi.fn<any>().mockResolvedValue(undefined),
+      setModel: vi.fn().mockResolvedValue(undefined),
+      disconnect: vi.fn().mockResolvedValue(undefined),
     };
     resumeSessionMock.mockResolvedValue(resumedSession);
     buildSystemContextPartsMock.mockResolvedValue({
@@ -194,8 +195,8 @@ describe("refreshSessionContext", () => {
   it("registers the ask_user bridge for interactive sessions", async () => {
     const session = {
       sessionId: "session-ask",
-      destroy: vi.fn<any>().mockResolvedValue(undefined),
-      disconnect: vi.fn<any>().mockResolvedValue(undefined),
+      destroy: vi.fn().mockResolvedValue(undefined),
+      disconnect: vi.fn().mockResolvedValue(undefined),
     };
     createSessionMock.mockResolvedValue(session);
     buildSystemContextPartsMock.mockResolvedValue({
@@ -229,8 +230,8 @@ describe("refreshSessionContext", () => {
   it("destroys an idle cached session immediately and deletes from disk", async () => {
     const session = {
       sessionId: "session-1",
-      destroy: vi.fn<any>().mockResolvedValue(undefined),
-      disconnect: vi.fn<any>().mockResolvedValue(undefined),
+      destroy: vi.fn().mockResolvedValue(undefined),
+      disconnect: vi.fn().mockResolvedValue(undefined),
     };
     createSessionMock.mockResolvedValue(session);
     buildSystemContextPartsMock.mockResolvedValue({
@@ -257,13 +258,13 @@ describe("refreshSessionContext", () => {
   it("defers destroying an in-use session until the turn ends", async () => {
     const staleSession = {
       sessionId: "session-2",
-      destroy: vi.fn<any>().mockResolvedValue(undefined),
-      disconnect: vi.fn<any>().mockResolvedValue(undefined),
+      destroy: vi.fn().mockResolvedValue(undefined),
+      disconnect: vi.fn().mockResolvedValue(undefined),
     };
     const freshSession = {
       sessionId: "session-3",
-      destroy: vi.fn<any>().mockResolvedValue(undefined),
-      disconnect: vi.fn<any>().mockResolvedValue(undefined),
+      destroy: vi.fn().mockResolvedValue(undefined),
+      disconnect: vi.fn().mockResolvedValue(undefined),
     };
     createSessionMock.mockResolvedValueOnce(staleSession).mockResolvedValueOnce(freshSession);
     buildSystemContextPartsMock.mockResolvedValue({
@@ -307,18 +308,18 @@ describe("refreshSessionContext", () => {
   it("destroys every stale session after overlapping refreshed turns finish", async () => {
     const firstSession = {
       sessionId: "session-1",
-      destroy: vi.fn<any>().mockResolvedValue(undefined),
-      disconnect: vi.fn<any>().mockResolvedValue(undefined),
+      destroy: vi.fn().mockResolvedValue(undefined),
+      disconnect: vi.fn().mockResolvedValue(undefined),
     };
     const secondSession = {
       sessionId: "session-2",
-      destroy: vi.fn<any>().mockResolvedValue(undefined),
-      disconnect: vi.fn<any>().mockResolvedValue(undefined),
+      destroy: vi.fn().mockResolvedValue(undefined),
+      disconnect: vi.fn().mockResolvedValue(undefined),
     };
     const thirdSession = {
       sessionId: "session-3",
-      destroy: vi.fn<any>().mockResolvedValue(undefined),
-      disconnect: vi.fn<any>().mockResolvedValue(undefined),
+      destroy: vi.fn().mockResolvedValue(undefined),
+      disconnect: vi.fn().mockResolvedValue(undefined),
     };
     createSessionMock
       .mockResolvedValueOnce(firstSession)
@@ -367,13 +368,13 @@ describe("refreshSessionContext", () => {
   it("does not resume the previous persisted session after a context refresh", async () => {
     const staleSession = {
       sessionId: "session-stale",
-      destroy: vi.fn<any>().mockResolvedValue(undefined),
-      disconnect: vi.fn<any>().mockResolvedValue(undefined),
+      destroy: vi.fn().mockResolvedValue(undefined),
+      disconnect: vi.fn().mockResolvedValue(undefined),
     };
     const freshSession = {
       sessionId: "session-fresh",
-      destroy: vi.fn<any>().mockResolvedValue(undefined),
-      disconnect: vi.fn<any>().mockResolvedValue(undefined),
+      destroy: vi.fn().mockResolvedValue(undefined),
+      disconnect: vi.fn().mockResolvedValue(undefined),
     };
     createSessionMock.mockResolvedValueOnce(staleSession).mockResolvedValueOnce(freshSession);
     buildSystemContextPartsMock.mockResolvedValue({
@@ -403,16 +404,16 @@ describe("refreshSessionContext", () => {
   it("keeps stale sessions alive when overlapping replacement creation fails", async () => {
     const staleSession = {
       sessionId: "session-stale",
-      destroy: vi.fn<any>().mockResolvedValue(undefined),
-      disconnect: vi.fn<any>().mockResolvedValue(undefined),
+      destroy: vi.fn().mockResolvedValue(undefined),
+      disconnect: vi.fn().mockResolvedValue(undefined),
     };
     createSessionMock
       .mockResolvedValueOnce(staleSession)
       .mockRejectedValueOnce(new Error("create failed"))
       .mockResolvedValueOnce({
         sessionId: "session-fresh",
-        destroy: vi.fn<any>().mockResolvedValue(undefined),
-        disconnect: vi.fn<any>().mockResolvedValue(undefined),
+        destroy: vi.fn().mockResolvedValue(undefined),
+        disconnect: vi.fn().mockResolvedValue(undefined),
       });
     buildSystemContextPartsMock.mockResolvedValue({
       identity: "neo-identity",
@@ -453,8 +454,8 @@ describe("discardSession", () => {
   it("clears the active cached session and persisted session id", async () => {
     const session = {
       sessionId: "session-active",
-      destroy: vi.fn<any>().mockResolvedValue(undefined),
-      disconnect: vi.fn<any>().mockResolvedValue(undefined),
+      destroy: vi.fn().mockResolvedValue(undefined),
+      disconnect: vi.fn().mockResolvedValue(undefined),
     };
     createSessionMock.mockResolvedValue(session);
     buildSystemContextPartsMock.mockResolvedValue({
@@ -479,13 +480,13 @@ describe("discardSession", () => {
   it("removes a stale session from lookup without touching the active session", async () => {
     const staleSession = {
       sessionId: "session-stale",
-      destroy: vi.fn<any>().mockResolvedValue(undefined),
-      disconnect: vi.fn<any>().mockResolvedValue(undefined),
+      destroy: vi.fn().mockResolvedValue(undefined),
+      disconnect: vi.fn().mockResolvedValue(undefined),
     };
     const freshSession = {
       sessionId: "session-fresh",
-      destroy: vi.fn<any>().mockResolvedValue(undefined),
-      disconnect: vi.fn<any>().mockResolvedValue(undefined),
+      destroy: vi.fn().mockResolvedValue(undefined),
+      disconnect: vi.fn().mockResolvedValue(undefined),
     };
     createSessionMock.mockResolvedValueOnce(staleSession).mockResolvedValueOnce(freshSession);
     buildSystemContextPartsMock.mockResolvedValue({
@@ -524,13 +525,13 @@ describe("discardSession", () => {
   it("reports stale refreshed sessions as still tracked until they are discarded", async () => {
     const staleSession = {
       sessionId: "session-stale",
-      destroy: vi.fn<any>().mockResolvedValue(undefined),
-      disconnect: vi.fn<any>().mockResolvedValue(undefined),
+      destroy: vi.fn().mockResolvedValue(undefined),
+      disconnect: vi.fn().mockResolvedValue(undefined),
     };
     const freshSession = {
       sessionId: "session-fresh",
-      destroy: vi.fn<any>().mockResolvedValue(undefined),
-      disconnect: vi.fn<any>().mockResolvedValue(undefined),
+      destroy: vi.fn().mockResolvedValue(undefined),
+      disconnect: vi.fn().mockResolvedValue(undefined),
     };
     createSessionMock.mockResolvedValueOnce(staleSession).mockResolvedValueOnce(freshSession);
     buildSystemContextPartsMock.mockResolvedValue({
@@ -568,8 +569,8 @@ describe("destroySession", () => {
   it("disconnects the active session without deleting persisted history by default", async () => {
     const session = {
       sessionId: "session-active",
-      destroy: vi.fn<any>().mockResolvedValue(undefined),
-      disconnect: vi.fn<any>().mockResolvedValue(undefined),
+      destroy: vi.fn().mockResolvedValue(undefined),
+      disconnect: vi.fn().mockResolvedValue(undefined),
     };
     createSessionMock.mockResolvedValue(session);
     buildSystemContextPartsMock.mockResolvedValue({
@@ -595,8 +596,8 @@ describe("destroySession", () => {
   it("deletes persisted history when explicitly requested", async () => {
     const session = {
       sessionId: "session-active",
-      destroy: vi.fn<any>().mockResolvedValue(undefined),
-      disconnect: vi.fn<any>().mockResolvedValue(undefined),
+      destroy: vi.fn().mockResolvedValue(undefined),
+      disconnect: vi.fn().mockResolvedValue(undefined),
     };
     createSessionMock.mockResolvedValue(session);
     buildSystemContextPartsMock.mockResolvedValue({
@@ -649,8 +650,8 @@ describe("getModelForChat", () => {
   it("refreshes active default sessions when the default provider changes", async () => {
     const session = {
       sessionId: "session-default-provider",
-      setModel: vi.fn<any>().mockResolvedValue(undefined),
-      disconnect: vi.fn<any>().mockResolvedValue(undefined),
+      setModel: vi.fn().mockResolvedValue(undefined),
+      disconnect: vi.fn().mockResolvedValue(undefined),
     };
     createSessionMock.mockResolvedValue(session);
     buildSystemContextPartsMock.mockResolvedValue({
@@ -678,8 +679,8 @@ describe("getModelForChat", () => {
   it("switches active default sessions in place when the provider stays the same", async () => {
     const session = {
       sessionId: "session-default-model",
-      setModel: vi.fn<any>().mockResolvedValue(undefined),
-      disconnect: vi.fn<any>().mockResolvedValue(undefined),
+      setModel: vi.fn().mockResolvedValue(undefined),
+      disconnect: vi.fn().mockResolvedValue(undefined),
     };
     createSessionMock.mockResolvedValue(session);
     buildSystemContextPartsMock.mockResolvedValue({
@@ -701,8 +702,8 @@ describe("getModelForChat", () => {
   it("skips active sessions that inherit a channel default model", async () => {
     const session = {
       sessionId: "session-channel-default",
-      setModel: vi.fn<any>().mockResolvedValue(undefined),
-      disconnect: vi.fn<any>().mockResolvedValue(undefined),
+      setModel: vi.fn().mockResolvedValue(undefined),
+      disconnect: vi.fn().mockResolvedValue(undefined),
     };
     createSessionMock.mockResolvedValue(session);
     buildSystemContextPartsMock.mockResolvedValue({
